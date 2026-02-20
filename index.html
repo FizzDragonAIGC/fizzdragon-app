@@ -5613,7 +5613,7 @@ function updateAssetsPanel() {
                         ${costumeCount > 0 ? `
                             <div style="padding:6px 10px;border-bottom:1px solid var(--border);">
                                 ${a.costumes.slice(0, 3).map(c => `
-                                    <div style="font-size:10px;margin:3px 0;"><b>${c.name || c.character || '服裝'}</b>: ${c.description || c.outfit || '-'}</div>
+                                    <div style="font-size:10px;margin:3px 0;"><b>${c.character || c.name || '服裝'}</b>: ${c.outfit || c.description || (c.key_features?.join(', ')) || '-'}</div>
                                 `).join('')}
                             </div>
                         ` : ''}
@@ -9751,21 +9751,50 @@ function showEditableResult(type, data, onConfirm, onRegenerate) {
             return text;
         }).join('\n\n════════════════════════════\n\n');
     } else if (type === 'production') {
-        // 服化道格式
+        // 服化道格式 - 支持嵌套和扁平两种结构
         let text = '══════ 👔 服裝設計 ══════\n\n';
-        text += (data.costumes || []).map(c => 
-            `【${c.character || c.name || '角色'}】(${c.occasion || '場合'})\n服裝: ${c.outfit || c.description || '(待填寫)'}\n風格: ${c.style || '(待填寫)'}\n🎨 Prompt: ${c.ai_prompt || c.prompt || '(待填寫)'}`
-        ).join('\n\n────────────────\n\n');
+        const costumes = data.costumes || [];
+        if (costumes.length === 0) {
+            text += '(尚無服裝資料)\n';
+        } else {
+            text += costumes.map(c => {
+                const char = c.character || c.name || '角色';
+                const occasion = c.occasion || '日常';
+                const outfit = c.outfit || c.description || '(待填寫)';
+                const style = c.style || '';
+                const prompt = c.ai_prompt || c.prompt || '(待填寫)';
+                const features = c.key_features?.length > 0 ? `\n特徵: ${c.key_features.join(', ')}` : '';
+                return `【${char}】(${occasion})\n服裝: ${outfit}${style ? `\n風格: ${style}` : ''}${features}\n🎨 Prompt: ${prompt}`;
+            }).join('\n\n────────────────\n\n');
+        }
         
         text += '\n\n══════ 🏠 場景設計 ══════\n\n';
-        text += (data.sets || []).map(s => 
-            `【${s.name || s.location || '場景'}】(${s.time || '時間'})\n氛圍: ${s.atmosphere || s.description || '(待填寫)'}\n🎨 Prompt: ${s.ai_prompt || s.prompt || '(待填寫)'}`
-        ).join('\n\n────────────────\n\n');
+        const sets = data.sets || [];
+        if (sets.length === 0) {
+            text += '(尚無場景資料)\n';
+        } else {
+            text += sets.map(s => {
+                const name = s.name || s.location || '場景';
+                const time = s.time || s.period || '';
+                const atmo = s.atmosphere || s.description || '(待填寫)';
+                const prompt = s.ai_prompt || s.prompt || '(待填寫)';
+                return `【${name}】${time ? `(${time})` : ''}\n氛圍: ${atmo}\n🎨 Prompt: ${prompt}`;
+            }).join('\n\n────────────────\n\n');
+        }
         
         text += '\n\n══════ 🎭 道具設計 ══════\n\n';
-        text += (data.props || []).map(p => 
-            `【${p.name || '道具'}】\n用途: ${p.usage || p.description || '(待填寫)'}\n🎨 Prompt: ${p.ai_prompt || p.prompt || '(待填寫)'}`
-        ).join('\n\n────────────────\n\n');
+        const props = data.props || [];
+        if (props.length === 0) {
+            text += '(尚無道具資料)\n';
+        } else {
+            text += props.map(p => {
+                const name = p.name || '道具';
+                const desc = p.description || p.usage || '(待填寫)';
+                const features = p.key_features?.length > 0 ? `\n特徵: ${p.key_features.join(', ')}` : '';
+                const prompt = p.ai_prompt || p.prompt || '(待填寫)';
+                return `【${name}】\n用途: ${desc}${features}\n🎨 Prompt: ${prompt}`;
+            }).join('\n\n────────────────\n\n');
+        }
         
         displayText = text;
     } else {
@@ -11630,10 +11659,59 @@ async function runProductionDesign() {
         
         console.log('🔍 production_design 解析后:', designData);
         
-        // 准备服化道数据
-        const costumes = designData.costumes || [];
-        const sets = designData.sets || designData.scenes || designData.locations || [];
-        const props = designData.props || [];
+        // 🔧 规范化服化道数据 - 处理嵌套结构
+        function normalizeCostumes(rawCostumes) {
+            const result = [];
+            (rawCostumes || []).forEach(c => {
+                // 如果有嵌套的 outfits 数组，展开它
+                if (c.outfits && Array.isArray(c.outfits)) {
+                    c.outfits.forEach(outfit => {
+                        result.push({
+                            character: c.name || c.character || '角色',
+                            occasion: outfit.occasion || outfit.name || '日常',
+                            outfit: outfit.description || outfit.outfit || outfit.name || '',
+                            style: outfit.style || c.style || '',
+                            ai_prompt: outfit.ai_prompt || outfit.prompt || c.ai_prompt || '',
+                            key_features: outfit.key_features || []
+                        });
+                    });
+                } else {
+                    // 已经是扁平结构
+                    result.push({
+                        character: c.character || c.name || '角色',
+                        occasion: c.occasion || '日常',
+                        outfit: c.outfit || c.description || '',
+                        style: c.style || '',
+                        ai_prompt: c.ai_prompt || c.prompt || '',
+                        key_features: c.key_features || []
+                    });
+                }
+            });
+            return result;
+        }
+        
+        function normalizeProps(rawProps) {
+            return (rawProps || []).map(p => ({
+                name: p.name || '道具',
+                description: p.description || p.usage || '',
+                key_features: p.key_features || [],
+                ai_prompt: p.ai_prompt || p.prompt || ''
+            }));
+        }
+        
+        function normalizeSets(rawSets) {
+            return (rawSets || []).map(s => ({
+                name: s.name || s.location || '場景',
+                time: s.time || s.period || '',
+                atmosphere: s.atmosphere || s.description || '',
+                ai_prompt: s.ai_prompt || s.prompt || ''
+            }));
+        }
+        
+        // 准备服化道数据（规范化）
+        const costumes = normalizeCostumes(designData.costumes);
+        const sets = normalizeSets(designData.sets || designData.scenes || designData.locations);
+        const props = normalizeProps(designData.props);
         
         removeTypingIndicator();
         hideAgentStatus();
