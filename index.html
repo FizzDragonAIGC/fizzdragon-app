@@ -3739,6 +3739,8 @@ function finishManualEpisodeInput() {
     const totalWords = state.manualEpisodes.reduce((sum, ep) => sum + ep.length, 0);
     const totalDuration = Math.round(totalWords / 150);
     
+    // 合并所有集内容到state.novel（让其他功能可用）
+    state.novel = state.manualEpisodes.join('\n\n---\n\n');
     state.mode = 'script';
     state.novelTitle = state.novelTitle || `手動導入劇本 (${totalEps}集)`;
     
