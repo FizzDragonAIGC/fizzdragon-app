@@ -7157,6 +7157,9 @@ function loadProject(projectId) {
         return;
     }
     
+    // 🔧 清空对话框，避免遗留
+    document.getElementById('chatContainer').innerHTML = '';
+    
     // 恢复写作模式状态
     writeState.idea = p.idea;
     writeState.interview = p.interview;
