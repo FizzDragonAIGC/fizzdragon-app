@@ -906,6 +906,34 @@
         
         /* 角色资产项 */
         
+        /* 工作流状态栏 */
+        .workflow-status {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+        .ws-item {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            background: var(--surface2);
+            font-size: 12px;
+            color: var(--text2);
+            cursor: default;
+            transition: all 0.2s;
+        }
+        .ws-item.done {
+            background: rgba(227,27,35,0.15);
+            color: var(--accent);
+            border: 1px solid var(--accent);
+        }
+        
         /* 画风选择 */
         .artstyle-options { display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
         .artstyle-option { 
@@ -4372,7 +4400,25 @@ function updateAssetsPanel() {
     const totalShots = Object.values(a.storyboards || {}).reduce((sum, arr) => sum + (arr?.length || 0), 0);
     const charCount = a.characters?.length || 0;
     
-    // 项目快捷操作工具栏 (已移除)
+    // 项目快捷操作工具栏 - 简化为图标状态栏
+    const hasConcept = !!a.concept;
+    const hasInterview = !!a.interview;
+    const hasArtstyle = !!a.artstyle;
+    const hasChars = (a.characters?.length || 0) > 0;
+    const hasChaps = (a.chapters?.length || 0) > 0;
+    const hasScripts = scriptCount > 0;
+    const hasSB = sbCount > 0;
+    
+    html += `<div class="workflow-status">
+        <span class="ws-item ${hasConcept ? 'done' : ''}" title="高概念">💡</span>
+        <span class="ws-item ${hasInterview ? 'done' : ''}" title="訪談">🎤</span>
+        <span class="ws-item ${hasArtstyle ? 'done' : ''}" title="畫風">🎨</span>
+        <span class="ws-item ${hasChars ? 'done' : ''}" title="人物">${hasChars ? charCount : '👤'}</span>
+        <span class="ws-item ${hasChaps ? 'done' : ''}" title="章節">${hasChaps ? a.chapters.length : '📝'}</span>
+        <span class="ws-item ${hasScripts ? 'done' : ''}" title="劇本">${hasScripts ? scriptCount + '/' + (a.chapters?.length || 0) : '✍️'}</span>
+        <span class="ws-item ${hasSB ? 'done' : ''}" title="分鏡">${hasSB ? sbCount + '/' + (a.chapters?.length || 0) : '🎬'}</span>
+    </div>`;
+    
     html += `<div class="assets-tabs">
         <button class="assets-tab active" onclick="switchAssetsTab('base')" id="tabBase">📋 設定</button>
         <button class="assets-tab" onclick="switchAssetsTab('prod')" id="tabProd">📝 生產 <small>${scriptCount}/${a.chapters?.length || 0}</small></button>
