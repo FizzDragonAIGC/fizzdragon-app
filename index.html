@@ -4525,9 +4525,10 @@ function renderProjectListByMode() {
     const stepNameKeys = ['stepNotStarted', 'stepConcept', 'stepCharacter', 'stepChapter', 'stepProduction', 'stepScript', 'stepStoryboard'];
     
     container.innerHTML = list.map((p) => {
-        const isActive = p.id === currentProjectId;
+        const isSelected = p.id === currentProjectId;
         const assets = p.assets || {};
         const chapterCount = assets.chapters?.length || p.chapters?.length || 0;
+        const charCount = assets.characters?.length || 0;
         const scriptCount = Object.keys(assets.scripts || {}).length;
         const sbCount = Object.keys(assets.storyboards || {}).length || p.adAssets?.storyboard?.length || 0;
         const stepName = stepNameKeys[p.step] ? t(stepNameKeys[p.step]) : '';
@@ -4540,7 +4541,7 @@ function renderProjectListByMode() {
         const hasScripts = scriptCount > 0;
         const hasSb = sbCount > 0;
         const isRunning = runningProjects && runningProjects[p.id]; // Auto-Pilot
-        const isActive = activeProjects && activeProjects[p.id]; // 对话式处理
+        const isProcessing = activeProjects && activeProjects[p.id]; // 对话式处理
         const hasError = errorProjects && errorProjects[p.id]; // 有错误
         const isComplete = hasConcept && hasChars && hasChapters && hasScripts && hasSb;
         
@@ -4550,7 +4551,7 @@ function renderProjectListByMode() {
             statusIndicator = '<span class="proj-status proj-error" title="有問題"></span>';
         } else if (isRunning) {
             statusIndicator = '<span class="proj-status proj-running" title="Auto-Pilot 運行中"></span>';
-        } else if (isActive) {
+        } else if (isProcessing) {
             statusIndicator = '<span class="proj-status proj-active" title="處理中"></span>';
         } else if (isComplete) {
             statusIndicator = '<span class="proj-status proj-complete" title="已完成"></span>';
@@ -4561,7 +4562,7 @@ function renderProjectListByMode() {
         const displayName = String(p.name || t('unnamed') || '未命名');
         const safeName = displayName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         return `
-            <div class="project-item ${isActive ? 'active' : ''}" 
+            <div class="project-item ${isSelected ? 'active' : ''}" 
                  draggable="true"
                  data-project-id="${p.id}"
                  onclick="openProject('${p.id}')"
