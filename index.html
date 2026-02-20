@@ -5613,14 +5613,14 @@ function updateAssetsPanel() {
                         ${costumeCount > 0 ? `
                             <div style="padding:6px 10px;border-bottom:1px solid var(--border);">
                                 ${a.costumes.slice(0, 3).map(c => `
-                                    <div style="font-size:10px;margin:3px 0;"><b>${c.character || '角色'}</b>: ${c.outfit || '-'}</div>
+                                    <div style="font-size:10px;margin:3px 0;"><b>${c.name || c.character || '服裝'}</b>: ${c.description || c.outfit || '-'}</div>
                                 `).join('')}
                             </div>
                         ` : ''}
                         ${setCount > 0 ? `
                             <div style="padding:6px 10px;">
                                 ${a.sets.slice(0, 3).map(s => `
-                                    <div style="font-size:10px;margin:3px 0;"><b>${s.name || '場景'}</b>: ${s.atmosphere || '-'}</div>
+                                    <div style="font-size:10px;margin:3px 0;"><b>${s.name || s.location || '場景'}</b>: ${s.description || s.atmosphere || '-'}</div>
                                 `).join('')}
                             </div>
                         ` : ''}
