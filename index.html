@@ -11533,24 +11533,24 @@ function exportStoryboards() {
     let csv = headers.join(',') + '\n';
     allShots.forEach(shot => {
         const row = [
-            shot.shot_id,
-            shot.episode,
-            `"${(shot.description || shot.scene || '').replace(/"/g, '""')}"`,
-            `"${(shot.scene || shot.location || '').replace(/"/g, '""')}"`,
-            shot.time || '',
-            shot.lighting || '',
-            shot.mood || shot.atmosphere || '',
-            `"${(shot.characters || shot.character || '').replace(/"/g, '""')}"`,
-            `"${(shot.action || '').replace(/"/g, '""')}"`,
+            shot.shot_id || '',
+            shot.episode || '',
+            `"${(shot.description || shot.action || shot.scene || '').replace(/"/g, '""')}"`,
+            `"${(shot.scene || shot.location || shot.場景 || '').replace(/"/g, '""')}"`,
+            shot.time || shot.時間 || '',
+            shot.lighting || shot.光線 || shot.light || '',
+            shot.mood || shot.atmosphere || shot.氛圍 || shot.emotion || '',
+            `"${(shot.character || shot.characters || shot.角色 || shot.actor || '').replace(/"/g, '""')}"`,
+            `"${(shot.action || shot.動作 || '').replace(/"/g, '""')}"`,
             shot.expression || '',
             shot.costume || '',
-            `"${(shot.dialogue || '').replace(/"/g, '""')}"`,
-            shot.camera_position || shot.camera || '',
-            shot.camera_movement || shot.movement || '',
-            shot.shot_size || shot.framing || '',
+            `"${(shot.dialogue || shot.台詞 || shot.lines || shot.copy || '').replace(/"/g, '""')}"`,
+            shot.camera || shot.camera_position || shot.機位 || shot.angle || '',
+            shot.movement || shot.camera_movement || shot.camera_move || shot.運鏡 || '',
+            shot.shot_type || shot.shot_size || shot.framing || shot.景別 || '',
             shot.narrative_function || '',
-            `"${(shot.image_prompt || shot.ai_prompt || '').replace(/"/g, '""')}"`,
-            `"${(shot.video_prompt || '').replace(/"/g, '""')}"`
+            `"${(shot.Image_Prompt || shot.image_prompt || shot.ai_prompt || '').replace(/"/g, '""')}"`,
+            `"${(shot.Video_Prompt || shot.video_prompt || '').replace(/"/g, '""')}"`
         ];
         csv += row.join(',') + '\n';
     });
