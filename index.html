@@ -562,6 +562,102 @@
             padding: 8px;
         }
         
+        /* FizzStudio 素材庫 */
+        .fizzstudio-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+        .fizzstudio-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .fizzstudio-count {
+            font-size: 10px;
+            color: var(--text2);
+            background: var(--surface2);
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+        .fizzstudio-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .fizzstudio-btn {
+            padding: 5px 10px;
+            font-size: 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--surface2);
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .fizzstudio-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .fizzstudio-btn.primary {
+            background: linear-gradient(135deg, #6366F1, #8B5CF6);
+            border: none;
+            color: white;
+        }
+        .fizzstudio-btn.primary:hover {
+            opacity: 0.9;
+            transform: scale(1.02);
+        }
+        .fizzstudio-char-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .fizzstudio-char-card {
+            text-align: center;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .fizzstudio-char-card:hover {
+            background: var(--surface2);
+        }
+        .fizzstudio-char-img {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+        }
+        .fizzstudio-char-placeholder {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--surface2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin: 0 auto;
+        }
+        .fizzstudio-char-name {
+            font-size: 9px;
+            margin-top: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .fizzstudio-char-status {
+            font-size: 8px;
+        }
+        
         /* 资产卡片 */
         .canvas-card {
             background: var(--surface);
@@ -3633,6 +3729,78 @@ function updateAssetsPanel() {
         html += `</div></div>`; // 关闭 production
     }
     
+    // ==================== 区块3：FizzStudio 素材庫 ====================
+    const hasAnyAssets = a.characters?.length > 0 || Object.keys(a.storyboards || {}).length > 0;
+    if (hasAnyAssets) {
+        const charCount = a.characters?.length || 0;
+        const charWithImage = a.characters?.filter(c => c.image_url)?.length || 0;
+        const charWithPrompt = a.characters?.filter(c => c.ai_prompt || c.prompt)?.length || 0;
+        const totalShots = Object.values(a.storyboards || {}).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+        const costumeCount = a.costumes?.length || 0;
+        const setCount = a.sets?.length || 0;
+        
+        html += `<div class="assets-section">
+            <div class="assets-section-header" onclick="toggleSection('fizzstudio')" style="background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(139,92,246,0.1));">
+                <span>🚀 FizzStudio 素材</span>
+                <span class="assets-section-stats">${charWithPrompt}人 | ${totalShots}鏡 | ${charWithImage}圖</span>
+                <span id="fizzstudioToggle2">▼</span>
+            </div>
+            <div class="assets-section-body" id="fizzstudioBody" style="display:none;">
+                
+                <!-- 分镜表 -->
+                <div class="fizzstudio-item">
+                    <div class="fizzstudio-item-header">
+                        <span>📊 分鏡表</span>
+                        <span class="fizzstudio-count">${totalShots} 鏡頭</span>
+                    </div>
+                    ${totalShots > 0 ? `
+                        <div class="fizzstudio-actions">
+                            <button onclick="exportToExcel()" class="fizzstudio-btn">📥 導出Excel</button>
+                            <button onclick="copyAllStoryboardPrompts()" class="fizzstudio-btn">📋 複製全部Prompt</button>
+                        </div>
+                    ` : '<div style="font-size:10px;color:var(--text2);padding:4px;">尚未生成分鏡</div>'}
+                </div>
+                
+                <!-- 角色形象 -->
+                <div class="fizzstudio-item">
+                    <div class="fizzstudio-item-header">
+                        <span>👤 角色形象</span>
+                        <span class="fizzstudio-count">${charWithPrompt} Prompt / ${charWithImage} 圖片</span>
+                    </div>
+                    ${charCount > 0 ? `
+                        <div class="fizzstudio-char-grid">
+                            ${a.characters.map((c, i) => `
+                                <div class="fizzstudio-char-card" onclick="showCharacterDetail(${i})">
+                                    ${c.image_url ? `<img src="${c.image_url}" class="fizzstudio-char-img"/>` : `<div class="fizzstudio-char-placeholder">👤</div>`}
+                                    <div class="fizzstudio-char-name">${c.name}</div>
+                                    <div class="fizzstudio-char-status">${c.image_url ? '✅' : (c.ai_prompt ? '📝' : '⏳')}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="fizzstudio-actions">
+                            <button onclick="generateAllCharacterImages()" class="fizzstudio-btn primary">🎨 批量生成形象</button>
+                            <button onclick="copyAllCharacterPrompts()" class="fizzstudio-btn">📋 複製全部Prompt</button>
+                        </div>
+                    ` : '<div style="font-size:10px;color:var(--text2);padding:4px;">尚未設計角色</div>'}
+                </div>
+                
+                <!-- 服化道 -->
+                ${(costumeCount > 0 || setCount > 0) ? `
+                <div class="fizzstudio-item">
+                    <div class="fizzstudio-item-header">
+                        <span>👗 服化道</span>
+                        <span class="fizzstudio-count">${costumeCount} 服裝 / ${setCount} 場景</span>
+                    </div>
+                    <div class="fizzstudio-actions">
+                        <button onclick="copyAllProductionPrompts()" class="fizzstudio-btn">📋 複製全部Prompt</button>
+                    </div>
+                </div>
+                ` : ''}
+                
+            </div>
+        </div>`;
+    }
+    
     container.innerHTML = html;
 }
 
@@ -3756,9 +3924,9 @@ function toggleCharacterDetail(index) {
 function copyCharPrompt(index) {
     const chars = state.assets?.characters || [];
     const char = chars[index];
-    if (char?.prompt) {
-        navigator.clipboard.writeText(char.prompt).then(() => {
-            // 显示复制成功提示
+    const prompt = char?.prompt || char?.ai_prompt;
+    if (prompt) {
+        navigator.clipboard.writeText(prompt).then(() => {
             const btn = event.target;
             const originalText = btn.textContent;
             btn.textContent = '✓ 已複製';
@@ -3768,6 +3936,137 @@ function copyCharPrompt(index) {
                 btn.style.background = '';
             }, 1500);
         });
+    }
+}
+
+// 📋 复制所有角色Prompt
+function copyAllCharacterPrompts() {
+    const chars = state.assets?.characters || [];
+    const prompts = chars
+        .filter(c => c.ai_prompt || c.prompt)
+        .map(c => `【${c.name}】(${c.role || '角色'})\n${c.ai_prompt || c.prompt}`)
+        .join('\n\n---\n\n');
+    
+    if (prompts) {
+        navigator.clipboard.writeText(prompts);
+        addAIMessage(`✅ 已複製 ${chars.filter(c => c.ai_prompt || c.prompt).length} 個角色的Prompt！`);
+    } else {
+        addAIMessage('❌ 沒有角色Prompt可複製');
+    }
+}
+
+// 📋 复制所有分镜Prompt
+function copyAllStoryboardPrompts() {
+    const sbs = state.assets?.storyboards || {};
+    let allPrompts = [];
+    
+    Object.entries(sbs).forEach(([ep, shots]) => {
+        if (Array.isArray(shots)) {
+            shots.forEach((shot, i) => {
+                const prompt = shot.Image_Prompt || shot.image_prompt || shot.ai_prompt;
+                if (prompt) {
+                    allPrompts.push(`E${ep.toString().padStart(2,'0')}_S${(i+1).toString().padStart(3,'0')}: ${prompt}`);
+                }
+            });
+        }
+    });
+    
+    if (allPrompts.length > 0) {
+        navigator.clipboard.writeText(allPrompts.join('\n\n'));
+        addAIMessage(`✅ 已複製 ${allPrompts.length} 個分鏡Prompt！`);
+    } else {
+        addAIMessage('❌ 沒有分鏡Prompt可複製');
+    }
+}
+
+// 📋 复制所有服化道Prompt
+function copyAllProductionPrompts() {
+    const costumes = state.assets?.costumes || [];
+    const sets = state.assets?.sets || [];
+    
+    let prompts = [];
+    
+    costumes.forEach(c => {
+        const prompt = c.ai_prompt || c.prompt;
+        if (prompt) prompts.push(`【服裝】${c.character || '角色'}: ${prompt}`);
+    });
+    
+    sets.forEach(s => {
+        const prompt = s.ai_prompt || s.prompt;
+        if (prompt) prompts.push(`【場景】${s.name || '場景'}: ${prompt}`);
+    });
+    
+    if (prompts.length > 0) {
+        navigator.clipboard.writeText(prompts.join('\n\n'));
+        addAIMessage(`✅ 已複製 ${prompts.length} 個服化道Prompt！`);
+    } else {
+        addAIMessage('❌ 沒有服化道Prompt可複製');
+    }
+}
+
+// 🎨 批量生成所有角色形象
+async function generateAllCharacterImages() {
+    const chars = state.assets?.characters || [];
+    const toGenerate = chars.filter(c => !c.image_url && (c.ai_prompt || c.prompt));
+    
+    if (toGenerate.length === 0) {
+        addAIMessage('✅ 所有角色都已有形象圖片，或缺少Prompt');
+        return;
+    }
+    
+    addAIMessage(`🎨 **批量生成 ${toGenerate.length} 個角色形象**\n\n預計耗時 ${toGenerate.length * 15}-${toGenerate.length * 25} 秒，請耐心等待...`);
+    
+    let success = 0, failed = 0;
+    
+    for (let i = 0; i < chars.length; i++) {
+        const char = chars[i];
+        if (char.image_url || !(char.ai_prompt || char.prompt)) continue;
+        
+        try {
+            const response = await fetch(`${API_BASE}/aliyun/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: char.ai_prompt || char.prompt,
+                    size: '1024*1280'
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.url) {
+                    chars[i].image_url = data.url;
+                    success++;
+                    addAIMessage(`✅ ${char.name} 生成成功 (${success}/${toGenerate.length})`);
+                }
+            } else {
+                failed++;
+            }
+        } catch (e) {
+            failed++;
+            console.error(`生成 ${char.name} 失敗:`, e);
+        }
+        
+        // 避免API限流
+        await new Promise(r => setTimeout(r, 2000));
+    }
+    
+    state.assets.characters = chars;
+    updateAssetsPanel();
+    saveProject(null, true);
+    
+    addAIMessage(`🎉 **批量生成完成！**\n\n✅ 成功: ${success}\n❌ 失敗: ${failed}\n\n圖片已保存到項目資產中。`);
+}
+
+// 显示角色详情（点击FizzStudio缩略图）
+function showCharacterDetail(index) {
+    // 展开角色区域并滚动到对应角色
+    const toggle = document.getElementById('charToggle' + index);
+    const detail = document.getElementById('charDetail' + index);
+    if (detail && toggle) {
+        detail.style.display = 'block';
+        toggle.textContent = '▲';
+        detail.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 }
 
