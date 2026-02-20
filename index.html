@@ -3759,7 +3759,7 @@ async function runProductionStepSilent() {
 
 async function runScriptStepSilent(chapterNum) {
     const chapter = state.assets.chapters?.[chapterNum - 1];
-    const result = await callAgent('screenwriter', state.novel.substring(0, 2500), {
+    const result = await callAgent('screenwriter', (state.novel || '').substring(0, 15000), {
         concept: state.assets.concept,
         characters: state.assets.characters,
         chapter: chapter,
@@ -3773,8 +3773,8 @@ async function runScriptStepSilent(chapterNum) {
 }
 
 async function runStoryboardStepSilent(chapterNum) {
-    const script = state.assets.scripts?.[chapterNum] || state.novel.substring(0, 2500);
-    const result = await callAgent('storyboard', script.substring(0, 2500), {
+    const script = state.assets.scripts?.[chapterNum] || state.novel?.substring(0, 15000) || '';
+    const result = await callAgent('storyboard', script, {
         concept: state.assets.concept,
         characters: state.assets.characters,
         production: state.production
@@ -10839,8 +10839,8 @@ async function runStoryboardStep() {
         // 🔧 修复Bug#3: 防止null.substring()错误
         const novelText = state.novel || writeState.outline?.synopsis || JSON.stringify(state.chapters) || '';
         
-        // 添加制作要求到内容
-        const contentWithSpecs = `${novelText.substring(0, 2500)}
+        // 添加制作要求到内容 (提高字符限制以保留完整台词)
+        const contentWithSpecs = `${novelText.substring(0, 15000)}
 
 【製作規格要求】
 - 總集數: ${episodes} 集
@@ -11197,7 +11197,7 @@ ${totalChapters > 0
 - video_prompt: AI視頻Prompt (英文, 4 seconds, cinematic motion)`
         };
         
-        const result = await callAgent('storyboard', script.substring(0, 2500), context);
+        const result = await callAgent('storyboard', script, context);
         
         // 更新步骤为全部完成
         steps.forEach(s => { s.done = true; s.current = false; });
