@@ -2977,10 +2977,113 @@ async function runAutoPilot() {
             renderProjectList();
         }
         console.error('Auto-Pilot error:', err);
-        addAIMessage(`❌ Auto-Pilot 遇到問題：${err.message}
+        
+        // 判断是网络问题还是其他问题
+        const isNetworkError = err.message?.includes('NETWORK') || 
+                               err.message?.includes('fetch') || 
+                               err.message?.includes('超時') ||
+                               err.message?.includes('timeout');
+        
+        addAIMessage(`❌ Auto-Pilot ${isNetworkError ? '網絡中斷' : '遇到問題'}：${err.message}
 
-已完成的步驟已保存，你可以手動繼續。`, [
-            { text: '🔄 重試', action: () => runAutoPilot() },
+${isNetworkError ? '⚠️ 請檢查網絡連接，穩定後點「續跑」繼續\n\n' : ''}已完成的步驟已保存，可從斷點繼續。`, [
+            { text: '🔄 從斷點續跑', action: () => resumeAutoPilot() },
+            { text: '🔄 重新開始', action: () => runAutoPilot() },
+            { text: '✋ 手動繼續', action: () => continueImportProject() }
+        ]);
+    }
+}
+
+// 从断点续跑Auto-Pilot
+async function resumeAutoPilot() {
+    if (!state.novel) {
+        addAIMessage('❌ 請先導入故事');
+        return;
+    }
+    
+    const a = state.assets || {};
+    
+    // 检测哪些步骤已完成
+    const hasConcept = !!a.concept;
+    const hasChars = (a.characters?.length || 0) > 0;
+    const hasChapters = (a.chapters?.length || 0) > 0;
+    const hasProduction = (a.costumes?.length || 0) > 0 || (a.sets?.length || 0) > 0;
+    const hasScript = Object.keys(a.scripts || {}).length > 0;
+    const hasStoryboard = Object.keys(a.storyboards || {}).length > 0;
+    
+    let startFrom = 1;
+    if (hasConcept) startFrom = 2;
+    if (hasChars) startFrom = 3;
+    if (hasChapters) startFrom = 4;
+    if (hasProduction) startFrom = 5;
+    if (hasScript) startFrom = 6;
+    if (hasStoryboard) startFrom = 7; // 全部完成
+    
+    if (startFrom >= 7) {
+        addAIMessage('✅ 所有步驟都已完成！');
+        showAutoPilotComplete();
+        return;
+    }
+    
+    addAIMessage(`🔄 **從第 ${startFrom} 步繼續...**\n\n已完成: ${startFrom - 1}/6 步`);
+    
+    // 标记项目正在运行
+    if (currentProjectId) {
+        runningProjects[currentProjectId] = true;
+        renderProjectList();
+    }
+    
+    const updateStep = (id, status, text) => {
+        const el = document.getElementById(id);
+        if (el) {
+            const indicatorClass = status === 'running' ? 'ap-running' : status === 'done' ? 'ap-done' : status === 'error' ? 'ap-error' : 'ap-pending';
+            el.className = 'ap-step ' + status;
+            el.innerHTML = `<span class="ap-indicator ${indicatorClass}"></span> ${text}`;
+        }
+    };
+    
+    try {
+        if (startFrom <= 1) {
+            updateStep('ap-concept', 'running', '🔄 1. 高概念分析中...');
+            await runConceptStepSilent();
+            updateStep('ap-concept', 'done', '✅ 1. 高概念分析完成');
+        }
+        if (startFrom <= 2) {
+            updateStep('ap-character', 'running', '🔄 2. 角色設計中...');
+            await runCharacterStepSilent();
+            updateStep('ap-character', 'done', '✅ 2. 角色設計完成');
+        }
+        if (startFrom <= 3) {
+            updateStep('ap-chapters', 'running', '🔄 3. 章節規劃中...');
+            await runChaptersStepSilent();
+            updateStep('ap-chapters', 'done', '✅ 3. 章節規劃完成');
+        }
+        if (startFrom <= 4) {
+            updateStep('ap-production', 'running', '🔄 4. 服化道設計中...');
+            await runProductionStepSilent();
+            updateStep('ap-production', 'done', '✅ 4. 服化道設計完成');
+        }
+        if (startFrom <= 5) {
+            updateStep('ap-script', 'running', '🔄 5. 劇本生成中...');
+            await runScriptStepSilent(1);
+            updateStep('ap-script', 'done', '✅ 5. 劇本生成完成');
+        }
+        if (startFrom <= 6) {
+            updateStep('ap-storyboard', 'running', '🔄 6. 分鏡生成中...');
+            await runStoryboardStepSilent(1);
+            updateStep('ap-storyboard', 'done', '✅ 6. 分鏡生成完成');
+        }
+        
+        showAutoPilotComplete();
+        
+    } catch (err) {
+        if (currentProjectId) {
+            delete runningProjects[currentProjectId];
+            renderProjectList();
+        }
+        console.error('Resume Auto-Pilot error:', err);
+        addAIMessage(`❌ 續跑失敗：${err.message}`, [
+            { text: '🔄 再試一次', action: () => resumeAutoPilot() },
             { text: '✋ 手動繼續', action: () => continueImportProject() }
         ]);
     }
