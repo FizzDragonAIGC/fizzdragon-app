@@ -8860,6 +8860,7 @@ function selectNarrativeStyle(styleId, styleName) {
     if (state.narrativeStyle && state.narrativeStyle.primary && !state.narrativeStyle.secondary) {
         // 选择第二个风格
         state.narrativeStyle.secondary = styleId;
+        state.narrativeStyle.secondaryName = styleName;
         addUserMessage(`融合：${state.narrativeStyle.primaryName} + ${styleName}`);
         showFinalConfirmation();
     } else {
