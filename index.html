@@ -2706,15 +2706,19 @@
     
     <script>
 // ==================== 配置 ====================
-// 后端API地址 - 优先使用隧道（GitHub Pages需要HTTPS）
+// 后端API地址 - 优先使用Render（GitHub Pages需要HTTPS）
 const TUNNEL_URL = 'https://fizzdragon-backend.onrender.com';
-const API_ENDPOINTS = [
+const isGitHubPages = window.location.hostname.includes('github.io');
+// GitHub Pages只检测Render；本地/同源部署检测所有
+const API_ENDPOINTS = isGitHubPages ? [
+    TUNNEL_URL + '/api'  // GitHub Pages只用Render
+] : [
     '/api',  // 同源部署
-    TUNNEL_URL + '/api',  // Cloudflare隧道
+    TUNNEL_URL + '/api',  // Render
     'http://localhost:3001/api'  // 本地开发
 ];
-// 自动选择：如果是GitHub Pages，使用隧道；否则用相对路径
-let API_BASE = window.location.hostname.includes('github.io') ? TUNNEL_URL + '/api' : '/api';
+// 自动选择：如果是GitHub Pages，使用Render；否则用相对路径
+let API_BASE = isGitHubPages ? TUNNEL_URL + '/api' : '/api';
 
 // ==================== Agent人格系统 ====================
 const AGENT_PERSONAS = {
