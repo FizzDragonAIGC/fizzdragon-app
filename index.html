@@ -660,6 +660,45 @@
             background: linear-gradient(135deg, #ff3b42, #E31B23);
             transform: scale(1.02);
         }
+        /* 分镜表按章节列表 */
+        .fizzstudio-storyboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            margin: 6px 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .fizzstudio-storyboard-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 6px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        .fizzstudio-ep-tag {
+            color: var(--accent);
+            font-weight: 600;
+            min-width: 32px;
+        }
+        .fizzstudio-shot-count {
+            color: var(--text2);
+            flex: 1;
+        }
+        .fizzstudio-mini-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 3px;
+            padding: 2px 6px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: background 0.2s;
+        }
+        .fizzstudio-mini-btn:hover {
+            background: rgba(227,27,35,0.3);
+        }
         .fizzstudio-char-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
@@ -4262,15 +4301,25 @@ function updateAssetsPanel() {
             </div>
             <div class="assets-section-body" id="fizzstudioBody">
                 
-                <!-- 分镜表 -->
+                <!-- 分镜表 - 按章节显示 -->
                 <div class="fizzstudio-item">
                     <div class="fizzstudio-item-header">
                         <span>📊 分鏡表</span>
                         <span class="fizzstudio-count">${totalShots} 鏡頭</span>
                     </div>
                     ${totalShots > 0 ? `
+                        <div class="fizzstudio-storyboard-list">
+                            ${Object.entries(a.storyboards || {}).sort((x,y) => Number(x[0]) - Number(y[0])).map(([ep, shots]) => `
+                                <div class="fizzstudio-storyboard-row">
+                                    <span class="fizzstudio-ep-tag">E${String(ep).padStart(2,'0')}</span>
+                                    <span class="fizzstudio-shot-count">${Array.isArray(shots) ? shots.length : 0}鏡</span>
+                                    <button onclick="exportChapterStoryboard(${ep})" class="fizzstudio-mini-btn" title="導出第${ep}集">📥</button>
+                                    <button onclick="copyChapterPrompts(${ep})" class="fizzstudio-mini-btn" title="複製Prompt">📋</button>
+                                </div>
+                            `).join('')}
+                        </div>
                         <div class="fizzstudio-actions">
-                            <button onclick="exportToExcel()" class="fizzstudio-btn">📥 導出Excel</button>
+                            <button onclick="exportToExcel()" class="fizzstudio-btn">📥 導出全部Excel</button>
                             <button onclick="copyAllStoryboardPrompts()" class="fizzstudio-btn">📋 複製全部Prompt</button>
                         </div>
                     ` : '<div style="font-size:10px;color:var(--text2);padding:2px 4px;">尚未生成分鏡</div>'}
@@ -4489,6 +4538,58 @@ function copyAllCharacterPrompts() {
 }
 
 // 📋 复制所有分镜Prompt
+// 📥 导出单集分镜Excel
+function exportChapterStoryboard(epNum) {
+    const shots = state.assets?.storyboards?.[epNum];
+    if (!Array.isArray(shots) || shots.length === 0) {
+        addAIMessage(`❌ 第${epNum}集沒有分鏡數據`);
+        return;
+    }
+    
+    // CSV格式
+    const headers = ['镜头ID', '画面描述', 'Image_Prompt', 'Video_Prompt'];
+    let csvContent = '\uFEFF' + headers.join(',') + '\n';
+    
+    shots.forEach((shot, i) => {
+        const row = [
+            `E${String(epNum).padStart(2,'0')}_S${String(i+1).padStart(3,'0')}`,
+            `"${(shot.description || shot.画面描述 || '').replace(/"/g, '""')}"`,
+            `"${(shot.Image_Prompt || shot.image_prompt || shot.ai_prompt || '').replace(/"/g, '""')}"`,
+            `"${(shot.Video_Prompt || shot.video_prompt || '').replace(/"/g, '""')}"`
+        ];
+        csvContent += row.join(',') + '\n';
+    });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${state.novelTitle || 'project'}_E${String(epNum).padStart(2,'0')}_storyboard.csv`;
+    link.click();
+    
+    addAIMessage(`📥 第${epNum}集分鏡 (${shots.length}鏡) 導出成功！`);
+}
+
+// 📋 复制单集分镜Prompt
+function copyChapterPrompts(epNum) {
+    const shots = state.assets?.storyboards?.[epNum];
+    if (!Array.isArray(shots) || shots.length === 0) {
+        addAIMessage(`❌ 第${epNum}集沒有分鏡數據`);
+        return;
+    }
+    
+    const prompts = shots.map((shot, i) => {
+        const prompt = shot.Image_Prompt || shot.image_prompt || shot.ai_prompt || '';
+        return `E${String(epNum).padStart(2,'0')}_S${String(i+1).padStart(3,'0')}: ${prompt}`;
+    }).filter(p => p.includes(':') && p.split(':')[1].trim());
+    
+    if (prompts.length > 0) {
+        navigator.clipboard.writeText(prompts.join('\n\n'));
+        addAIMessage(`✅ 第${epNum}集 ${prompts.length} 個Prompt已複製！`);
+    } else {
+        addAIMessage('❌ 沒有Prompt可複製');
+    }
+}
+
 function copyAllStoryboardPrompts() {
     const sbs = state.assets?.storyboards || {};
     let allPrompts = [];
