@@ -4286,6 +4286,9 @@ async function init() {
     // 后台检测API（不阻塞欢迎语显示）
     detectAPI().catch(err => console.warn('API检测失败:', err));
     
+    // ☁️ 从后端恢复项目（异步，不阻塞）
+    syncProjectsFromBackend().catch(err => console.warn('云端恢复失败:', err));
+    
     console.log('🚀 init() 完成');
 }
 
@@ -5176,6 +5179,58 @@ function getProjectsKey() {
     return 'fizzdragon_projects';
 }
 
+// 获取当前用户ID（用于后端存储）
+function getCurrentUserId() {
+    const user = JSON.parse(localStorage.getItem('fizzdragon_user') || 'null');
+    return user?.id || user?.username || 'guest';
+}
+
+// 🔄 同步项目到后端
+async function syncProjectToBackend(projectId, projectData) {
+    try {
+        const userId = getCurrentUserId();
+        await fetch(`${API_BASE}/user-projects/${userId}/${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(projectData)
+        });
+        console.log(`☁️ 已同步到云端: ${projectId}`);
+    } catch (e) {
+        console.warn('云端同步失败（本地已保存）:', e.message);
+    }
+}
+
+// 🔄 从后端恢复所有项目
+async function syncProjectsFromBackend() {
+    try {
+        const userId = getCurrentUserId();
+        const response = await fetch(`${API_BASE}/user-projects/${userId}`);
+        if (!response.ok) return;
+        
+        const backendProjects = await response.json();
+        const localProjects = JSON.parse(localStorage.getItem(getProjectsKey()) || '{}');
+        
+        // 合并：后端优先（按timestamp判断）
+        let merged = { ...localProjects };
+        let syncCount = 0;
+        
+        for (const [id, proj] of Object.entries(backendProjects)) {
+            if (!merged[id] || new Date(proj.timestamp) > new Date(merged[id].timestamp || 0)) {
+                merged[id] = proj;
+                syncCount++;
+            }
+        }
+        
+        if (syncCount > 0) {
+            localStorage.setItem(getProjectsKey(), JSON.stringify(merged));
+            console.log(`☁️ 从云端恢复 ${syncCount} 个项目`);
+            renderProjectList();
+        }
+    } catch (e) {
+        console.warn('云端恢复失败:', e.message);
+    }
+}
+
 function getProjects() {
     try {
         const userKey = getProjectsKey();
@@ -5242,6 +5297,9 @@ function saveProject(name = null, silent = false) {
     };
     
     localStorage.setItem(getProjectsKey(), JSON.stringify(projects));
+    
+    // 🔄 同步到后端（异步，不阻塞UI）
+    syncProjectToBackend(projectId, projects[projectId]);
     
     // 更新左侧边栏
     renderProjectList();
