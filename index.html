@@ -3760,6 +3760,8 @@ function toggleAssetsPanel() {
 // 更新右侧资产面板
 // 智能体依赖检查 - 带依赖的智能体触发
 function triggerAgentWithCheck(agentType) {
+    console.log('🎯 triggerAgentWithCheck:', agentType, { novel: !!state.novel, novelLen: state.novel?.length });
+    
     const a = state.assets || {};
     const hasConcept = !!a.concept;
     const hasChars = (a.characters?.length || 0) > 0;
@@ -3769,11 +3771,13 @@ function triggerAgentWithCheck(agentType) {
     switch(agentType) {
         case 'concept':
             if (!state.novel) {
+                console.log('❌ No novel content');
                 addAIMessage('❌ 請先導入故事內容', [
                     { text: '📄 導入故事', action: () => document.getElementById('fileInput').click() }
                 ]);
                 return;
             }
+            console.log('✅ Calling runConceptStep');
             runConceptStep();
             break;
             
@@ -7160,6 +7164,8 @@ function loadProject(projectId) {
     // 🔧 清空对话框，避免遗留
     document.getElementById('chatContainer').innerHTML = '';
     
+    console.log('📂 loadProject:', projectId, { hasNovel: !!p.novel, novelLen: p.novel?.length });
+    
     // 恢复写作模式状态
     writeState.idea = p.idea;
     writeState.interview = p.interview;
@@ -7169,6 +7175,7 @@ function loadProject(projectId) {
     
     // 恢复导入模式状态
     state.novel = p.novel;
+    console.log('📂 state.novel restored:', !!state.novel, state.novel?.length);
     state.novelTitle = p.novelTitle || p.name;
     state.concept = p.concept;
     state.interview = p.importInterview;
