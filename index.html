@@ -3201,10 +3201,267 @@ ${projectCount > 0 ? `📂 你有 **${projectCount}** 個已保存的項目\n` :
     addAIMessage(welcomeTexts[currentLang] || welcomeTexts['zh-TW'], [
         { text: '📄 導入小說', action: () => document.getElementById('fileInput').click() },
         { text: '📝 導入劇本', action: () => importScript() },
+        { text: '📦 我有劇本/人物', action: () => showFastTrack() },
         { text: '✍️ 我要寫故事', action: () => startWriteStory() },
         { text: '🤖 AI幫我寫', action: () => startAIStoryWriting() },
         { text: '🚀 Auto-Pilot', action: () => showAutoPilotOptions() }
     ]);
+}
+
+// ==================== 快速通道：已有劇本/人物 ====================
+function showFastTrack() {
+    addAIMessage(`📦 **快速通道 - 我已有內容**
+
+選擇你已有的內容：
+
+**方式A：上傳劇本**
+→ 系統拆分章節（不重寫）
+→ 直接生成分鏡
+
+**方式B：輸入人物**
+→ 問答方式錄入人物小傳
+→ 再上傳劇本或寫劇本
+
+**方式C：都有**
+→ 先輸入人物，再上傳劇本
+→ 直接生成分鏡`, [
+        { text: '📝 上傳劇本', action: () => importScriptForFastTrack() },
+        { text: '👤 輸入人物', action: () => inputCharactersFastTrack() },
+        { text: '📝+👤 都有', action: () => inputCharactersFastTrack(true) },
+        { text: '↩️ 返回', action: () => showStartOptions() }
+    ]);
+}
+
+// 快速通道：上传剧本（拆分不重写）
+function importScriptForFastTrack() {
+    let scriptInput = document.getElementById('fastTrackScriptInput');
+    if (!scriptInput) {
+        scriptInput = document.createElement('input');
+        scriptInput.type = 'file';
+        scriptInput.id = 'fastTrackScriptInput';
+        scriptInput.accept = '.txt,.docx,.pdf';
+        scriptInput.style.display = 'none';
+        scriptInput.addEventListener('change', handleFastTrackScript);
+        document.body.appendChild(scriptInput);
+    }
+    scriptInput.click();
+}
+
+async function handleFastTrackScript(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = '';
+    
+    addUserMessage(`📝 上傳劇本: ${file.name}`);
+    addTypingIndicator();
+    
+    try {
+        let text = '';
+        const ext = file.name.split('.').pop().toLowerCase();
+        
+        if (ext === 'txt') {
+            text = await file.text();
+        } else {
+            removeTypingIndicator();
+            addAIMessage('⚠️ 目前只支持 .txt 格式，請轉換後重試');
+            return;
+        }
+        
+        // 创建新项目
+        currentProjectId = 'proj_' + Date.now();
+        state.novel = text;
+        state.novelTitle = file.name.replace(/\.[^.]+$/, '');
+        state.mode = 'fasttrack';
+        
+        removeTypingIndicator();
+        
+        // 调用智能体拆分章节
+        addAIMessage(`📊 **劇本已載入** (${text.length.toLocaleString()} 字)
+
+正在智能拆分章節...`);
+        
+        addTypingIndicator();
+        const result = await callAgent('narrative', text.substring(0, 15000), { 
+            mode: 'parse_only',
+            instruction: '請分析這個劇本，識別出所有章節/集數/場次，不要重寫內容，只輸出章節結構'
+        });
+        removeTypingIndicator();
+        
+        const parsed = safeJSONParse(result, 'narrative');
+        state.assets.chapters = parsed.chapters || parsed.episodes || [];
+        
+        // 存储原始剧本到scripts
+        state.assets.scripts = state.assets.scripts || {};
+        const chapterCount = state.assets.chapters.length || 1;
+        
+        // 简单按比例分割剧本到各章节
+        const chunkSize = Math.ceil(text.length / chapterCount);
+        for (let i = 0; i < chapterCount; i++) {
+            state.assets.scripts[i + 1] = text.substring(i * chunkSize, (i + 1) * chunkSize);
+        }
+        
+        saveProject(null, true);
+        updateAssetsPanel();
+        
+        // 询问分镜密度
+        askShotDensity();
+        
+    } catch (err) {
+        removeTypingIndicator();
+        addAIMessage(`❌ 解析失敗: ${err.message}`, [
+            { text: '🔄 重試', action: () => importScriptForFastTrack() }
+        ]);
+    }
+}
+
+// 快速通道：输入人物
+let fastTrackHasBoth = false;
+let fastTrackCharIndex = 0;
+let fastTrackChars = [];
+
+function inputCharactersFastTrack(hasBoth = false) {
+    fastTrackHasBoth = hasBoth;
+    fastTrackCharIndex = 0;
+    fastTrackChars = [];
+    
+    addAIMessage(`👤 **輸入人物小傳**
+
+請告訴我第一個角色的信息：
+
+**角色名字是？**`);
+    
+    state.mode = 'fasttrack_char';
+    state.fastTrackStep = 'name';
+}
+
+// 询问分镜密度
+function askShotDensity() {
+    addAIMessage(`🎬 **準備生成分鏡**
+
+請選擇每分鐘的鏡頭數量：
+
+• **10鏡/分** - 標準節奏（推薦）
+• **15鏡/分** - 較快節奏
+• **20鏡/分** - 快節奏/動作戲`, [
+        { text: '10鏡/分（標準）', action: () => startFastTrackStoryboard(10) },
+        { text: '15鏡/分（較快）', action: () => startFastTrackStoryboard(15) },
+        { text: '20鏡/分（快節奏）', action: () => startFastTrackStoryboard(20) }
+    ]);
+}
+
+// 快速通道生成分镜
+async function startFastTrackStoryboard(shotsPerMin) {
+    state.production = state.production || {};
+    state.production.shotsPerMin = shotsPerMin;
+    
+    const scripts = state.assets.scripts || {};
+    const chapterCount = Object.keys(scripts).length;
+    
+    if (chapterCount === 0) {
+        addAIMessage('❌ 還沒有劇本內容，請先上傳劇本');
+        return;
+    }
+    
+    addAIMessage(`🎬 **開始生成分鏡**
+
+📊 配置：${chapterCount} 章 × ${shotsPerMin} 鏡/分鐘
+正在生成第 1 章分鏡...`);
+    
+    // 生成第一章分镜
+    try {
+        const script = scripts[1];
+        const artstylePrompt = state.assets.artstyle?.final_suggestion?.full_prompt || '';
+        
+        addTypingIndicator();
+        const result = await callAgent('storyboard', script, {
+            concept: state.assets.concept,
+            characters: state.assets.characters,
+            artstyle: artstylePrompt,
+            shotsPerMin: shotsPerMin
+        });
+        removeTypingIndicator();
+        
+        const parsed = safeJSONParse(result, 'storyboard');
+        state.assets.storyboards = state.assets.storyboards || {};
+        state.assets.storyboards[1] = parsed.shots || parsed.storyboard || [];
+        
+        saveProject(null, true);
+        updateAssetsPanel();
+        
+        const shotCount = state.assets.storyboards[1].length;
+        addAIMessage(`✅ **第1章分鏡完成！**
+
+🎬 生成了 ${shotCount} 個鏡頭
+
+${chapterCount > 1 ? `還有 ${chapterCount - 1} 章待生成` : ''}`, [
+            chapterCount > 1 ? { text: '▶️ 繼續生成', action: () => generateNextFastTrackChapter(2) } : null,
+            { text: '📥 導出分鏡', action: () => exportStoryboards() },
+            { text: '👁️ 查看詳情', action: () => document.getElementById('tabStudio')?.click() }
+        ].filter(Boolean));
+        
+    } catch (err) {
+        removeTypingIndicator();
+        addAIMessage(`❌ 生成失敗: ${err.message}`, [
+            { text: '🔄 重試', action: () => startFastTrackStoryboard(shotsPerMin) }
+        ]);
+    }
+}
+
+async function generateNextFastTrackChapter(chapterNum) {
+    const scripts = state.assets.scripts || {};
+    const script = scripts[chapterNum];
+    
+    if (!script) {
+        addAIMessage('✅ 所有章節分鏡已生成完畢！', [
+            { text: '📥 導出全部', action: () => exportStoryboards() }
+        ]);
+        return;
+    }
+    
+    addAIMessage(`🎬 正在生成第 ${chapterNum} 章分鏡...`);
+    
+    try {
+        const artstylePrompt = state.assets.artstyle?.final_suggestion?.full_prompt || '';
+        
+        addTypingIndicator();
+        const result = await callAgent('storyboard', script, {
+            concept: state.assets.concept,
+            characters: state.assets.characters,
+            artstyle: artstylePrompt,
+            shotsPerMin: state.production?.shotsPerMin || 10
+        });
+        removeTypingIndicator();
+        
+        const parsed = safeJSONParse(result, 'storyboard');
+        state.assets.storyboards[chapterNum] = parsed.shots || parsed.storyboard || [];
+        
+        saveProject(null, true);
+        updateAssetsPanel();
+        
+        const shotCount = state.assets.storyboards[chapterNum].length;
+        const totalChapters = Object.keys(scripts).length;
+        
+        if (chapterNum < totalChapters) {
+            addAIMessage(`✅ 第${chapterNum}章完成 (${shotCount}鏡)`, [
+                { text: '▶️ 繼續', action: () => generateNextFastTrackChapter(chapterNum + 1) },
+                { text: '⏸️ 暫停', action: () => addAIMessage('已暫停，點擊繼續生成下一章', [
+                    { text: '▶️ 繼續', action: () => generateNextFastTrackChapter(chapterNum + 1) }
+                ]) }
+            ]);
+        } else {
+            addAIMessage(`🎉 **全部完成！**
+
+共生成 ${Object.values(state.assets.storyboards).reduce((s, arr) => s + arr.length, 0)} 個鏡頭`, [
+                { text: '📥 導出Excel', action: () => exportStoryboards() },
+                { text: '📋 複製Prompt', action: () => copyAllStoryboardPrompts() }
+            ]);
+        }
+    } catch (err) {
+        removeTypingIndicator();
+        addAIMessage(`❌ 第${chapterNum}章失敗: ${err.message}`, [
+            { text: '🔄 重試', action: () => generateNextFastTrackChapter(chapterNum) }
+        ]);
+    }
 }
 
 // ==================== 导入剧本模式 ====================
