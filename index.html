@@ -12659,16 +12659,24 @@ async function runChaptersStep() {
         removeProgressCard();
         
         const eps = state.chapters.chapters || state.chapters.episodes || [];
+        
+        // 🔧 保存到assets（不覆盖已有角色）
+        state.assets.chapters = eps;
+        saveProject();
+        updateAssetsPanel();
+        updateAgentToolbar();
+        
+        // 🔧 不自动继续，让用户选择
+        const hasChars = (state.assets.characters?.length || 0) > 0;
         addAIMessage(`📝 **章節規劃完成！** 共 ${eps.length} 集
 
 ${eps.slice(0, 3).map((ep, i) => `• 第${i+1}集: ${ep.title || ep.name || '未命名'}`).join('\n')}
-${eps.length > 3 ? `• ...還有 ${eps.length - 3} 集` : ''}
-
-⏳ 正在設計角色...`);
-        
-        // 🔧 自动继续下一步
-        saveProject();
-        setTimeout(() => runCharacterStep(), 1000);
+${eps.length > 3 ? `• ...還有 ${eps.length - 3} 集` : ''}`, [
+            hasChars 
+                ? { text: '✍️ 開始寫劇本', action: () => triggerAgentWithCheck('script') }
+                : { text: '👤 設計角色', action: () => triggerAgentWithCheck('character') },
+            { text: '👗 服化道設計', action: () => triggerAgentWithCheck('production') }
+        ]);
         
     } catch (err) {
         removeProgressCard();
