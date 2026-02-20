@@ -4348,7 +4348,7 @@ ${adState.actorImages.length > 0 ? `演員數量：${adState.actorImages.length}
     "main_slogan": "主Slogan建議"
 }`;
         
-        const result = await callAgent('concept', strategyPrompt, {});
+        const result = await callAgent('ad_strategy', strategyPrompt, {});
         const brief = safeJSONParse(result, 'ad_strategy');
         adState.assets.creativeBrief = brief;
         
@@ -4464,7 +4464,7 @@ Slogan：${brief.main_slogan || ''}
 
 嚴格輸出${shotCount}個鏡頭！`;
 
-        const result = await callAgent('storyboard', storyboardPrompt, {});
+        const result = await callAgent('ad_director', storyboardPrompt, {});
         let storyboard = safeJSONParse(result, 'ad_storyboard');
         
         // 确保是数组
