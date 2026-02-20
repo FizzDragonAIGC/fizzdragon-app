@@ -3711,7 +3711,7 @@ async function handleScriptImport(e) {
 🤖 調用劇本拆分Agent，識別章節和角色...`);
             
             try {
-                const response = await fetch(`${API_BASE}/api/agent/script_parser`, {
+                const response = await fetch(`${API_BASE}/agent/script_parser`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
