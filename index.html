@@ -6233,18 +6233,18 @@ function getChaptersHtml(a) {
                     <div class="chapter-box-left" style="cursor:pointer;" onclick="${hasScript ? `showChapterScript(${num})` : `runScriptWriting(${num})`}" id="scriptBox${num}">
                         <div class="chapter-box-label">✍️ 劇本</div>
                         ${generatingScripts[num] 
-                            ? `<span style="color:#E31B23;" class="generating-pulse">🔄 生成中...</span>`
+                            ? `<span style="color:#E31B23;font-size:11px;" class="generating-pulse">正在生成中...</span>`
                             : (hasScript 
-                                ? `<span style="color:#38a169;">✅ 點擊查看</span>` 
-                                : `<button class="gen-btn" onclick="event.stopPropagation();runScriptWriting(${num})">🚀 生成第${num}集</button>`)}
+                                ? `<span style="color:#38a169;font-size:11px;">✅ 點擊查看</span>` 
+                                : `<span style="color:#6366F1;font-size:11px;cursor:pointer;" onclick="event.stopPropagation();runScriptWriting(${num})">生成第${num}集</span>`)}
                     </div>
                     <div class="chapter-box-right" style="cursor:pointer;" onclick="${hasStoryboard ? `showChapterStoryboard(${num})` : `runStoryboardGeneration(${num})`}" id="storyboardBox${num}">
                         <div class="chapter-box-label">🎬 分鏡</div>
                         ${generatingStoryboards[num] 
-                            ? `<span style="color:#E31B23;" class="generating-pulse">🔄 生成中...</span>`
+                            ? `<span style="color:#E31B23;font-size:11px;" class="generating-pulse">正在生成中...</span>`
                             : (hasStoryboard 
-                                ? `<span style="color:#38a169;">✅ ${shotCount}鏡 點擊查看</span>` 
-                                : `<button class="gen-btn" onclick="event.stopPropagation();runStoryboardGeneration(${num})">🚀 生成第${num}集</button>`)}
+                                ? `<span style="color:#38a169;font-size:11px;">✅ ${shotCount}鏡</span>` 
+                                : `<span style="color:#6366F1;font-size:11px;cursor:pointer;" onclick="event.stopPropagation();runStoryboardGeneration(${num})">生成第${num}集</span>`)}
                     </div>
                 </div>
                 <!-- 展开的内容面板 -->
