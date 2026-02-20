@@ -5944,13 +5944,17 @@ function updateAssetsPanel() {
                             <div style="padding:8px;">
                                 <div style="font-size:10px;color:var(--accent);margin-bottom:6px;">🎭 道具 (${propCount})</div>
                                 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;">
-                                    ${a.props.map((p, i) => `
+                                    ${a.props.map((p, i) => {
+                                        // 智能提取道具名称：优先name，否则从description提取前几个字
+                                        const propName = p.name || (p.description ? p.description.split('，')[0].substring(0, 8) : '道具' + (i+1));
+                                        const propDesc = p.description || '';
+                                        return `
                                         <div class="production-card" onclick="showProductionDetail('prop', ${i})" style="background:var(--card);border-radius:6px;padding:8px;cursor:pointer;border:1px solid var(--border);">
-                                            <div style="font-size:11px;font-weight:bold;color:var(--text);margin-bottom:4px;">${p.name || '道具'}</div>
-                                            <div style="font-size:9px;color:var(--text2);line-height:1.3;">${(p.description || '').substring(0,20)}</div>
-                                            ${p.ai_prompt ? '<div style="font-size:8px;color:var(--accent);margin-top:4px;">✓ Prompt</div>' : ''}
+                                            <div style="font-size:11px;font-weight:bold;color:var(--text);margin-bottom:4px;">🎭 ${propName}</div>
+                                            <div style="font-size:9px;color:var(--text2);line-height:1.3;">${propDesc.substring(0, 30)}${propDesc.length > 30 ? '...' : ''}</div>
+                                            ${p.ai_prompt ? '<div style="font-size:8px;color:var(--accent);margin-top:4px;">✓ Prompt</div>' : '<div style="font-size:8px;color:#888;margin-top:4px;">無Prompt</div>'}
                                         </div>
-                                    `).join('')}
+                                    `}).join('')}
                                 </div>
                             </div>
                         ` : ''}
@@ -6365,7 +6369,8 @@ function showProductionDetail(type, index) {
         icon = '🏠';
     } else if (type === 'prop') {
         item = a.props?.[index];
-        title = item?.name || '道具';
+        // 智能提取道具名称
+        title = item?.name || (item?.description ? item.description.split('，')[0].substring(0, 10) : '道具');
         icon = '🎭';
     }
     
