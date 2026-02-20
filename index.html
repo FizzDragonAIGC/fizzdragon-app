@@ -402,6 +402,29 @@
             transform: scale(1.02);
         }
         
+        .fullscreen-btn {
+            font-size: 16px !important;
+            padding: 4px 8px !important;
+        }
+        
+        /* 全屏模式 */
+        .assets-panel.fullscreen {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: none !important;
+            z-index: 9999;
+            border-radius: 0;
+        }
+        
+        .assets-panel.fullscreen .assets-panel-content {
+            max-height: calc(100vh - 60px);
+        }
+        
         .assets-panel-content {
             flex: 1;
             overflow-y: auto;
@@ -2537,6 +2560,7 @@
                     <div class="assets-header-actions">
                         <button class="assets-action-btn" onclick="exportStoryboards()" title="導出分鏡表Excel">📊 導出Excel</button>
                         <button class="assets-action-btn primary" onclick="importToFizzDragon()" title="導入FizzStudio製作">🚀 導入FizzStudio</button>
+                        <button class="assets-action-btn fullscreen-btn" onclick="toggleAssetsFullscreen()" title="全屏" id="fullscreenBtn">⛶</button>
                     </div>
                 </div>
                 <div class="assets-panel-content" id="assetsPanelContent">
@@ -4127,6 +4151,31 @@ function toggleAssetsPanel() {
         }
     }
 }
+
+// 全屏切换
+function toggleAssetsFullscreen() {
+    const panel = document.getElementById('assetsPanel');
+    const btn = document.getElementById('fullscreenBtn');
+    panel.classList.toggle('fullscreen');
+    
+    if (panel.classList.contains('fullscreen')) {
+        btn.innerHTML = '✕';
+        btn.title = '退出全屏';
+    } else {
+        btn.innerHTML = '⛶';
+        btn.title = '全屏';
+    }
+}
+
+// ESC退出全屏
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const panel = document.getElementById('assetsPanel');
+        if (panel?.classList.contains('fullscreen')) {
+            toggleAssetsFullscreen();
+        }
+    }
+});
 
 // 更新右侧资产面板
 // 智能体依赖检查 - 带依赖的智能体触发
