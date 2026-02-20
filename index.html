@@ -2511,9 +2511,39 @@
             0%, 50% { opacity: 1; }
             51%, 100% { opacity: 0; }
         }
+        
+        /* Toast 提示 */
+        .toast-container {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10000;
+            pointer-events: none;
+        }
+        .toast {
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-top: 8px;
+            animation: toastIn 0.3s ease, toastOut 0.3s ease 2.5s forwards;
+        }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes toastOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
     </style>
 </head>
 <body>
+    <!-- Toast 容器 -->
+    <div class="toast-container" id="toastContainer"></div>
+    
     <!-- 侧边栏遮罩（手机端点击关闭） -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
     
@@ -8911,10 +8941,13 @@ function deleteProject(projectId) {
         currentProjectId = null;
         state = { novel: '', title: '', step: 0, assets: {} };
         document.getElementById('headerTitle').textContent = 'FizzDragon AIGC番劇系統';
+        // 只在删除当前项目时显示提示
+        addAIMessage(`🗑️ 已刪除項目「${name}」`);
     }
     
     renderProjectList();
-    addAIMessage(`🗑️ 已刪除項目「${name}」`);
+    // 用toast提示删除成功（不污染其他项目对话）
+    showToast(`🗑️ 已刪除「${name}」`);
 }
 
 function showExportOptions() {
@@ -9039,6 +9072,16 @@ function addUserMessage(text) {
     msg.innerHTML = `<div class="role">你</div><div class="content">${escapeHtml(text)}</div>`;
     container.appendChild(msg);
     scrollToBottom();
+}
+
+// Toast 提示（不污染对话流）
+function showToast(message, duration = 3000) {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), duration);
 }
 
 function addAIMessage(text, quickReplies = []) {
