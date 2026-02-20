@@ -6792,12 +6792,14 @@ function selectArtstyle(index) {
 function toggleProductionDetail() {
     const detail = document.getElementById('productionDetail');
     const toggle = document.getElementById('productionToggle');
-    if (detail.style.display === 'none') {
-        detail.style.display = 'block';
-        toggle.textContent = '▲';
-    } else {
-        detail.style.display = 'none';
-        toggle.textContent = '▼';
+    if (detail && toggle) {
+        if (detail.style.display === 'none') {
+            detail.style.display = 'block';
+            toggle.textContent = '▲';
+        } else {
+            detail.style.display = 'none';
+            toggle.textContent = '▼';
+        }
     }
 }
 
