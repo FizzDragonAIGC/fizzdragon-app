@@ -229,14 +229,22 @@
             margin-right: 6px;
         }
         .proj-status.proj-idle { background: #555; } /* 灰色 = 待处理 */
+        .proj-status.proj-active { background: #6366F1; } /* 蓝点 = 对话式处理中 */
         .proj-status.proj-complete { background: #E31B23; } /* 红色 = 完成 */
+        .proj-status.proj-error { 
+            background: #FFD700; 
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%); 
+            border-radius: 0;
+            width: 10px;
+            height: 9px;
+        } /* 闪电/三角 = 有问题 */
         .proj-status.proj-running { 
             width: 8px; height: 8px;
             border: 2px solid #6366F1; 
             border-top-color: transparent; 
             background: transparent;
             animation: proj-spin 0.8s linear infinite; 
-        }
+        } /* 蓝色转圈 = Auto-Pilot */
         @keyframes proj-spin { to { transform: rotate(360deg); } }
         
         .project-item .icon {
@@ -3252,6 +3260,8 @@ function updateUserUI() {
 // ==================== 侧边栏 ====================
 let currentProjectId = null;
 let runningProjects = {}; // 追踪正在运行Auto-Pilot的项目
+let activeProjects = {}; // 追踪对话式处理中的项目
+let errorProjects = {}; // 追踪有错误的项目
 
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
@@ -4476,19 +4486,25 @@ function renderProjectListByMode() {
         const stepName = stepNameKeys[p.step] ? t(stepNameKeys[p.step]) : '';
         const icon = p.type === 'ad' ? '📺' : (p.stage === 'write' ? '✍️' : '📄');
         
-        // 计算项目状态（3种：待开始/处理中/完成）
+        // 计算项目状态（5种：待处理/对话处理中/Auto-Pilot/完成/错误）
         const hasConcept = !!assets.concept;
         const hasChars = (assets.characters?.length || 0) > 0;
         const hasChapters = chapterCount > 0;
         const hasScripts = scriptCount > 0;
         const hasSb = sbCount > 0;
-        const isRunning = runningProjects && runningProjects[p.id];
+        const isRunning = runningProjects && runningProjects[p.id]; // Auto-Pilot
+        const isActive = activeProjects && activeProjects[p.id]; // 对话式处理
+        const hasError = errorProjects && errorProjects[p.id]; // 有错误
         const isComplete = hasConcept && hasChars && hasChapters && hasScripts && hasSb;
         
-        // 状态指示器：灰(待开始) / 转圈(处理中) / 红(完成)
+        // 状态指示器：灰(待处理) / 蓝点(对话处理) / 转圈(Auto-Pilot) / 红(完成) / 闪电(错误)
         let statusIndicator = '';
-        if (isRunning) {
-            statusIndicator = '<span class="proj-status proj-running" title="處理中"></span>';
+        if (hasError) {
+            statusIndicator = '<span class="proj-status proj-error" title="有問題"></span>';
+        } else if (isRunning) {
+            statusIndicator = '<span class="proj-status proj-running" title="Auto-Pilot 運行中"></span>';
+        } else if (isActive) {
+            statusIndicator = '<span class="proj-status proj-active" title="處理中"></span>';
         } else if (isComplete) {
             statusIndicator = '<span class="proj-status proj-complete" title="已完成"></span>';
         } else {
@@ -7964,6 +7980,13 @@ function checkNovelExists() {
 async function runConceptStep() {
     if (!checkNovelExists()) return;
     
+    // 标记对话式处理中
+    if (currentProjectId) {
+        activeProjects[currentProjectId] = true;
+        delete errorProjects[currentProjectId];
+        renderProjectList();
+    }
+    
     addTypingIndicator();
     
     // 详细步骤显示
@@ -8026,6 +8049,7 @@ async function runConceptStep() {
 ───────────────────────
 已存入項目資產，接下來進行**角色分析**...`);
                 
+                clearActiveStatus();
                 saveProject();
                 updateAssetsPanel();
                 setTimeout(() => runCharacterAnalysis(), 1000);
@@ -8038,9 +8062,24 @@ async function runConceptStep() {
         );
         
     } catch (err) {
+        // 标记错误状态
+        if (currentProjectId) {
+            delete activeProjects[currentProjectId];
+            errorProjects[currentProjectId] = true;
+            renderProjectList();
+        }
         removeTypingIndicator();
         recordError(err, '概念分析');
         showFriendlyError(err, '概念分析', () => runConceptStep());
+    }
+}
+
+// 清除处理状态的辅助函数
+function clearActiveStatus() {
+    if (currentProjectId) {
+        delete activeProjects[currentProjectId];
+        delete errorProjects[currentProjectId];
+        renderProjectList();
     }
 }
 
