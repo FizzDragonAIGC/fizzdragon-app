@@ -1040,6 +1040,31 @@
             color: #E31B23 !important;
         }
         
+        /* 拖放文件覆盖层 */
+        .drop-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(99, 102, 241, 0.15);
+            border: 3px dashed #6366F1;
+            border-radius: 12px;
+            z-index: 100;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+        .drop-overlay.active { display: flex; }
+        .drop-icon { font-size: 48px; animation: drop-bounce 0.5s ease infinite alternate; }
+        .drop-text { font-size: 16px; font-weight: 600; color: #6366F1; }
+        .drop-hint { font-size: 12px; color: var(--text2); }
+        @keyframes drop-bounce { from { transform: translateY(0); } to { transform: translateY(-8px); } }
+        .chat-area { position: relative; }
+        
         /* 聊天区域 */
         .chat-container {
             flex: 1;
@@ -2101,7 +2126,12 @@
         
         <div class="content-wrapper">
             <!-- 中间对话区 -->
-            <div class="chat-area">
+            <div class="chat-area" id="chatArea" ondragover="handleChatDragOver(event)" ondragleave="handleChatDragLeave(event)" ondrop="handleChatDrop(event)">
+                <div class="drop-overlay" id="dropOverlay">
+                    <div class="drop-icon">📄</div>
+                    <div class="drop-text">拖放文件到這裡導入</div>
+                    <div class="drop-hint">.txt .docx .pdf</div>
+                </div>
                 <div class="chat-container" id="chatContainer">
                     <!-- 消息会动态添加到这里 -->
                 </div>
@@ -6765,6 +6795,49 @@ function handleDrop(e, targetProjectId) {
     
     localStorage.setItem(getProjectsKey(), JSON.stringify(projects));
     renderProjectList();
+}
+
+// ==================== 聊天区域拖放文件 ====================
+function handleChatDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const overlay = document.getElementById('dropOverlay');
+    if (overlay) overlay.classList.add('active');
+}
+
+function handleChatDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    // 只有真正离开chat-area时才隐藏
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+        const overlay = document.getElementById('dropOverlay');
+        if (overlay) overlay.classList.remove('active');
+    }
+}
+
+function handleChatDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const overlay = document.getElementById('dropOverlay');
+    if (overlay) overlay.classList.remove('active');
+    
+    const files = e.dataTransfer.files;
+    if (files.length === 0) return;
+    
+    const file = files[0];
+    const ext = file.name.split('.').pop().toLowerCase();
+    
+    if (!['txt', 'docx', 'pdf'].includes(ext)) {
+        addAIMessage(`❌ 不支持的文件格式：.${ext}\n\n支持：.txt .docx .pdf`);
+        return;
+    }
+    
+    // 模拟文件选择器的change事件
+    const fileInput = document.getElementById('fileInput');
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    fileInput.files = dataTransfer.files;
+    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 function confirmDeleteProject(projectId, name) {
