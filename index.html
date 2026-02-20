@@ -2884,8 +2884,94 @@ function showAutoPilotOptions() {
     ]);
 }
 
-// Auto-Pilot 主流程
-async function runAutoPilot() {
+// Auto-Pilot 入口（检查是否需要配置）
+function runAutoPilot() {
+    if (!state.novel) {
+        addAIMessage('❌ 請先導入故事');
+        return;
+    }
+    
+    // 如果已有配置，直接开始；否则先问配置
+    if (state.production?.episodes && state.production?.durationMin) {
+        runAutoPilotCore();
+    } else {
+        askAutoPilotConfig();
+    }
+}
+
+// Auto-Pilot 配置问题
+function askAutoPilotConfig() {
+    if (!state.novel) {
+        addAIMessage('❌ 請先導入故事');
+        return;
+    }
+    
+    // 估算字数
+    const wordCount = state.novel.length;
+    const suggestedEpisodes = Math.max(10, Math.min(50, Math.ceil(wordCount / 5000)));
+    
+    addAIMessage(`🚀 **Auto-Pilot 配置**
+
+📖 故事字數：**${wordCount.toLocaleString()}** 字
+📊 建議集數：**${suggestedEpisodes}** 集
+
+請選擇集數：`, [
+        { text: '10集（短篇）', action: () => askEpisodeDuration(10) },
+        { text: '24集（標準）', action: () => askEpisodeDuration(24) },
+        { text: '50集（長篇）', action: () => askEpisodeDuration(50) },
+        { text: `${suggestedEpisodes}集（推薦）`, action: () => askEpisodeDuration(suggestedEpisodes) },
+        { text: '自定義...', action: () => askCustomEpisodes() }
+    ]);
+}
+
+function askCustomEpisodes() {
+    addAIMessage(`請輸入集數（1-100）：`);
+    state.waitingForEpisodeInput = true;
+}
+
+function askEpisodeDuration(episodes) {
+    state.production = state.production || {};
+    state.production.episodes = episodes;
+    
+    addAIMessage(`✅ 已選擇 **${episodes}集**
+
+請選擇每集時長：`, [
+        { text: '3分鐘（短視頻）', action: () => startAutoPilotWithConfig(episodes, 3) },
+        { text: '5分鐘（標準）', action: () => startAutoPilotWithConfig(episodes, 5) },
+        { text: '10分鐘（長篇）', action: () => startAutoPilotWithConfig(episodes, 10) },
+        { text: '自定義...', action: () => askCustomDuration(episodes) }
+    ]);
+}
+
+function askCustomDuration(episodes) {
+    state.production = state.production || {};
+    state.production.episodes = episodes;
+    addAIMessage(`請輸入每集時長（分鐘，1-30）：`);
+    state.waitingForDurationInput = true;
+}
+
+function startAutoPilotWithConfig(episodes, duration) {
+    state.production = {
+        episodes: episodes,
+        durationMin: duration,
+        shotsPerMin: 10  // 默认每分钟10镜头
+    };
+    
+    const totalShots = episodes * duration * 10;
+    addAIMessage(`📋 **配置確認**
+
+• 集數：**${episodes}集**
+• 時長：**${duration}分鐘/集**
+• 預計分鏡：**${totalShots.toLocaleString()}** 個
+
+即將開始自動生成...`, [
+        { text: '🚀 開始！', action: () => runAutoPilotCore() },
+        { text: '↩️ 重新配置', action: () => askAutoPilotConfig() }
+    ]);
+}
+
+// Auto-Pilot 主流程（原runAutoPilot改名）
+async function runAutoPilotCore() {
     if (!state.novel) {
         addAIMessage('❌ 請先導入故事');
         return;
@@ -2898,6 +2984,8 @@ async function runAutoPilot() {
     }
     
     addAIMessage(`🚀 **Auto-Pilot 啟動！**
+
+📊 配置：${state.production?.episodes || 10}集 × ${state.production?.durationMin || 5}分鐘
 
 正在後台自動執行所有步驟...
 請在右側「項目資產」面板查看進度 →
@@ -11286,6 +11374,29 @@ function handleUserInput(text) {
         adStep: adState.step,
         pendingRevision: !!window.pendingRevision
     });
+    
+    // ==================== Auto-Pilot 配置輸入 ====================
+    if (state.waitingForEpisodeInput) {
+        const episodes = parseInt(text);
+        if (episodes >= 1 && episodes <= 100) {
+            state.waitingForEpisodeInput = false;
+            askEpisodeDuration(episodes);
+        } else {
+            addAIMessage('❌ 請輸入1-100之間的數字');
+        }
+        return;
+    }
+    
+    if (state.waitingForDurationInput) {
+        const duration = parseInt(text);
+        if (duration >= 1 && duration <= 30) {
+            state.waitingForDurationInput = false;
+            startAutoPilotWithConfig(state.production.episodes, duration);
+        } else {
+            addAIMessage('❌ 請輸入1-30之間的數字');
+        }
+        return;
+    }
     
     // ==================== 修改意見處理 ====================
     if (window.pendingRevision) {
