@@ -7730,21 +7730,25 @@ function startAutoSave() {
     // 每30秒检查并自动保存
     if (autoSaveTimer) clearInterval(autoSaveTimer);
     autoSaveTimer = setInterval(() => {
-        if (currentProjectId && state.novel) {
+        if (currentProjectId) {
+            // 检查聊天内容是否有变化
+            const chatContainer = document.getElementById('chatContainer');
+            const currentChatLen = chatContainer?.children?.length || 0;
             const currentState = JSON.stringify({
                 step: state.step,
                 assets: state.assets,
-                production: state.production
+                production: state.production,
+                chatLen: currentChatLen
             });
             
             // 只有状态变化时才保存
             if (currentState !== lastSaveState) {
                 saveProject(null, true);
                 lastSaveState = currentState;
-                console.log('🔄 自動保存');
+                console.log('🔄 自動保存 (聊天:', currentChatLen, '条)');
             }
         }
-    }, 30000);
+    }, 15000);  // 改为15秒，更频繁保存聊天
 }
 
 function showSaveIndicator() {
@@ -7760,7 +7764,7 @@ document.addEventListener('DOMContentLoaded', startAutoSave);
 
 // 页面关闭前保存
 window.addEventListener('beforeunload', () => {
-    if (currentProjectId && state.novel) {
+    if (currentProjectId) {
         saveProject(null, true);
     }
 });
