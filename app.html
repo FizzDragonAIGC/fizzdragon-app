@@ -7646,10 +7646,33 @@ ${issues.map(i => `${i}`).join('\n')}
     }
 }
 
-function scrollToBottom() {
+// 用户是否正在往上滚动（查看历史）
+let userScrolledUp = false;
+
+function scrollToBottom(force = false) {
     const container = document.getElementById('chatContainer');
-    setTimeout(() => container.scrollTop = container.scrollHeight, 100);
+    if (!container) return;
+    
+    // 检查用户是否滚动到接近底部（距底部100px内）
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    
+    // 只有在用户接近底部 或 强制滚动时才自动滚动
+    if (isNearBottom || force) {
+        setTimeout(() => container.scrollTop = container.scrollHeight, 100);
+        userScrolledUp = false;
+    }
 }
+
+// 监听用户滚动
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('chatContainer');
+    if (container) {
+        container.addEventListener('scroll', () => {
+            const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+            userScrolledUp = !isNearBottom;
+        });
+    }
+});
 
 // ==================== 快捷回复 ====================
 function handleQuickReply(index) {
