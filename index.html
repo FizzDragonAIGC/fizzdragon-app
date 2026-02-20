@@ -7008,6 +7008,7 @@ function saveNewStory(type) {
 // AI辅助写故事
 function startAIStoryWriting() {
     console.log('🎬 startAIStoryWriting called');
+    state.mode = 'write';  // 🔧 设置为写作模式
     
     addAIMessage(`🤖 **AI輔助創作**
 
@@ -7022,7 +7023,9 @@ function startAIStoryWriting() {
 直接打字描述吧！`);
     
     window.pendingAIStory = true;
-    console.log('✅ pendingAIStory set to true');
+    writeState.currentQuestion = -1;  // 🔧 准备进入访谈
+    writeState.idea = null;
+    console.log('✅ pendingAIStory set to true, ready for interview');
 }
 
 // AI生成故事
@@ -14286,9 +14289,16 @@ function handleUserInput(text) {
     
     // ==================== AI寫故事處理 ====================
     if (window.pendingAIStory) {
-        console.log('🎯 pendingAIStory detected, calling generateAIStory');
+        console.log('🎯 pendingAIStory detected, starting interview');
         window.pendingAIStory = false;
-        generateAIStory(text);
+        
+        // 🔧 保存想法，然后进入访谈流程
+        writeState.idea = { premise: text, type: 'ai' };
+        addUserMessage(text);
+        addAIMessage(`✅ 收到你的想法！\n\n> "${text}"\n\n現在讓我通過幾個問題更深入了解你的故事...`);
+        
+        // 🔧 触发访谈
+        setTimeout(() => startWriteInterview(), 800);
         return;
     }
     
