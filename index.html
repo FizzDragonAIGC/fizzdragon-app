@@ -346,6 +346,21 @@
             flex-direction: column;
             overflow: hidden;
             flex-shrink: 0;
+            transition: width 0.3s ease;
+        }
+        
+        .assets-panel.expanded {
+            width: 800px;
+        }
+        
+        .assets-panel.collapsed {
+            width: 280px;
+        }
+        
+        .expand-btn {
+            font-size: 14px !important;
+            padding: 4px 8px !important;
+            cursor: pointer;
         }
         
         .assets-panel-header {
@@ -2688,6 +2703,7 @@
                         <button class="assets-action-btn" onclick="exportScripts()" title="導出所有劇本">📜 劇本</button>
                         <button class="assets-action-btn" onclick="exportStoryboards()" title="導出所有分鏡">📊 分鏡</button>
                         <button class="assets-action-btn primary" onclick="importToFizzDragon()" title="導入FizzStudio製作">🚀 導入</button>
+                        <button class="assets-action-btn expand-btn" onclick="toggleAssetsPanelWidth()" title="展開/收縮" id="expandBtn">◀▶</button>
                         <button class="assets-action-btn fullscreen-btn" onclick="toggleAssetsFullscreen()" title="全屏" id="fullscreenBtn">⛶</button>
                     </div>
                 </div>
@@ -5302,6 +5318,28 @@ function toggleAssetsPanel() {
 }
 
 // 全屏切换
+// 切换资产面板宽度 (收缩/标准/展开)
+function toggleAssetsPanelWidth() {
+    const panel = document.getElementById('assetsPanel');
+    const btn = document.getElementById('expandBtn');
+    
+    // 三态切换: 标准 -> 展开 -> 收缩 -> 标准
+    if (panel.classList.contains('expanded')) {
+        panel.classList.remove('expanded');
+        panel.classList.add('collapsed');
+        btn.innerHTML = '▶▶';
+        btn.title = '展開面板';
+    } else if (panel.classList.contains('collapsed')) {
+        panel.classList.remove('collapsed');
+        btn.innerHTML = '◀▶';
+        btn.title = '展開/收縮';
+    } else {
+        panel.classList.add('expanded');
+        btn.innerHTML = '◀◀';
+        btn.title = '收縮面板';
+    }
+}
+
 function toggleAssetsFullscreen() {
     const panel = document.getElementById('assetsPanel');
     const btn = document.getElementById('fullscreenBtn');
