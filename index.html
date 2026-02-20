@@ -2612,8 +2612,265 @@ ${projectCount > 0 ? `📂 你有 **${projectCount}** 個已保存的項目\n` :
     addAIMessage(welcomeTexts[currentLang] || welcomeTexts['zh-TW'], [
         { text: '📄 導入現有故事', action: () => document.getElementById('fileInput').click() },
         { text: '✍️ 我要寫故事', action: () => startWriteStory() },
-        { text: '🤖 AI幫我寫', action: () => startAIStoryWriting() }
+        { text: '🤖 AI幫我寫', action: () => startAIStoryWriting() },
+        { text: '🚀 Auto-Pilot 全自動', action: () => showAutoPilotOptions() }
     ]);
+}
+
+// ==================== Auto-Pilot 全自動模式 ====================
+function showAutoPilotOptions() {
+    addAIMessage(`🚀 **Auto-Pilot 全自動模式**
+
+系統將自動完成所有步驟：
+1️⃣ 高概念分析
+2️⃣ 角色設計（6個角色）
+3️⃣ 章節規劃
+4️⃣ 服化道設計
+5️⃣ 劇本生成
+6️⃣ 分鏡生成
+
+**預計時間**：5-10分鐘
+**完成後**：可逐項調整並重新生成
+
+───────────────────────
+請先導入你的故事：`, [
+        { text: '📄 導入故事後啟動', action: () => { state.autoPilotEnabled = true; document.getElementById('fileInput').click(); } },
+        { text: '🤖 AI寫故事後啟動', action: () => { state.autoPilotEnabled = true; startAIStoryWriting(); } },
+        { text: '↩️ 返回', action: () => showWelcome() }
+    ]);
+}
+
+// Auto-Pilot 主流程
+async function runAutoPilot() {
+    if (!state.novel) {
+        addAIMessage('❌ 請先導入故事');
+        return;
+    }
+    
+    addAIMessage(`🚀 **Auto-Pilot 啟動！**
+
+正在後台自動執行所有步驟...
+請在右側「項目資產」面板查看進度 →
+
+<div id="autoPilotProgress" style="background:var(--surface);padding:16px;border-radius:8px;margin:12px 0;">
+    <div class="ap-step" id="ap-concept">⏳ 1. 高概念分析...</div>
+    <div class="ap-step" id="ap-character">⏸️ 2. 角色設計</div>
+    <div class="ap-step" id="ap-chapters">⏸️ 3. 章節規劃</div>
+    <div class="ap-step" id="ap-production">⏸️ 4. 服化道設計</div>
+    <div class="ap-step" id="ap-script">⏸️ 5. 劇本生成</div>
+    <div class="ap-step" id="ap-storyboard">⏸️ 6. 分鏡生成</div>
+</div>
+
+<style>
+.ap-step { padding:8px 12px; margin:4px 0; border-radius:6px; font-size:13px; }
+.ap-step.running { background:rgba(99,102,241,0.2); color:#6366F1; }
+.ap-step.done { background:rgba(74,222,128,0.2); color:#4ade80; }
+.ap-step.error { background:rgba(239,68,68,0.2); color:#ef4444; }
+</style>`);
+    
+    const updateStep = (id, status, text) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.className = 'ap-step ' + status;
+            el.textContent = text;
+        }
+    };
+    
+    try {
+        // 1. 高概念
+        updateStep('ap-concept', 'running', '🔄 1. 高概念分析中...');
+        await runConceptStepSilent();
+        updateStep('ap-concept', 'done', '✅ 1. 高概念分析完成');
+        
+        // 2. 角色
+        updateStep('ap-character', 'running', '🔄 2. 角色設計中...');
+        await runCharacterStepSilent();
+        updateStep('ap-character', 'done', '✅ 2. 角色設計完成');
+        
+        // 3. 章节
+        updateStep('ap-chapters', 'running', '🔄 3. 章節規劃中...');
+        await runChaptersStepSilent();
+        updateStep('ap-chapters', 'done', '✅ 3. 章節規劃完成');
+        
+        // 4. 服化道
+        updateStep('ap-production', 'running', '🔄 4. 服化道設計中...');
+        await runProductionStepSilent();
+        updateStep('ap-production', 'done', '✅ 4. 服化道設計完成');
+        
+        // 5. 剧本（第1章）
+        updateStep('ap-script', 'running', '🔄 5. 劇本生成中...');
+        await runScriptStepSilent(1);
+        updateStep('ap-script', 'done', '✅ 5. 劇本生成完成');
+        
+        // 6. 分镜（第1章）
+        updateStep('ap-storyboard', 'running', '🔄 6. 分鏡生成中...');
+        await runStoryboardStepSilent(1);
+        updateStep('ap-storyboard', 'done', '✅ 6. 分鏡生成完成');
+        
+        // 完成！
+        showAutoPilotComplete();
+        
+    } catch (err) {
+        console.error('Auto-Pilot error:', err);
+        addAIMessage(`❌ Auto-Pilot 遇到問題：${err.message}
+
+已完成的步驟已保存，你可以手動繼續。`, [
+            { text: '🔄 重試', action: () => runAutoPilot() },
+            { text: '✋ 手動繼續', action: () => continueImportProject() }
+        ]);
+    }
+}
+
+// Auto-Pilot 完成
+function showAutoPilotComplete() {
+    saveProject(state.novelTitle, true);
+    
+    addAIMessage(`🎉 **Auto-Pilot 完成！**
+
+所有內容已自動生成：
+✅ 高概念（類型/主題/基調）
+✅ ${state.assets.characters?.length || 0} 個角色設計
+✅ ${state.assets.chapters?.length || 0} 章劇情規劃
+✅ 服化道設計
+✅ 第1章劇本
+✅ 第1章分鏡
+
+───────────────────────
+**下一步：調整並重新生成**
+
+選擇要調整的內容：`, [
+        { text: '👤 調整角色', action: () => showCharacterAdjustment() },
+        { text: '📝 調整章節', action: () => showChapterAdjustment() },
+        { text: '🎬 調整分鏡', action: () => showStoryboardAdjustment() },
+        { text: '📊 查看全部資產', action: () => toggleAssetsPanel() },
+        { text: '📤 導出Excel', action: () => exportToExcel() }
+    ]);
+}
+
+// 静默执行各步骤（不显示对话，只更新资产）
+async function runConceptStepSilent() {
+    const result = await callAgent('concept', state.novel.substring(0, 3000), {});
+    const concept = safeJSONParse(result, 'concept');
+    state.assets.concept = concept;
+    state.step = 1;
+    saveProject(null, true);
+    updateAssetsPanel();
+}
+
+async function runCharacterStepSilent() {
+    const result = await callAgent('character', state.novel.substring(0, 3000), { concept: state.assets.concept });
+    const parsed = safeJSONParse(result, 'character');
+    state.assets.characters = parsed.characters || parsed || [];
+    state.step = 2;
+    saveProject(null, true);
+    updateAssetsPanel();
+}
+
+async function runChaptersStepSilent() {
+    const result = await callAgent('narrative', state.novel.substring(0, 3000), { 
+        concept: state.assets.concept,
+        production: state.production 
+    });
+    const parsed = safeJSONParse(result, 'narrative');
+    state.assets.chapters = parsed.chapters || parsed || [];
+    state.step = 3;
+    saveProject(null, true);
+    updateAssetsPanel();
+}
+
+async function runProductionStepSilent() {
+    const result = await callAgent('production_design', state.novel.substring(0, 2000), {
+        concept: state.assets.concept,
+        characters: state.assets.characters
+    });
+    const parsed = safeJSONParse(result, 'production_design');
+    state.assets.costumes = parsed.costumes || [];
+    state.assets.sets = parsed.sets || [];
+    state.assets.props = parsed.props || [];
+    state.step = 4;
+    saveProject(null, true);
+    updateAssetsPanel();
+}
+
+async function runScriptStepSilent(chapterNum) {
+    const chapter = state.assets.chapters?.[chapterNum - 1];
+    const result = await callAgent('screenwriter', state.novel.substring(0, 2500), {
+        concept: state.assets.concept,
+        characters: state.assets.characters,
+        chapter: chapter,
+        chapterNumber: chapterNum
+    });
+    state.assets.scripts = state.assets.scripts || {};
+    state.assets.scripts[chapterNum] = result;
+    state.step = 5;
+    saveProject(null, true);
+    updateAssetsPanel();
+}
+
+async function runStoryboardStepSilent(chapterNum) {
+    const script = state.assets.scripts?.[chapterNum] || state.novel.substring(0, 2500);
+    const result = await callAgent('storyboard', script.substring(0, 2500), {
+        concept: state.assets.concept,
+        characters: state.assets.characters,
+        production: state.production
+    });
+    const parsed = safeJSONParse(result, 'storyboard');
+    state.assets.storyboards = state.assets.storyboards || {};
+    state.assets.storyboards[chapterNum] = parsed.shots || parsed || [];
+    state.step = 6;
+    saveProject(null, true);
+    updateAssetsPanel();
+}
+
+// 调整界面
+function showCharacterAdjustment() {
+    const chars = state.assets.characters || [];
+    addAIMessage(`👤 **調整角色設計**
+
+目前有 ${chars.length} 個角色：
+${chars.map((c, i) => `${i+1}. **${c.name}** (${c.role || '角色'})`).join('\n')}
+
+請告訴我要如何調整：
+- 修改某個角色的設定
+- 添加新角色
+- 刪除角色
+- 重新生成全部角色
+
+例如：「把主角改成女性」「添加一個反派角色」`);
+    state.adjustMode = 'character';
+}
+
+function showChapterAdjustment() {
+    const chapters = state.assets.chapters || [];
+    addAIMessage(`📝 **調整章節規劃**
+
+目前有 ${chapters.length} 章：
+${chapters.slice(0, 5).map((c, i) => `${i+1}. ${c.title || '第'+(i+1)+'章'}`).join('\n')}
+${chapters.length > 5 ? `...還有 ${chapters.length - 5} 章` : ''}
+
+請告訴我要如何調整：
+- 修改某章的情節
+- 增加/減少章節數
+- 調整節奏和結構
+
+例如：「第3章太平淡，加入轉折」`);
+    state.adjustMode = 'chapters';
+}
+
+function showStoryboardAdjustment() {
+    const sb = state.assets.storyboards || {};
+    const totalShots = Object.values(sb).flat().length;
+    addAIMessage(`🎬 **調整分鏡**
+
+目前有 ${totalShots} 個鏡頭
+
+請告訴我要如何調整：
+- 修改某個鏡頭的構圖
+- 調整運鏡方式
+- 重新生成某章分鏡
+
+例如：「第1個鏡頭改成俯拍」「增加更多特寫」`);
+    state.adjustMode = 'storyboard';
 }
 
 // 页面加载时应用语言
@@ -2664,6 +2921,10 @@ const state = {
     // 访谈状态
     interview: {},
     interviewQuestions: [],
+    
+    // Auto-Pilot 状态
+    autoPilotEnabled: false,
+    adjustMode: null,  // 'character' | 'chapters' | 'storyboard'
     currentQuestion: 0,
     
     // 当前编辑
@@ -7293,6 +7554,18 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
         removeTypingIndicator();
         
         const preview = text.substring(0, 200) + (text.length > 200 ? '...' : '');
+        
+        // 🚀 检查是否启用 Auto-Pilot
+        if (state.autoPilotEnabled) {
+            state.autoPilotEnabled = false; // 重置
+            addAIMessage(`✅ 成功導入《${state.novelTitle}》（${text.length.toLocaleString()} 字）
+
+🚀 **Auto-Pilot 模式已啟動！**
+正在自動執行所有步驟...`);
+            setTimeout(() => runAutoPilot(), 500);
+            return;
+        }
+        
         addAIMessage(`✅ 成功導入《${state.novelTitle}》
 
 **字數**: ${text.length.toLocaleString()} 字
@@ -7301,7 +7574,8 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
 ───────────────────────
 請選擇分析方式：`, [
             { text: '🎤 深度訪談（更精準）', action: () => startImportInterview() },
-            { text: '⚡ 直接分析（更快速）', action: () => runConceptStep() }
+            { text: '⚡ 直接分析（更快速）', action: () => runConceptStep() },
+            { text: '🚀 Auto-Pilot 全自動', action: () => runAutoPilot() }
         ]);
         
     } catch (err) {
