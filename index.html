@@ -220,32 +220,38 @@
             background: var(--surface2);
         }
         
-        /* 项目状态指示器 */
+        /* 项目状态指示器 - 加大版 */
         .proj-status {
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             flex-shrink: 0;
-            margin-right: 6px;
+            margin-right: 8px;
         }
-        .proj-status.proj-idle { background: #555; } /* 灰色 = 待处理 */
-        .proj-status.proj-active { background: #6366F1; } /* 蓝点 = 对话式处理中 */
-        .proj-status.proj-complete { background: #E31B23; } /* 红色 = 完成 */
+        .proj-status.proj-idle { background: #444; } /* 灰色 = 待处理 */
+        .proj-status.proj-active { 
+            background: #6366F1; 
+            box-shadow: 0 0 6px #6366F1;
+            animation: proj-pulse 1.5s ease-in-out infinite;
+        } /* 蓝点脉冲 = 对话式处理中 */
+        .proj-status.proj-complete { 
+            background: #4ade80; 
+            box-shadow: 0 0 4px #4ade80;
+        } /* 绿色 = 完成 */
         .proj-status.proj-error { 
-            background: #FFD700; 
-            clip-path: polygon(50% 0%, 0% 100%, 100% 100%); 
-            border-radius: 0;
-            width: 10px;
-            height: 9px;
-        } /* 闪电/三角 = 有问题 */
+            background: #ef4444; 
+            box-shadow: 0 0 4px #ef4444;
+        } /* 红色 = 有问题 */
         .proj-status.proj-running { 
-            width: 8px; height: 8px;
+            width: 10px; height: 10px;
             border: 2px solid #6366F1; 
             border-top-color: transparent; 
             background: transparent;
-            animation: proj-spin 0.8s linear infinite; 
+            animation: proj-spin 0.6s linear infinite;
+            box-shadow: 0 0 8px rgba(99,102,241,0.5);
         } /* 蓝色转圈 = Auto-Pilot */
         @keyframes proj-spin { to { transform: rotate(360deg); } }
+        @keyframes proj-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.7; transform:scale(1.1); } }
         
         .project-item .icon {
             font-size: 16px;
