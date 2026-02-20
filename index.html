@@ -4245,21 +4245,7 @@ function updateAssetsPanel() {
     const totalShots = Object.values(a.storyboards || {}).reduce((sum, arr) => sum + (arr?.length || 0), 0);
     const charCount = a.characters?.length || 0;
     
-    // 项目快捷操作工具栏
-    html += `
-    <div class="project-toolbar">
-        <div class="project-agents">
-            <button class="toolbar-agent ${a.concept ? 'done' : ''}" onclick="triggerAgentWithCheck('concept')" title="概念">💡</button>
-            <button class="toolbar-agent ${charCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('character')" title="人物">${charCount > 0 ? charCount : '👤'}</button>
-            <button class="toolbar-agent ${a.chapters?.length > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('chapters')" title="章節">${a.chapters?.length || '📝'}</button>
-            <button class="toolbar-agent ${scriptCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('script')" title="編劇">${scriptCount > 0 ? scriptCount + '/' + (a.chapters?.length || 0) : '✍️'}</button>
-            <button class="toolbar-agent ${sbCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('storyboard')" title="分鏡">${sbCount > 0 ? sbCount + '/' + (a.chapters?.length || 0) : '🎬'}</button>
-        </div>
-        <div class="project-actions">
-            <button class="toolbar-btn auto" onclick="runAutoPilot()" title="Auto-Pilot">🚀</button>
-            <button class="toolbar-btn" onclick="exportToExcel()" title="導出Excel">📤</button>
-        </div>
-    </div>
+    // 项目快捷操作工具栏 (已移除)
     <div class="assets-tabs">
         <button class="assets-tab active" onclick="switchAssetsTab('base')" id="tabBase">📋 設定</button>
         <button class="assets-tab" onclick="switchAssetsTab('prod')" id="tabProd">📝 生產 <small>${scriptCount}/${a.chapters?.length || 0}</small></button>
