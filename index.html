@@ -5466,12 +5466,53 @@ function toggleAssetsFullscreen() {
     }
 }
 
-// ESC退出全屏
+// 全局快捷键
 document.addEventListener('keydown', (e) => {
+    // ESC退出全屏
     if (e.key === 'Escape') {
         const panel = document.getElementById('assetsPanel');
         if (panel?.classList.contains('fullscreen')) {
             toggleAssetsFullscreen();
+        }
+        return;
+    }
+    
+    // 如果在输入框中，不触发快捷键
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    
+    // Alt + 数字键 调用Agent (避免与浏览器快捷键冲突)
+    if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        switch(e.key) {
+            case '1': // Alt+1 → 💡高概念
+                e.preventDefault();
+                triggerAgentWithCheck('concept');
+                break;
+            case '2': // Alt+2 → 👤人物
+                e.preventDefault();
+                triggerAgentWithCheck('character');
+                break;
+            case '3': // Alt+3 → 📝章节
+                e.preventDefault();
+                triggerAgentWithCheck('chapters');
+                break;
+            case '4': // Alt+4 → ✍️编剧
+                e.preventDefault();
+                runScriptForNextChapter();
+                break;
+            case '5': // Alt+5 → 🎬分镜
+                e.preventDefault();
+                runStoryboardForNextChapter();
+                break;
+            case 'a': // Alt+A → 🚀 Auto-Pilot
+            case 'A':
+                e.preventDefault();
+                runAutoPilot();
+                break;
+            case 'e': // Alt+E → 📤 导出
+            case 'E':
+                e.preventDefault();
+                exportStoryboards();
+                break;
         }
     }
 });
