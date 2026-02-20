@@ -2173,7 +2173,7 @@ const i18n = {
         // 基础UI
         title: 'FizzDragon AIGC番劇系統',
         connecting: '連接中...',
-        connected: '影視模型已連接',
+        connected: 'FizzDragon影視世界觀大模型 已連接',
         newProject: '新建影視項目',
         myProjects: '我的影視項目',
         noProjects: '還沒有項目',
@@ -2364,7 +2364,7 @@ const i18n = {
     'en': {
         title: 'FizzDragon AIGC Drama Studio',
         connecting: 'Connecting...',
-        connected: 'AI Model Connected',
+        connected: 'FizzDragon Cinematic AI Connected',
         newProject: 'New Project',
         myProjects: 'My Projects',
         noProjects: 'No projects yet',
@@ -4863,7 +4863,7 @@ async function detectAPI() {
             if (res.ok) {
                 const data = await res.json();
                 API_BASE = endpoint;
-                setStatus('online', `${data.providerName || 'AI'} 已連接`);
+                setStatus('online', t('connected'));
                 console.log('✅ API连接成功:', endpoint, data.provider);
                 return;
             }
@@ -5130,7 +5130,7 @@ async function generateWriteConcept() {
     const steps = [
         { text: '📡 連接概念生成器...', done: false, current: true },
         { text: '📚 載入narrative_complete Skill...', done: false },
-        { text: '🤖 調用DeepSeek模型...', done: false },
+        { text: '🤖 調用FizzDragon大模型...', done: false },
         { text: '📝 解析JSON結果...', done: false }
     ];
     showAgentStatus('💡 概念生成器', '正在初始化...', 'concept', steps);
@@ -5151,7 +5151,7 @@ async function generateWriteConcept() {
         // 步骤2完成
         steps[1].done = true; steps[1].current = false;
         steps[2].current = true;
-        showAgentStatus('💡 概念生成器', 'DeepSeek正在分析故事結構...', 'concept', steps);
+        showAgentStatus('💡 概念生成器', 'FizzDragon正在分析故事結構...', 'concept', steps);
         
         const result = await callAgent('concept', prompt);
         
@@ -5204,7 +5204,7 @@ async function generateWriteCharacters() {
     const steps = [
         { text: '📡 連接角色設計師...', done: false, current: true },
         { text: '📚 載入character_complete Skill...', done: false },
-        { text: '🤖 調用DeepSeek模型...', done: false },
+        { text: '🤖 調用FizzDragon大模型...', done: false },
         { text: '📝 解析角色JSON...', done: false }
     ];
     showAgentStatus('👤 角色設計師', '正在初始化...', 'character', steps);
@@ -5224,7 +5224,7 @@ async function generateWriteCharacters() {
         
         steps[1].done = true; steps[1].current = false;
         steps[2].current = true;
-        showAgentStatus('👤 角色設計師', 'DeepSeek正在設計角色...', 'character', steps);
+        showAgentStatus('👤 角色設計師', 'FizzDragon正在設計角色...', 'character', steps);
         
         const result = await callAgent('character', prompt);
         
@@ -6640,7 +6640,7 @@ async function handleRevisionFeedback(feedback) {
     const steps = [
         { text: `📡 連接${typeName}智能體...`, done: false, current: true },
         { text: '📚 載入相關Skills...', done: false },
-        { text: '🤖 調用DeepSeek模型...', done: false },
+        { text: '🤖 調用FizzDragon大模型...', done: false },
         { text: '📝 解析並驗證結果...', done: false }
     ];
     
@@ -6670,7 +6670,7 @@ ${feedback}
         // 步骤2完成，步骤3开始
         steps[1].done = true; steps[1].current = false;
         steps[2].current = true;
-        showAgentStatus(`${agentIcons[type] || '🔄'} ${typeName}修改器`, `DeepSeek正在思考...`, type, steps);
+        showAgentStatus(`${agentIcons[type] || '🔄'} ${typeName}修改器`, `FizzDragon正在思考...`, type, steps);
         
         const result = await callAgent(type, revisionPrompt, { revision: true });
         
@@ -7408,7 +7408,7 @@ async function runConceptStep() {
         await new Promise(r => setTimeout(r, 500));
         steps[2].done = true; steps[2].current = false;
         steps[3].current = true;
-        showAgentStatus('💡 高概念分析師', '「DeepSeek分析中...類型/主題/基調」', 'concept', steps);
+        showAgentStatus('💡 高概念分析師', '「FizzDragon分析中...類型/主題/基調」', 'concept', steps);
         
         const result = await callAgent('concept', state.novel.substring(0, 4000));
         
@@ -7952,7 +7952,7 @@ async function runChapterPlanning() {
         await new Promise(r => setTimeout(r, 500));
         steps[2].done = true; steps[2].current = false;
         steps[3].current = true;
-        showAgentStatus('📝 章節規劃師', '「DeepSeek規劃各集情節...」', 'narrative', steps);
+        showAgentStatus('📝 章節規劃師', '「FizzDragon規劃各集情節...」', 'narrative', steps);
         
         // 🔧 明确告诉AI需要生成多少集
         const episodeCount = state.production.episodes || 10;
