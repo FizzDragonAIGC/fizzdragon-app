@@ -8777,21 +8777,59 @@ function setWriteShots(shots) {
     writeState.productionStep = 3;
 }
 
-// 🆕 写作风格选择
+// 🆕 写作风格选择（17种 + 书籍参考）
 const NARRATIVE_STYLES = [
-    { id: 'hollywood_classic', name: '🇺🇸 好萊塢三幕式', desc: '結構工整、英雄之旅、大團圓' },
-    { id: 'korean_drama', name: '🇰🇷 韓劇情感', desc: '推拉節奏、虐心治癒、命運糾葛' },
-    { id: 'chinese_classic', name: '🇨🇳 中式敘事', desc: '起承轉合、意境留白、含蓄內斂' },
-    { id: 'shounen', name: '🇯🇵 熱血少年', desc: '友情努力勝利、升級打怪、燃點爆發' },
-    { id: 'suspense', name: '🔍 懸疑推理', desc: '伏筆密集、層層反轉、真相震撼' },
-    { id: 'cyberpunk', name: '🌃 賽博朋克', desc: '高科技低生活、霓虹雨夜、身份認同' },
-    { id: 'revenge', name: '⚔️ 復仇爽劇', desc: '打臉爽感、步步為營、大仇得報' },
-    { id: 'hongkong_action', name: '🎬 港片黃金', desc: '江湖義氣、兄弟情、槍戰美學' },
-    { id: 'bollywood', name: '🇮🇳 寶萊塢', desc: '華麗歌舞、情感外放、色彩飽和' },
-    { id: 'iyashikei', name: '🍃 日式治癒', desc: '慢節奏、溫暖細節、小確幸' }
+    // 文化/地域
+    { id: 'hollywood_classic', name: '🇺🇸 好萊塢三幕式', desc: '結構工整、英雄之旅、大團圓', category: 'region' },
+    { id: 'korean_drama', name: '🇰🇷 韓劇情感', desc: '推拉節奏、虐心治癒、命運糾葛', category: 'region' },
+    { id: 'chinese_classic', name: '🇨🇳 中式敘事', desc: '起承轉合、意境留白、含蓄內斂', category: 'region' },
+    { id: 'hongkong_action', name: '🎬 港片黃金', desc: '江湖義氣、兄弟情、槍戰美學', category: 'region' },
+    { id: 'bollywood', name: '🇮🇳 寶萊塢', desc: '華麗歌舞、情感外放、色彩飽和', category: 'region' },
+    // 日本
+    { id: 'shounen', name: '🔥 熱血少年', desc: '友情努力勝利、升級打怪、燃點爆發', category: 'japan' },
+    { id: 'iyashikei', name: '🍃 日式治癒', desc: '慢節奏、溫暖細節、小確幸', category: 'japan' },
+    // 类型
+    { id: 'suspense', name: '🔍 懸疑推理', desc: '伏筆密集、層層反轉、真相震撼', category: 'genre' },
+    { id: 'horror', name: '👻 恐怖驚悚', desc: '恐懼氛圍、未知威脅、心理壓迫', category: 'genre' },
+    { id: 'romcom', name: '💕 浪漫喜劇', desc: '歡喜冤家、甜蜜誤會、HE結局', category: 'genre' },
+    { id: 'revenge', name: '⚔️ 復仇爽劇', desc: '打臉爽感、步步為營、大仇得報', category: 'genre' },
+    // 导演风格
+    { id: 'tarantino', name: '🎬 昆汀式', desc: '話癆對白、章節跳躍、暴力美學', category: 'director' },
+    { id: 'film_noir', name: '🌑 黑色電影', desc: '低調打光、蛇蝎美人、宿命論', category: 'director' },
+    // 特殊风格
+    { id: 'wuxia', name: '⚔️ 武俠江湖', desc: '俠義精神、門派恩怨、絕世武功', category: 'special' },
+    { id: 'gongdou', name: '👑 宮鬥權謀', desc: '人心博弈、層層算計、台詞機鋒', category: 'special' },
+    { id: 'cyberpunk', name: '🌃 賽博朋克', desc: '高科技低生活、霓虹雨夜、身份認同', category: 'special' },
+    { id: 'magical_realism', name: '🦋 魔幻現實', desc: '魔幻與日常並存、家族史詩、時間循環', category: 'special' }
 ];
 
 function showNarrativeStyleSelection() {
+    // 按类别组织风格
+    const categories = {
+        region: { name: '🌍 文化/地域', styles: [] },
+        japan: { name: '🇯🇵 日本', styles: [] },
+        genre: { name: '📚 類型', styles: [] },
+        director: { name: '🎬 導演風格', styles: [] },
+        special: { name: '✨ 特殊風格', styles: [] }
+    };
+    
+    NARRATIVE_STYLES.forEach(s => {
+        if (categories[s.category]) {
+            categories[s.category].styles.push(s);
+        }
+    });
+    
+    // 构建分类显示
+    let styleText = '';
+    Object.values(categories).forEach(cat => {
+        if (cat.styles.length > 0) {
+            styleText += `\n**${cat.name}**\n`;
+            cat.styles.forEach(s => {
+                styleText += `• ${s.name} - ${s.desc}\n`;
+            });
+        }
+    });
+    
     const styleButtons = NARRATIVE_STYLES.map(s => ({
         text: s.name,
         action: () => selectNarrativeStyle(s.id, s.name)
@@ -8799,14 +8837,13 @@ function showNarrativeStyleSelection() {
     
     // 添加自定义和AI帮选选项
     styleButtons.push({ text: '🤖 AI幫我選', action: () => autoSelectNarrativeStyle() });
-    styleButtons.push({ text: '✍️ 自己描述', action: () => customNarrativeStyle() });
+    styleButtons.push({ text: '✍️ 自己描述風格', action: () => customNarrativeStyle() });
     
     addAIMessage(`🎨 **選擇敘事風格**
 
 風格會影響故事的節奏、結構和語言風格。
 可單選，也可選2個融合。
-
-${NARRATIVE_STYLES.map(s => `**${s.name}**\n${s.desc}`).join('\n\n')}`, styleButtons);
+${styleText}`, styleButtons);
 }
 
 function selectNarrativeStyle(styleId, styleName) {
