@@ -1291,12 +1291,29 @@
         
         /* 顶部栏 - FizzDragon风格 */
         .header {
-            padding: 16px 24px;
+            padding: 10px 16px;
             background: var(--bg);
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
-            gap: 16px;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        
+        /* 左侧项目区 */
+        .header-project {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+        
+        /* 右侧系统区 */
+        .header-system {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
         }
         
         .header img {
@@ -1312,12 +1329,11 @@
         }
         
         .status {
-            margin-left: auto;
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text2);
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
         }
         
         .status-dot {
@@ -2460,32 +2476,38 @@
     <!-- 主内容区 -->
     <div class="main-content">
         <div class="header">
-            <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
-            <div class="header-title" id="headerTitle">FizzDragon AIGC番劇系統</div>
-            <div class="agent-progress-bar" id="agentProgressBar" style="display:none;">
-                <span class="ap-dot" id="apDot1" title="概念" onclick="triggerAgentWithCheck('concept')">💡</span>
-                <span class="ap-dot" id="apDot2" title="人物" onclick="triggerAgentWithCheck('character')">👤</span>
-                <span class="ap-dot" id="apDot3" title="章節" onclick="triggerAgentWithCheck('chapters')">📝</span>
-                <span class="ap-dot" id="apDot4" title="編劇" onclick="triggerAgentWithCheck('script')">✍️</span>
-                <span class="ap-dot" id="apDot5" title="分鏡" onclick="triggerAgentWithCheck('storyboard')">🎬</span>
+            <!-- 左侧：项目区 -->
+            <div class="header-project">
+                <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+                <div class="header-title" id="headerTitle">FizzDragon AIGC番劇系統</div>
+                <div class="agent-progress-bar" id="agentProgressBar" style="display:none;">
+                    <span class="ap-dot" id="apDot1" title="概念" onclick="triggerAgentWithCheck('concept')">💡</span>
+                    <span class="ap-dot" id="apDot2" title="人物" onclick="triggerAgentWithCheck('character')">👤</span>
+                    <span class="ap-dot" id="apDot3" title="章節" onclick="triggerAgentWithCheck('chapters')">📝</span>
+                    <span class="ap-dot" id="apDot4" title="編劇" onclick="triggerAgentWithCheck('script')">✍️</span>
+                    <span class="ap-dot" id="apDot5" title="分鏡" onclick="triggerAgentWithCheck('storyboard')">🎬</span>
+                </div>
+                <button class="auto-pilot-toggle" id="autoPilotToggle" onclick="toggleAutoPilotMode()" title="Auto-Pilot 模式">
+                    🚀 <span id="autoPilotLabel">OFF</span>
+                </button>
             </div>
-            <div class="status">
-                <div class="status-dot" id="statusDot"></div>
-                <span id="statusText">連接中...</span>
+            <!-- 右侧：系统区 -->
+            <div class="header-system">
+                <div class="status">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">連接中...</span>
+                </div>
+                <select class="lang-select" id="langSelect" onchange="changeLanguage(this.value)">
+                    <option value="en">EN</option>
+                    <option value="zh-CN">简</option>
+                    <option value="zh-TW">繁</option>
+                </select>
+                <div class="user-menu" id="userMenu">
+                    <span id="currentUsername">👤</span>
+                    <button onclick="handleLogout()" title="登出" style="background:none;border:none;color:#888;cursor:pointer;padding:5px;">🚪</button>
+                </div>
+                <button class="menu-toggle mobile-assets-btn" onclick="toggleAssetsPanel()">📦</button>
             </div>
-            <button class="auto-pilot-toggle" id="autoPilotToggle" onclick="toggleAutoPilotMode()" title="Auto-Pilot 模式">
-                🚀 <span id="autoPilotLabel">OFF</span>
-            </button>
-            <select class="lang-select" id="langSelect" onchange="changeLanguage(this.value)">
-                <option value="en">English</option>
-                <option value="zh-CN">简体中文</option>
-                <option value="zh-TW">繁體中文</option>
-            </select>
-            <div class="user-menu" id="userMenu">
-                <span id="currentUsername">👤</span>
-                <button onclick="handleLogout()" title="登出" style="background:none;border:none;color:#888;cursor:pointer;padding:5px;">🚪</button>
-            </div>
-            <button class="menu-toggle mobile-assets-btn" onclick="toggleAssetsPanel()" style="margin-left:auto;">📦 <span class="mobile-only">資產</span></button>
         </div>
         
         <div class="content-wrapper">
