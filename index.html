@@ -4314,11 +4314,15 @@ function copyAllProductionPrompts() {
 
 // 🎨 批量生成所有角色形象
 async function generateAllCharacterImages() {
+    console.log('🎨 generateAllCharacterImages called');
     const chars = state.assets?.characters || [];
+    console.log('🎨 Total chars:', chars.length, chars.map(c => ({ name: c.name, hasPrompt: !!(c.ai_prompt || c.prompt), hasImage: !!c.image_url })));
+    
     const toGenerate = chars.filter(c => !c.image_url && (c.ai_prompt || c.prompt));
+    console.log('🎨 To generate:', toGenerate.length);
     
     if (toGenerate.length === 0) {
-        addAIMessage('✅ 所有角色都已有形象圖片，或缺少Prompt');
+        addAIMessage('✅ 所有角色都已有形象圖片，或缺少Prompt（請先確保角色有AI Prompt）');
         return;
     }
     
