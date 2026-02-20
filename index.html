@@ -6209,7 +6209,6 @@ function getChaptersHtml(a) {
                     <span style="background:${phaseColor};color:white;padding:1px 6px;border-radius:3px;margin-right:6px;font-size:9px;font-weight:600;">【${phase}】</span>
                     <span style="color:var(--accent);margin-right:6px;font-weight:600;">E${String(num).padStart(2,'0')}</span>
                     <span style="flex:1;font-weight:500;" onclick="toggleChapterContent(${num})">${ch.title || `第${num}集`}</span>
-                    ${!hasStoryboard && !generatingStoryboards[num] ? `<button class="gen-btn-mini" onclick="event.stopPropagation();runStoryboardGeneration(${num})">🎬 生成分鏡</button>` : ''}
                     ${generatingStoryboards[num] ? `<span style="color:#E31B23;font-size:10px;" class="generating-pulse">🔄 生成中...</span>` : ''}
                     ${hasStoryboard ? `<span style="color:#38a169;font-size:10px;">✅ ${shotCount}鏡</span>` : ''}
                     <span id="chapterToggle${num}" style="font-size:10px;color:#666;margin-left:6px;" onclick="toggleChapterContent(${num})">▼</span>
