@@ -887,6 +887,50 @@
             color: var(--text2);
         }
         
+        /* 智能体进度条 */
+        .agent-progress-bar {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: 12px;
+            padding: 4px 8px;
+            background: var(--surface);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+        .ap-dot {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+            opacity: 0.4;
+            filter: grayscale(1);
+        }
+        .ap-dot:hover {
+            transform: scale(1.2);
+            opacity: 1;
+            filter: grayscale(0);
+        }
+        .ap-dot.done {
+            opacity: 1;
+            filter: grayscale(0);
+            background: rgba(74, 222, 128, 0.2);
+        }
+        .ap-dot.running {
+            opacity: 1;
+            filter: grayscale(0);
+            animation: ap-pulse 1s infinite;
+        }
+        @keyframes ap-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+        
         /* 768px 媒体查询移至底部统一管理 */
         
         /* 顶部栏 - FizzDragon风格 */
@@ -2007,6 +2051,13 @@
         <div class="header">
             <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
             <div class="header-title" id="headerTitle">FizzDragon AIGC番劇系統</div>
+            <div class="agent-progress-bar" id="agentProgressBar" style="display:none;">
+                <span class="ap-dot" id="apDot1" title="概念" onclick="runConceptStep()">💡</span>
+                <span class="ap-dot" id="apDot2" title="人物" onclick="runCharacterStep()">👤</span>
+                <span class="ap-dot" id="apDot3" title="章節" onclick="runChaptersStep()">📝</span>
+                <span class="ap-dot" id="apDot4" title="編劇" onclick="runScriptStepForNextChapter()">✍️</span>
+                <span class="ap-dot" id="apDot5" title="分鏡" onclick="runStoryboardStepForNextChapter()">🎬</span>
+            </div>
             <div class="status">
                 <div class="status-dot" id="statusDot"></div>
                 <span id="statusText">連接中...</span>
@@ -3229,9 +3280,40 @@ function toggleAssetsPanel() {
 }
 
 // 更新右侧资产面板
+// 更新顶部智能体进度条
+function updateAgentProgressBar(assets) {
+    const bar = document.getElementById('agentProgressBar');
+    if (!bar) return;
+    
+    const a = assets || state.assets || {};
+    const hasAnyContent = a.concept || (a.characters?.length > 0) || (a.chapters?.length > 0);
+    
+    // 有内容时显示进度条
+    bar.style.display = hasAnyContent || state.novel ? 'flex' : 'none';
+    
+    // 更新各智能体状态
+    const dots = [
+        { id: 'apDot1', done: !!a.concept },
+        { id: 'apDot2', done: (a.characters?.length || 0) > 0 },
+        { id: 'apDot3', done: (a.chapters?.length || 0) > 0 },
+        { id: 'apDot4', done: Object.keys(a.scripts || {}).length > 0 },
+        { id: 'apDot5', done: Object.keys(a.storyboards || {}).length > 0 }
+    ];
+    
+    dots.forEach(d => {
+        const el = document.getElementById(d.id);
+        if (el) {
+            el.classList.toggle('done', d.done);
+        }
+    });
+}
+
 function updateAssetsPanel() {
     const a = state.assets || {};
     const p = state.production || {};
+    
+    // 🔧 更新顶部智能体进度条
+    updateAgentProgressBar(a);
     
     // 🔧 调试：打印当前资产状态
     console.log('📦 updateAssetsPanel - 当前资产:', {
