@@ -117,24 +117,24 @@
         .mode-tabs {
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            margin-bottom: 12px;
+            gap: 6px;
+            margin-bottom: 10px;
         }
         
         .mode-tab {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            padding: 14px 16px;
+            gap: 6px;
+            padding: 8px 12px;
             background: rgba(255,255,255,0.03);
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: 8px;
             color: var(--text2);
-            font-size: 14px;
+            font-size: 12px;
             cursor: pointer;
-            transition: all 0.2s;
-            min-height: 48px;
+            transition: all 0.15s;
+            min-height: 36px;
         }
         
         .mode-tab:hover {
@@ -159,22 +159,22 @@
         
         .new-chat-btn {
             width: 100%;
-            padding: 12px;
+            padding: 8px 10px;
             background: rgba(232, 48, 48, 0.1);
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             color: #E31B23;
-            font-size: 14px;
+            font-size: 12px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.15s;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 5px;
         }
         
         .new-chat-btn .btn-icon {
-            font-size: 14px;
+            font-size: 12px;
         }
         
         .new-chat-btn:hover {
@@ -1382,26 +1382,27 @@
         .quick-replies {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 16px;
+            gap: 6px;
+            margin-top: 10px;
             max-width: 100%;
         }
         
         .quick-reply {
-            padding: 10px 18px;
+            padding: 6px 12px;
             background: rgba(232, 48, 48, 0.08);
             border: none;
-            border-radius: 20px;
+            border-radius: 14px;
             color: #E31B23;
-            font-size: 13px;
+            font-size: 12px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
             max-width: 100%;
             word-break: break-word;
+            line-height: 1.3;
         }
         
         .quick-reply:hover, .quick-reply:active {
-            background: rgba(232, 48, 48, 0.2);
+            background: rgba(232, 48, 48, 0.18);
             color: #E31B23;
         }
         
@@ -1482,21 +1483,21 @@
         }
         
         .btn {
-            padding: 8px 16px;
-            border-radius: 8px;
+            padding: 6px 12px;
+            border-radius: 6px;
             border: none;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.15s;
         }
         
         .btn-primary {
             background: var(--accent-gradient);
             color: white;
             border: none;
-            padding: 10px 18px;
-            font-size: 16px;
+            padding: 8px 14px;
+            font-size: 13px;
         }
         
         .btn-primary:hover { 
@@ -1509,7 +1510,7 @@
             background: #252525;
             color: var(--text2);
             border: 1px solid #333;
-            padding: 10px 14px;
+            padding: 8px 12px;
             font-size: 16px;
             border-radius: 8px;
         }
@@ -6493,47 +6494,43 @@ function loadProject(projectId) {
     // 更新当前项目ID
     currentProjectId = projectId;
     
-    // 智能体状态HTML
+    // 智能体状态HTML - 紧凑版
     const agentHtml = `
-<div class="agent-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0;">
-    <div class="agent-card ${assets.concept ? 'done' : ''}" onclick="triggerAgentWithCheck('concept')" style="padding:12px;background:var(--surface);border-radius:8px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;">
-        <div style="font-size:18px;margin-bottom:4px;">💡</div>
-        <div style="font-weight:600;font-size:13px;">概念智能體</div>
-        <div style="font-size:11px;color:var(--text2);">${assets.concept ? '✅ 已完成' : '❌ 待生成'}</div>
+<div class="agent-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0;">
+    <div class="agent-card ${assets.concept ? 'done' : ''}" onclick="triggerAgentWithCheck('concept')" style="padding:8px;background:var(--surface);border-radius:6px;cursor:pointer;border:1px solid var(--border);transition:all 0.15s;text-align:center;">
+        <div style="font-size:16px;">💡</div>
+        <div style="font-size:10px;font-weight:600;">概念</div>
+        <div style="font-size:9px;color:var(--text2);">${assets.concept ? '✅' : '⏳'}</div>
     </div>
-    <div class="agent-card ${charCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('character')" style="padding:12px;background:var(--surface);border-radius:8px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;">
-        <div style="font-size:18px;margin-bottom:4px;">👤</div>
-        <div style="font-weight:600;font-size:13px;">人物智能體</div>
-        <div style="font-size:11px;color:var(--text2);">${charCount > 0 ? '✅ ' + charCount + ' 個角色' : '❌ 待生成'}</div>
-        <div style="font-size:10px;color:#888;margin-top:2px;">需先完成：💡</div>
+    <div class="agent-card ${charCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('character')" style="padding:8px;background:var(--surface);border-radius:6px;cursor:pointer;border:1px solid var(--border);transition:all 0.15s;text-align:center;">
+        <div style="font-size:16px;">👤</div>
+        <div style="font-size:10px;font-weight:600;">人物</div>
+        <div style="font-size:9px;color:var(--text2);">${charCount > 0 ? charCount + '個' : '⏳'}</div>
     </div>
-    <div class="agent-card ${chapterCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('chapters')" style="padding:12px;background:var(--surface);border-radius:8px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;">
-        <div style="font-size:18px;margin-bottom:4px;">📝</div>
-        <div style="font-weight:600;font-size:13px;">章節智能體</div>
-        <div style="font-size:11px;color:var(--text2);">${chapterCount > 0 ? '✅ ' + chapterCount + ' 集' : '❌ 待生成'}</div>
-        <div style="font-size:10px;color:#888;margin-top:2px;">需先完成：💡</div>
+    <div class="agent-card ${chapterCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('chapters')" style="padding:8px;background:var(--surface);border-radius:6px;cursor:pointer;border:1px solid var(--border);transition:all 0.15s;text-align:center;">
+        <div style="font-size:16px;">📝</div>
+        <div style="font-size:10px;font-weight:600;">章節</div>
+        <div style="font-size:9px;color:var(--text2);">${chapterCount > 0 ? chapterCount + '集' : '⏳'}</div>
     </div>
-    <div class="agent-card ${scriptCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('script')" style="padding:12px;background:var(--surface);border-radius:8px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;">
-        <div style="font-size:18px;margin-bottom:4px;">✍️</div>
-        <div style="font-weight:600;font-size:13px;">編劇智能體</div>
-        <div style="font-size:11px;color:var(--text2);">${scriptCount > 0 ? '📄 ' + scriptCount + '/' + chapterCount + ' 集' : '❌ 待生成'}</div>
-        <div style="font-size:10px;color:#888;margin-top:2px;">需先完成：💡👤📝</div>
+    <div class="agent-card ${scriptCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('script')" style="padding:8px;background:var(--surface);border-radius:6px;cursor:pointer;border:1px solid var(--border);transition:all 0.15s;text-align:center;">
+        <div style="font-size:16px;">✍️</div>
+        <div style="font-size:10px;font-weight:600;">編劇</div>
+        <div style="font-size:9px;color:var(--text2);">${scriptCount > 0 ? scriptCount + '/' + chapterCount : '⏳'}</div>
     </div>
-    <div class="agent-card ${sbCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('storyboard')" style="padding:12px;background:var(--surface);border-radius:8px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;">
-        <div style="font-size:18px;margin-bottom:4px;">🎬</div>
-        <div style="font-weight:600;font-size:13px;">分鏡智能體</div>
-        <div style="font-size:11px;color:var(--text2);">${sbCount > 0 ? '🎬 ' + sbCount + '/' + chapterCount + ' 集' : '❌ 待生成'}</div>
-        <div style="font-size:10px;color:#888;margin-top:2px;">需先完成：✍️</div>
+    <div class="agent-card ${sbCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('storyboard')" style="padding:8px;background:var(--surface);border-radius:6px;cursor:pointer;border:1px solid var(--border);transition:all 0.15s;text-align:center;">
+        <div style="font-size:16px;">🎬</div>
+        <div style="font-size:10px;font-weight:600;">分鏡</div>
+        <div style="font-size:9px;color:var(--text2);">${sbCount > 0 ? sbCount + '/' + chapterCount : '⏳'}</div>
     </div>
-    <div class="agent-card auto" onclick="runAutoPilot()" style="padding:12px;background:linear-gradient(135deg,rgba(99,102,241,0.2),rgba(139,92,246,0.2));border-radius:8px;cursor:pointer;border:1px solid #6366F1;transition:all 0.2s;">
-        <div style="font-size:18px;margin-bottom:4px;">🚀</div>
-        <div style="font-weight:600;font-size:13px;color:#6366F1;">Auto-Pilot</div>
-        <div style="font-size:11px;color:var(--text2);">一鍵全自動</div>
+    <div class="agent-card auto" onclick="runAutoPilot()" style="padding:8px;background:linear-gradient(135deg,rgba(99,102,241,0.15),rgba(139,92,246,0.15));border-radius:6px;cursor:pointer;border:1px solid #6366F1;transition:all 0.15s;text-align:center;">
+        <div style="font-size:16px;">🚀</div>
+        <div style="font-size:10px;font-weight:600;color:#6366F1;">自動</div>
+        <div style="font-size:9px;color:var(--text2);">全流程</div>
     </div>
 </div>
 <style>
-.agent-card:hover { border-color:var(--accent) !important; transform:translateY(-2px); }
-.agent-card.done { border-color:#4ade80 !important; }
+.agent-card:hover { border-color:var(--accent) !important; transform:scale(1.03); }
+.agent-card.done { border-color:#4ade80 !important; background:rgba(74,222,128,0.08) !important; }
 .agent-card.auto:hover { border-color:#8B5CF6 !important; }
 </style>`;
     
