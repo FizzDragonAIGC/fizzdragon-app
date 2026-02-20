@@ -1353,6 +1353,12 @@
             .assets-panel {
                 width: 350px;
             }
+            .assets-panel.expanded {
+                width: 600px;
+            }
+            .assets-panel.collapsed {
+                width: 200px;
+            }
         }
         
         .menu-toggle {
@@ -5153,6 +5159,8 @@ function showStoryboardAdjustment() {
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('langSelect').value = currentLang;
     applyLanguage();
+    // 🔧 恢复面板状态
+    setTimeout(() => restoreAssetsPanelState(), 100);
 });
 
 // ==================== 状态 ====================
@@ -5471,19 +5479,45 @@ function toggleAssetsPanelWidth() {
     const btn = document.getElementById('expandBtn');
     
     // 三态切换: 标准 -> 展开 -> 收缩 -> 标准
+    let newState = 'normal';
     if (panel.classList.contains('expanded')) {
         panel.classList.remove('expanded');
         panel.classList.add('collapsed');
         btn.innerHTML = '▶▶';
         btn.title = '展開面板';
+        newState = 'collapsed';
     } else if (panel.classList.contains('collapsed')) {
         panel.classList.remove('collapsed');
         btn.innerHTML = '◀▶';
         btn.title = '展開/收縮';
+        newState = 'normal';
     } else {
         panel.classList.add('expanded');
         btn.innerHTML = '◀◀';
         btn.title = '收縮面板';
+        newState = 'expanded';
+    }
+    // 🔧 保存状态
+    localStorage.setItem('assetsPanelState', newState);
+}
+
+// 🔧 初始化时恢复面板状态
+function restoreAssetsPanelState() {
+    const saved = localStorage.getItem('assetsPanelState');
+    if (!saved || saved === 'normal') return;
+    
+    const panel = document.getElementById('assetsPanel');
+    const btn = document.getElementById('expandBtn');
+    if (!panel || !btn) return;
+    
+    if (saved === 'expanded') {
+        panel.classList.add('expanded');
+        btn.innerHTML = '◀◀';
+        btn.title = '收縮面板';
+    } else if (saved === 'collapsed') {
+        panel.classList.add('collapsed');
+        btn.innerHTML = '▶▶';
+        btn.title = '展開面板';
     }
 }
 
