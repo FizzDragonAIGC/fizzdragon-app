@@ -8138,23 +8138,27 @@ ${issues.map(i => `${i}`).join('\n')}
 // 用户是否正在往上滚动（查看历史）
 let userScrolledUp = false;
 let lastScrollTime = 0;
+let scrollLockUntil = 0; // 锁定自动滚动直到这个时间
 
 function scrollToBottom(force = false) {
     const container = document.getElementById('chatContainer');
     if (!container) return;
     
-    // 如果用户在3秒内手动滚动过，不自动滚动
-    if (Date.now() - lastScrollTime < 3000 && userScrolledUp) {
+    // 如果用户手动滚动过且还在锁定期内，完全不自动滚动
+    if (userScrolledUp && Date.now() < scrollLockUntil) {
         return;
     }
     
-    // 检查用户是否滚动到接近底部（距底部300px内）
-    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 300;
+    // 检查用户是否滚动到接近底部（距底部200px内）
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 200;
     
     // 只有在用户接近底部 或 强制滚动时才自动滚动
     if (isNearBottom || force) {
-        setTimeout(() => container.scrollTop = container.scrollHeight, 100);
-        userScrolledUp = false;
+        setTimeout(() => {
+            if (!userScrolledUp || force) {
+                container.scrollTop = container.scrollHeight;
+            }
+        }, 100);
     }
 }
 
@@ -8162,13 +8166,27 @@ function scrollToBottom(force = false) {
 document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('chatContainer');
     if (container) {
+        let scrollTimeout;
         container.addEventListener('scroll', () => {
-            const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 300;
+            const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 200;
+            
             if (!isNearBottom) {
                 userScrolledUp = true;
                 lastScrollTime = Date.now();
+                scrollLockUntil = Date.now() + 30000; // 锁定30秒
+                
+                // 清除之前的超时，重新计时
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    // 30秒后如果用户没有继续滚动，解除锁定
+                    if (Date.now() - lastScrollTime > 30000) {
+                        userScrolledUp = false;
+                    }
+                }, 30000);
             } else {
+                // 滚到底部了，解除锁定
                 userScrolledUp = false;
+                scrollLockUntil = 0;
             }
         });
     }
