@@ -228,8 +228,7 @@
             flex-shrink: 0;
             margin-right: 6px;
         }
-        .proj-status.proj-idle { background: #555; }
-        .proj-status.proj-partial { background: #FFB020; } /* 黄色 = 进行中 */
+        .proj-status.proj-idle { background: #555; } /* 灰色 = 待处理 */
         .proj-status.proj-complete { background: #E31B23; } /* 红色 = 完成 */
         .proj-status.proj-running { 
             width: 8px; height: 8px;
@@ -4330,7 +4329,7 @@ function renderProjectListByMode() {
         const stepName = stepNameKeys[p.step] ? t(stepNameKeys[p.step]) : '';
         const icon = p.type === 'ad' ? '📺' : (p.stage === 'write' ? '✍️' : '📄');
         
-        // 计算项目状态
+        // 计算项目状态（3种：待开始/处理中/完成）
         const hasConcept = !!assets.concept;
         const hasChars = (assets.characters?.length || 0) > 0;
         const hasChapters = chapterCount > 0;
@@ -4338,18 +4337,15 @@ function renderProjectListByMode() {
         const hasSb = sbCount > 0;
         const isRunning = runningProjects && runningProjects[p.id];
         const isComplete = hasConcept && hasChars && hasChapters && hasScripts && hasSb;
-        const isPartial = hasConcept || hasChars || hasChapters;
         
-        // 状态指示器
+        // 状态指示器：灰(待开始) / 转圈(处理中) / 红(完成)
         let statusIndicator = '';
         if (isRunning) {
             statusIndicator = '<span class="proj-status proj-running" title="處理中"></span>';
         } else if (isComplete) {
             statusIndicator = '<span class="proj-status proj-complete" title="已完成"></span>';
-        } else if (isPartial) {
-            statusIndicator = '<span class="proj-status proj-partial" title="進行中"></span>';
         } else {
-            statusIndicator = '<span class="proj-status proj-idle" title="待開始"></span>';
+            statusIndicator = '<span class="proj-status proj-idle" title="待處理"></span>';
         }
         
         const displayName = String(p.name || t('unnamed') || '未命名');
