@@ -2738,14 +2738,14 @@
             
                 <!-- 智能体快捷工具栏 -->
                 <div class="agent-toolbar" id="agentToolbar" style="display:none;">
-                    <button class="agent-btn" onclick="triggerAgentWithCheck('concept')" id="btnConcept">💡 概念</button>
-                    <button class="agent-btn" onclick="triggerAgentWithCheck('interview')" id="btnInterview">🎤 訪談</button>
-                    <button class="agent-btn" onclick="triggerAgentWithCheck('character')" id="btnCharacter">👤 人物</button>
-                    <button class="agent-btn" onclick="triggerAgentWithCheck('chapters')" id="btnChapters">📝 章節</button>
-                    <button class="agent-btn" onclick="triggerAgentWithCheck('production')" id="btnProduction">👗 服化道</button>
-                    <button class="agent-btn" onclick="triggerAgentWithCheck('script')" id="btnScript">✍️ 編劇</button>
-                    <button class="agent-btn" onclick="triggerAgentWithCheck('storyboard')" id="btnStoryboard">🎬 分鏡</button>
-                    <button class="agent-btn auto" onclick="runAutoPilot()">🚀 Auto</button>
+                    <button class="agent-btn" onclick="triggerAgentWithCheck('concept')" id="btnConcept" title="Alt+1">💡 概念</button>
+                    <button class="agent-btn" onclick="triggerAgentWithCheck('interview')" id="btnInterview" title="Alt+2">🎤 訪談</button>
+                    <button class="agent-btn" onclick="triggerAgentWithCheck('character')" id="btnCharacter" title="Alt+3">👤 人物</button>
+                    <button class="agent-btn" onclick="triggerAgentWithCheck('chapters')" id="btnChapters" title="Alt+4">📝 章節</button>
+                    <button class="agent-btn" onclick="triggerAgentWithCheck('production')" id="btnProduction" title="Alt+P">👗 服化道</button>
+                    <button class="agent-btn" onclick="triggerAgentWithCheck('script')" id="btnScript" title="Alt+5">✍️ 編劇</button>
+                    <button class="agent-btn" onclick="triggerAgentWithCheck('storyboard')" id="btnStoryboard" title="Alt+6">🎬 分鏡</button>
+                    <button class="agent-btn auto" onclick="runAutoPilot()" title="Alt+A">🚀 Auto</button>
                 </div>
                 
                 <div class="input-area">
@@ -5540,6 +5540,11 @@ document.addEventListener('keydown', (e) => {
             case '6': // Alt+6 → 🎬分镜
                 e.preventDefault();
                 runStoryboardForNextChapter();
+                break;
+            case 'p': // Alt+P → 👗服化道
+            case 'P':
+                e.preventDefault();
+                triggerAgentWithCheck('production');
                 break;
             case 'a': // Alt+A → 🚀 Auto-Pilot
             case 'A':
