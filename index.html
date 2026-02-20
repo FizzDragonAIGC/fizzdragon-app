@@ -10941,13 +10941,13 @@ function showAgentStatus(agentName, status, agentId = null, steps = null) {
         progressMsg.className = 'message ai agent-progress';
         document.getElementById('chatContainer').appendChild(progressMsg);
     }
-    // 🔧 更紧凑的布局，显示avatar大一点
+    // 🔧 更紧凑的布局
     progressMsg.innerHTML = `
-        <div class="role"><span style="font-size:18px;">${avatar}</span> ${personalizedName}</div>
-        <div class="content" style="padding:4px 0;">
-            <div style="display:flex;align-items:center;gap:8px;">
+        <div class="role"><span style="font-size:14px;">${avatar}</span> ${personalizedName}</div>
+        <div class="content" style="padding:2px 0;">
+            <div style="display:flex;align-items:center;gap:6px;">
                 <div class="agent-spinner-inline"></div>
-                <span style="font-style:italic;color:#ccc;">${phrase}</span>
+                <span style="font-style:italic;color:#ccc;font-size:13px;">${phrase}</span>
             </div>
             ${stepsHtml}
         </div>
@@ -10974,7 +10974,11 @@ function showAgentStatus(agentName, status, agentId = null, steps = null) {
             .agent-progress {
                 border-left: 2px solid #E31B23 !important;
                 background: rgba(227, 27, 35, 0.05) !important;
-                padding: 8px 12px !important;
+                padding: 4px 10px !important;
+            }
+            .agent-progress .role {
+                margin-bottom: 2px !important;
+                font-size: 12px !important;
             }
             /* 隊列狀態條 */
             .queue-status-bar {
