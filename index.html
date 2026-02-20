@@ -3755,34 +3755,29 @@ async function finishManualEpisodeInput() {
 ⏱️ 預估 ${totalDuration} 分鐘
 
 ────────────────
-🤖 正在自動提取高概念和人物...`);
+🤖 正在整理故事結構和框架...`);
     
-    // 自动提取高概念
+    addTypingIndicator();
+    
+    // 自动提取高概念和人物
     try {
-        addTypingIndicator();
         await runConceptStepSilent();
-        removeTypingIndicator();
-        addAIMessage('✅ 高概念提取完成！');
-    } catch (e) {
-        removeTypingIndicator();
-        console.error('概念提取失败:', e);
-    }
-    
-    // 自动提取人物
-    try {
-        addTypingIndicator();
         await runCharacterStepSilent();
-        removeTypingIndicator();
-        addAIMessage('✅ 人物小傳提取完成！');
     } catch (e) {
-        removeTypingIndicator();
-        console.error('人物提取失败:', e);
+        console.error('结构提取失败:', e);
     }
     
+    removeTypingIndicator();
     saveProject(state.novelTitle, true);
     updateAssetsPanel();
     
-    addAIMessage(`🎉 **準備就緒！**
+    const conceptTitle = state.assets?.concept?.logline || '已分析';
+    const charCount = state.assets?.characters?.length || 0;
+    
+    addAIMessage(`🎉 **故事結構整理完成！**
+
+💡 高概念：${conceptTitle}
+👤 識別到 ${charCount} 個角色
 
 現在可以：`, [
         { text: '🚀 Auto-Pilot生成全部', action: () => runAutoPilot() },
