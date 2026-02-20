@@ -248,7 +248,7 @@
             border-top-color: transparent; 
             background: transparent;
             animation: proj-spin 0.6s linear infinite;
-            box-shadow: 0 0 8px rgba(99,102,241,0.5);
+            box-shadow: 0 0 8px rgba(227,27,35,0.5);
         } /* 蓝色转圈 = Auto-Pilot */
         @keyframes proj-spin { to { transform: rotate(360deg); } }
         @keyframes proj-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.7; transform:scale(1.1); } }
@@ -651,12 +651,12 @@
             color: var(--accent);
         }
         .fizzstudio-btn.primary {
-            background: linear-gradient(135deg, #6366F1, #8B5CF6);
+            background: linear-gradient(135deg, #E31B23, #C41920);
             border: none;
             color: white;
         }
         .fizzstudio-btn.primary:hover {
-            opacity: 0.9;
+            background: linear-gradient(135deg, #ff3b42, #E31B23);
             transform: scale(1.02);
         }
         .fizzstudio-char-grid {
@@ -874,12 +874,12 @@
             transition: all 0.2s;
         }
         .char-gen-btn {
-            background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2));
-            color: #8B5CF6;
-            border-color: #6366F1;
+            background: linear-gradient(135deg, rgba(227,27,35,0.2), rgba(196,25,32,0.2));
+            color: #E31B23;
+            border-color: #E31B23;
         }
         .char-gen-btn:hover {
-            background: linear-gradient(135deg, #6366F1, #8B5CF6);
+            background: linear-gradient(135deg, #E31B23, #C41920);
             color: white;
         }
         .char-edit-btn {
@@ -3328,7 +3328,7 @@ async function runAutoPilotCore() {
 .ap-indicator.ap-done { background:#E31B23; } /* 红点 = 完成 */
 .ap-indicator.ap-need-input { background:#4ade80; } /* 绿点 = 需沟通 */
 .ap-indicator.ap-error { background:#FFD700; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); border-radius:0; } /* 闪电/三角 = 失败 */
-.ap-step.running { background:rgba(99,102,241,0.15); }
+.ap-step.running { background:rgba(227,27,35,0.15); }
 .ap-step.done { background:rgba(227,27,35,0.1); }
 .ap-step.error { background:rgba(239,68,68,0.15); }
 @keyframes ap-spin { to { transform: rotate(360deg); } }
@@ -4253,7 +4253,7 @@ function updateAssetsPanel() {
         const setCount = a.sets?.length || 0;
         
         html += `<div class="assets-section">
-            <div class="assets-section-header" onclick="toggleSection('fizzstudio')" style="background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(139,92,246,0.1));">
+            <div class="assets-section-header" onclick="toggleSection('fizzstudio')">
                 <span>🚀 FizzStudio 素材</span>
                 <span class="assets-section-stats">${charWithPrompt}人 | ${totalShots}鏡 | ${charWithImage}圖</span>
                 <span id="fizzstudioToggle2">▲</span>
