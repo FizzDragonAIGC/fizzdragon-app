@@ -851,6 +851,32 @@
         }
         
         /* 角色资产项 */
+        /* 人物Tab切换 */
+        .char-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .char-tab {
+            flex: 1;
+            padding: 6px 10px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text2);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .char-tab:hover {
+            color: var(--text);
+            background: rgba(255,255,255,0.03);
+        }
+        .char-tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            font-weight: 600;
+        }
         .character-asset-item {
             padding: 8px 12px;
             border-bottom: 1px solid var(--border);
@@ -4243,9 +4269,36 @@ function updateAssetsPanel() {
             `;
         }
         
-        // 02 人物小传
+        // 02 人物小传 - 主角/配角Tab分类
         if (a.characters?.length > 0) {
             const withPrompt = a.characters.filter(c => c.prompt).length;
+            const mainChars = a.characters.filter(c => c.role === '主角' || c.role === 'main' || c.role === '主角/男主' || c.role === '主角/女主');
+            const sideChars = a.characters.filter(c => c.role !== '主角' && c.role !== 'main' && c.role !== '主角/男主' && c.role !== '主角/女主');
+            
+            const renderCharList = (chars, startIdx) => chars.map((c, idx) => {
+                const i = a.characters.indexOf(c); // 获取原始索引
+                return `
+                    <div class="character-asset-item">
+                        <div class="character-asset-header" onclick="toggleCharacterDetail(${i})" style="cursor:pointer;">
+                            <span class="character-asset-name">• <b>${c.name}</b></span>
+                            <span class="character-asset-role">(${c.role || '角色'})</span>
+                            <span class="character-asset-toggle" id="charToggle${i}">▼</span>
+                        </div>
+                        <div class="character-asset-detail" id="charDetail${i}" style="display:none;" onclick="event.stopPropagation()">
+                            ${c.image_url ? `<div class="char-section"><div class="char-image-container"><img src="${c.image_url}" class="char-image" onclick="window.open('${c.image_url}','_blank')"/></div></div>` : ''}
+                            ${c.bio ? `<div class="char-section"><div class="char-section-title">📖 小傳</div><div class="char-section-content">${formatBio(c.bio)}</div></div>` : ''}
+                            ${c.appearance ? `<div class="char-section"><div class="char-section-title">👤 外貌</div><div class="char-section-content">${c.appearance}</div></div>` : ''}
+                            ${(c.prompt || c.ai_prompt) ? `<div class="char-section"><div class="char-section-title">🎨 Prompt <button class="copy-btn" onclick="event.stopPropagation();copyCharPrompt(${i})">📋</button></div><div class="char-section-content char-prompt" id="charPrompt${i}">${c.prompt || c.ai_prompt}</div></div>` : ''}
+                            <div class="char-section char-actions">
+                                <button class="char-gen-btn" onclick="event.stopPropagation();generateCharacterImage(${i})" ${c.image_url ? 'style="opacity:0.6;"' : ''}>🎨 ${c.image_url ? '重新生成' : '生成形象'}</button>
+                                <button class="char-edit-btn" onclick="event.stopPropagation();editCharacter(${i})">✏️ 編輯</button>
+                                <button class="char-delete-btn" onclick="event.stopPropagation();deleteCharacter(${i})">🗑️</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
             html += `
                 <div class="canvas-card">
                     <div class="canvas-card-header">
@@ -4253,27 +4306,13 @@ function updateAssetsPanel() {
                         <span class="canvas-card-title">👤 人物小傳 (${a.characters.length})</span>
                         <span class="canvas-card-status">${withPrompt} Prompt</span>
                     </div>
+                    <div class="char-tabs">
+                        <button class="char-tab active" onclick="switchCharTab('main')" id="charTabMain">⭐ 主角 (${mainChars.length})</button>
+                        <button class="char-tab" onclick="switchCharTab('side')" id="charTabSide">👥 配角 (${sideChars.length})</button>
+                    </div>
                     <div class="canvas-card-body" style="padding:0;">
-                        ${a.characters.map((c, i) => `
-                            <div class="character-asset-item">
-                                <div class="character-asset-header" onclick="toggleCharacterDetail(${i})" style="cursor:pointer;">
-                                    <span class="character-asset-name">• <b>${c.name}</b></span>
-                                    <span class="character-asset-role">(${c.role || '角色'})</span>
-                                    <span class="character-asset-toggle" id="charToggle${i}">▼</span>
-                                </div>
-                                <div class="character-asset-detail" id="charDetail${i}" style="display:none;" onclick="event.stopPropagation()">
-                                    ${c.image_url ? `<div class="char-section"><div class="char-image-container"><img src="${c.image_url}" class="char-image" onclick="window.open('${c.image_url}','_blank')"/></div></div>` : ''}
-                                    ${c.bio ? `<div class="char-section"><div class="char-section-title">📖 小傳</div><div class="char-section-content">${formatBio(c.bio)}</div></div>` : ''}
-                                    ${c.appearance ? `<div class="char-section"><div class="char-section-title">👤 外貌</div><div class="char-section-content">${c.appearance}</div></div>` : ''}
-                                    ${(c.prompt || c.ai_prompt) ? `<div class="char-section"><div class="char-section-title">🎨 Prompt <button class="copy-btn" onclick="event.stopPropagation();copyCharPrompt(${i})">📋</button></div><div class="char-section-content char-prompt" id="charPrompt${i}">${c.prompt || c.ai_prompt}</div></div>` : ''}
-                                    <div class="char-section char-actions">
-                                        <button class="char-gen-btn" onclick="event.stopPropagation();generateCharacterImage(${i})" ${c.image_url ? 'style="opacity:0.6;"' : ''}>🎨 ${c.image_url ? '重新生成' : '生成形象'}</button>
-                                        <button class="char-edit-btn" onclick="event.stopPropagation();editCharacter(${i})">✏️ 編輯</button>
-                                        <button class="char-delete-btn" onclick="event.stopPropagation();deleteCharacter(${i})">🗑️</button>
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
+                        <div id="charListMain">${renderCharList(mainChars, 0)}</div>
+                        <div id="charListSide" style="display:none;">${renderCharList(sideChars, mainChars.length)}</div>
                     </div>
                 </div>
             `;
@@ -4553,6 +4592,28 @@ function getChaptersHtml(a) {
         `;
     });
     return html;
+}
+
+// 切换人物Tab（主角/配角）
+function switchCharTab(tab) {
+    const mainTab = document.getElementById('charTabMain');
+    const sideTab = document.getElementById('charTabSide');
+    const mainList = document.getElementById('charListMain');
+    const sideList = document.getElementById('charListSide');
+    
+    if (!mainTab || !sideTab || !mainList || !sideList) return;
+    
+    if (tab === 'main') {
+        mainTab.classList.add('active');
+        sideTab.classList.remove('active');
+        mainList.style.display = 'block';
+        sideList.style.display = 'none';
+    } else {
+        mainTab.classList.remove('active');
+        sideTab.classList.add('active');
+        mainList.style.display = 'none';
+        sideList.style.display = 'block';
+    }
 }
 
 // 切换角色详情展开/收起
