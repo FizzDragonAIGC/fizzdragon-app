@@ -4371,41 +4371,76 @@ async function runAutoPilotCore() {
         }
     };
     
+    // 检测是否已有剧本（导入模式）
+    const hasScripts = Object.keys(state.assets?.scripts || {}).length > 0;
+    const hasChapters = (state.assets?.chapters?.length || 0) > 0;
+    const isScriptMode = state.mode === 'script' || (hasScripts && hasChapters);
+    
+    console.log('🚀 Auto-Pilot模式检测:', { isScriptMode, hasScripts, hasChapters });
+    
     try {
-        // 1. 高概念
-        updateStep('ap-concept', 'running', '🔄 1. 高概念分析中...');
-        await runConceptStepSilent();
-        updateStep('ap-concept', 'done', '✅ 1. 高概念分析完成');
+        // 1. 高概念（即使有剧本也需要提取）
+        if (!state.assets?.concept) {
+            updateStep('ap-concept', 'running', '🔄 1. 高概念分析中...');
+            await runConceptStepSilent();
+            updateStep('ap-concept', 'done', '✅ 1. 高概念分析完成');
+        } else {
+            updateStep('ap-concept', 'done', '⏭️ 1. 高概念（已有）');
+        }
         
-        // 2. 创意访谈
-        updateStep('ap-interview', 'running', '🔄 2. 創意訪談中...');
-        await runInterviewStepSilent();
-        updateStep('ap-interview', 'done', '✅ 2. 創意訪談完成');
+        // 2. 创意访谈（剧本模式跳过）
+        if (!isScriptMode) {
+            updateStep('ap-interview', 'running', '🔄 2. 創意訪談中...');
+            await runInterviewStepSilent();
+            updateStep('ap-interview', 'done', '✅ 2. 創意訪談完成');
+        } else {
+            updateStep('ap-interview', 'done', '⏭️ 2. 訪談（已有劇本）');
+        }
         
         // 3. 画风设计
-        updateStep('ap-artstyle', 'running', '🔄 3. 畫風設計中...');
-        await runArtstyleStepSilent();
-        updateStep('ap-artstyle', 'done', '✅ 3. 畫風設計完成');
+        if (!state.assets?.artstyle?.selected) {
+            updateStep('ap-artstyle', 'running', '🔄 3. 畫風設計中...');
+            await runArtstyleStepSilent();
+            updateStep('ap-artstyle', 'done', '✅ 3. 畫風設計完成');
+        } else {
+            updateStep('ap-artstyle', 'done', '⏭️ 3. 畫風（已有）');
+        }
         
         // 4. 角色
-        updateStep('ap-character', 'running', '🔄 4. 角色設計中...');
-        await runCharacterStepSilent();
-        updateStep('ap-character', 'done', '✅ 4. 角色設計完成');
+        if (!state.assets?.characters?.length) {
+            updateStep('ap-character', 'running', '🔄 4. 角色設計中...');
+            await runCharacterStepSilent();
+            updateStep('ap-character', 'done', '✅ 4. 角色設計完成');
+        } else {
+            updateStep('ap-character', 'done', '⏭️ 4. 角色（已有）');
+        }
         
-        // 5. 章节
-        updateStep('ap-chapters', 'running', '🔄 5. 章節規劃中...');
-        await runChaptersStepSilent();
-        updateStep('ap-chapters', 'done', '✅ 5. 章節規劃完成');
+        // 5. 章节（剧本模式已有，跳过）
+        if (!hasChapters) {
+            updateStep('ap-chapters', 'running', '🔄 5. 章節規劃中...');
+            await runChaptersStepSilent();
+            updateStep('ap-chapters', 'done', '✅ 5. 章節規劃完成');
+        } else {
+            updateStep('ap-chapters', 'done', '⏭️ 5. 章節（已有）');
+        }
         
         // 6. 服化道
-        updateStep('ap-production', 'running', '🔄 6. 服化道設計中...');
-        await runProductionStepSilent();
-        updateStep('ap-production', 'done', '✅ 6. 服化道設計完成');
+        if (!state.assets?.production) {
+            updateStep('ap-production', 'running', '🔄 6. 服化道設計中...');
+            await runProductionStepSilent();
+            updateStep('ap-production', 'done', '✅ 6. 服化道設計完成');
+        } else {
+            updateStep('ap-production', 'done', '⏭️ 6. 服化道（已有）');
+        }
         
-        // 7. 剧本（第1章）
-        updateStep('ap-script', 'running', '🔄 7. 劇本生成中...');
-        await runScriptStepSilent(1);
-        updateStep('ap-script', 'done', '✅ 7. 劇本生成完成');
+        // 7. 剧本（剧本模式已有，跳过）
+        if (!hasScripts) {
+            updateStep('ap-script', 'running', '🔄 7. 劇本生成中...');
+            await runScriptStepSilent(1);
+            updateStep('ap-script', 'done', '✅ 7. 劇本生成完成');
+        } else {
+            updateStep('ap-script', 'done', '⏭️ 7. 劇本（已有）');
+        }
         
         // 8. 分镜（第1章）
         updateStep('ap-storyboard', 'running', '🔄 8. 分鏡生成中...');
