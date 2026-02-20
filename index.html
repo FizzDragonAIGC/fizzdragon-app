@@ -905,6 +905,21 @@
         }
         
         /* 角色资产项 */
+        
+        /* 画风选择 */
+        .artstyle-options { display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
+        .artstyle-option { 
+            padding:8px; border-radius:6px; border:1px solid var(--border); 
+            cursor:pointer; transition:all 0.2s;
+        }
+        .artstyle-option:hover { border-color:var(--accent); background:rgba(227,27,35,0.05); }
+        .artstyle-option.selected { border-color:var(--accent); background:rgba(227,27,35,0.15); }
+        .artstyle-name { font-weight:600; font-size:12px; color:var(--accent); }
+        .artstyle-reason { font-size:10px; color:var(--text2); margin-top:4px; }
+        .artstyle-colors { display:flex; gap:4px; margin-top:6px; }
+        .color-dot { width:16px; height:16px; border-radius:50%; border:1px solid var(--border); }
+        .artstyle-prompt { margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+        
         /* 人物Tab切换 */
         .char-tabs {
             display: flex;
@@ -3798,9 +3813,13 @@ async function runChaptersStepSilent() {
 }
 
 async function runProductionStepSilent() {
-    const result = await callAgent('production_design', state.novel.substring(0, 2000), {
+    // 获取选中的画风prompt
+    const artstylePrompt = state.assets.artstyle?.final_suggestion?.full_prompt || 
+                           state.assets.artstyle?.recommendations?.[0]?.prompt_keywords || '';
+    const result = await callAgent('production_design', (state.novel || '').substring(0, 2000), {
         concept: state.assets.concept,
-        characters: state.assets.characters
+        characters: state.assets.characters,
+        artstyle: artstylePrompt
     });
     const parsed = safeJSONParse(result, 'production_design');
     state.assets.costumes = parsed.costumes || [];
@@ -3828,10 +3847,14 @@ async function runScriptStepSilent(chapterNum) {
 
 async function runStoryboardStepSilent(chapterNum) {
     const script = state.assets.scripts?.[chapterNum] || state.novel?.substring(0, 15000) || '';
+    // 获取选中的画风prompt
+    const artstylePrompt = state.assets.artstyle?.final_suggestion?.full_prompt || 
+                           state.assets.artstyle?.recommendations?.[0]?.prompt_keywords || '';
     const result = await callAgent('storyboard', script, {
         concept: state.assets.concept,
         characters: state.assets.characters,
-        production: state.production
+        production: state.production,
+        artstyle: artstylePrompt
     });
     const parsed = safeJSONParse(result, 'storyboard');
     state.assets.storyboards = state.assets.storyboards || {};
@@ -4401,6 +4424,38 @@ function updateAssetsPanel() {
                         <div class="canvas-card-row"><span class="canvas-card-label">主題</span><span class="canvas-card-value">${c.theme || '-'}</span></div>
                         <div class="canvas-card-row"><span class="canvas-card-label">基調</span><span class="canvas-card-value">${c.tone || '-'}</span></div>
                         ${c.logline ? `<div style="margin-top:6px;font-size:10px;color:var(--text2);line-height:1.4;">"${c.logline.substring(0, 80)}..."</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 01.5 画风设计
+        if (a.artstyle) {
+            const selectedStyle = a.artstyle.selected || a.artstyle.final_suggestion?.style_name || '';
+            const recommendations = a.artstyle.recommendations || [];
+            html += `
+                <div class="canvas-card">
+                    <div class="canvas-card-header" onclick="toggleArtstyleDetail()" style="cursor:pointer;">
+                        <span class="canvas-card-num">🎨</span>
+                        <span class="canvas-card-title">畫風設計</span>
+                        <span class="canvas-card-status">${selectedStyle || '待選擇'}</span>
+                    </div>
+                    <div class="canvas-card-body" id="artstyleDetail" style="display:none;">
+                        <div class="artstyle-options">
+                            ${recommendations.map((r, i) => `
+                                <div class="artstyle-option ${(selectedStyle === r.style_name) ? 'selected' : ''}" onclick="selectArtstyle(${i})">
+                                    <div class="artstyle-name">${r.style_name}</div>
+                                    <div class="artstyle-reason">${r.reason || ''}</div>
+                                    ${r.color_palette ? `<div class="artstyle-colors">${r.color_palette.map(c => `<span class="color-dot" style="background:${c}"></span>`).join('')}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                        ${a.artstyle.final_suggestion?.full_prompt ? `
+                            <div class="artstyle-prompt">
+                                <div style="font-size:10px;color:var(--text2);margin-bottom:4px;">AI Prompt:</div>
+                                <div style="font-size:10px;background:var(--surface);padding:6px;border-radius:4px;">${a.artstyle.final_suggestion.full_prompt.substring(0, 150)}...</div>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -5476,6 +5531,34 @@ ${result.substring(0, 300)}...
 請重試或換個想法描述。`, [
             { text: '🔄 重試', action: () => startAIStoryWriting() }
         ]);
+    }
+}
+
+// 切换画风详情展开/收起
+function toggleArtstyleDetail() {
+    const detail = document.getElementById('artstyleDetail');
+    if (detail.style.display === 'none') {
+        detail.style.display = 'block';
+    } else {
+        detail.style.display = 'none';
+    }
+}
+
+// 选择画风
+function selectArtstyle(index) {
+    const recommendations = state.assets.artstyle?.recommendations || [];
+    if (recommendations[index]) {
+        const selected = recommendations[index];
+        state.assets.artstyle.selected = selected.style_name;
+        state.assets.artstyle.selectedPrompt = selected.prompt_keywords;
+        saveProject(null, true);
+        updateAssetsPanel();
+        addAIMessage(`🎨 已選擇畫風：**${selected.style_name}**
+        
+此風格將應用到：
+- 👤 角色設計
+- 👗 服化道
+- 🎬 分鏡Prompt`);
     }
 }
 
