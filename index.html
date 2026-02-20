@@ -7656,7 +7656,8 @@ function loadProject(projectId) {
     
     // 🔧 恢复目标项目的聊天历史
     const chatContainer = document.getElementById('chatContainer');
-    if (p.chatHistory) {
+    const hasChatHistory = p.chatHistory && p.chatHistory.trim().length > 0;
+    if (hasChatHistory) {
         chatContainer.innerHTML = p.chatHistory;
         console.log('📂 聊天历史已恢复');
     } else {
@@ -7743,13 +7744,19 @@ function loadProject(projectId) {
 .agent-btn.auto:hover { background:rgba(99,102,241,0.25) !important; }
 </style>`;
     
-    addAIMessage(`📖 **已載入項目《${p.name}》**
+    // 🔧 只有没有聊天历史时才显示"已載入項目"消息
+    if (!hasChatHistory) {
+        addAIMessage(`📖 **已載入項目《${p.name}》**
 
 點擊智能體可重新生成：
 ${agentHtml}`, [
-        { text: '📊 查看項目資產', action: () => toggleAssetsPanel() },
-        { text: '📤 導出Excel', action: () => exportToExcel() }
-    ]);
+            { text: '📊 查看項目資產', action: () => toggleAssetsPanel() },
+            { text: '📤 導出Excel', action: () => exportToExcel() }
+        ]);
+    }
+    
+    // 滚动到底部
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
 // 生成下一章剧本
