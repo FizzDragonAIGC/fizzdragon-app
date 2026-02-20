@@ -1949,6 +1949,47 @@
             }
         }
         
+        /* 智能体工具栏 */
+        .agent-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 10px 20px;
+            background: rgba(0,0,0,0.3);
+            border-top: 1px solid var(--border);
+        }
+        .agent-toolbar .agent-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .agent-toolbar .agent-btn:hover {
+            background: var(--surface);
+            border-color: var(--accent);
+        }
+        .agent-toolbar .agent-btn.done {
+            background: rgba(74,222,128,0.15);
+            color: #4ade80;
+            border-color: rgba(74,222,128,0.3);
+        }
+        .agent-toolbar .agent-btn.auto {
+            background: rgba(99,102,241,0.15);
+            color: #6366F1;
+            border-color: rgba(99,102,241,0.3);
+        }
+        .agent-toolbar .agent-btn.auto:hover {
+            background: rgba(99,102,241,0.25);
+        }
+        .agent-toolbar .agent-btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
         /* 输入区域 */
         .input-area {
             padding: 16px 20px;
@@ -2657,6 +2698,17 @@
                     <!-- 消息会动态添加到这里 -->
                 </div>
             
+                <!-- 智能体快捷工具栏 -->
+                <div class="agent-toolbar" id="agentToolbar" style="display:none;">
+                    <button class="agent-btn" onclick="triggerAgentWithCheck('concept')" id="btnConcept">💡 概念</button>
+                    <button class="agent-btn" onclick="triggerAgentWithCheck('character')" id="btnCharacter">👤 人物</button>
+                    <button class="agent-btn" onclick="triggerAgentWithCheck('chapters')" id="btnChapters">📝 章節</button>
+                    <button class="agent-btn" onclick="triggerAgentWithCheck('production')" id="btnProduction">👗 服化道</button>
+                    <button class="agent-btn" onclick="triggerAgentWithCheck('script')" id="btnScript">✍️ 編劇</button>
+                    <button class="agent-btn" onclick="triggerAgentWithCheck('storyboard')" id="btnStoryboard">🎬 分鏡</button>
+                    <button class="agent-btn auto" onclick="runAutoPilot()">🚀 Auto</button>
+                </div>
+                
                 <div class="input-area">
             <div class="input-row">
                 <div class="input-wrapper">
@@ -3352,6 +3404,7 @@ async function handleFastTrackScript(e) {
         state.novel = text;
         state.novelTitle = file.name.replace(/\.[^.]+$/, '');
         state.mode = 'fasttrack';
+        updateAgentToolbar();  // 显示智能体工具栏
         
         removeTypingIndicator();
         
@@ -5884,6 +5937,9 @@ function updateAssetsPanel() {
     html += `</div>`; // 关闭 tabContentStudio
     
     container.innerHTML = html;
+    
+    // 更新智能体工具栏状态
+    updateAgentToolbar();
 }
 
 // Tab切换函数
@@ -6742,6 +6798,7 @@ function saveNewStory(type) {
     state.assets.story = { title, content, type, createdAt: new Date().toISOString() };
     state.novel = content;
     state.novelTitle = title;
+    updateAgentToolbar();  // 显示智能体工具栏
     
     document.getElementById('storyEditModal')?.remove();
     
@@ -9428,11 +9485,50 @@ function loadProject(projectId) {
 .agent-btn.auto:hover { background:rgba(99,102,241,0.25) !important; }
 </style>`;
     
-    // 🔧 不显示"已載入項目"消息，只更新UI状态
+    // 🔧 显示智能体工具栏并更新状态
+    updateAgentToolbar();
+    
     // 滚动到底部
     chatContainer.scrollTop = chatContainer.scrollHeight;
     
     console.log(`📂 已切換到項目: ${p.name}`);
+}
+
+// 更新智能体工具栏状态
+function updateAgentToolbar() {
+    const toolbar = document.getElementById('agentToolbar');
+    if (!toolbar) return;
+    
+    // 只在有小说内容时显示工具栏
+    if (state.novel) {
+        toolbar.style.display = 'flex';
+    } else {
+        toolbar.style.display = 'none';
+        return;
+    }
+    
+    const a = state.assets || {};
+    const charCount = a.characters?.length || 0;
+    const chapterCount = a.chapters?.length || 0;
+    const scriptCount = Object.keys(a.scripts || {}).length;
+    const sbCount = Object.keys(a.storyboards || {}).length;
+    const hasCostumes = (a.costumes?.length || 0) > 0;
+    
+    // 更新按钮状态
+    const updateBtn = (id, done, text) => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.classList.toggle('done', done);
+            btn.innerHTML = text;
+        }
+    };
+    
+    updateBtn('btnConcept', !!a.concept, `💡 概念${a.concept ? ' ✅' : ''}`);
+    updateBtn('btnCharacter', charCount > 0, `👤 人物${charCount > 0 ? ' ' + charCount : ''}`);
+    updateBtn('btnChapters', chapterCount > 0, `📝 章節${chapterCount > 0 ? ' ' + chapterCount + '集' : ''}`);
+    updateBtn('btnProduction', hasCostumes, `👗 服化道${hasCostumes ? ' ✅' : ''}`);
+    updateBtn('btnScript', scriptCount > 0, `✍️ 編劇${scriptCount > 0 ? ' ' + scriptCount + '/' + chapterCount : ''}`);
+    updateBtn('btnStoryboard', sbCount > 0, `🎬 分鏡${sbCount > 0 ? ' ' + sbCount + '/' + chapterCount : ''}`);
 }
 
 // 生成下一章剧本
