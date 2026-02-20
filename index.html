@@ -1345,6 +1345,23 @@
         .status-dot.offline { background: #ef4444; }
         .status-dot.loading { background: #E31B23; animation: pulse 1s infinite; }
         
+        /* 头部按钮 */
+        .header-btn {
+            padding: 4px 10px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: #1a1a22;
+            color: #ccc;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: 8px;
+        }
+        .header-btn:hover {
+            border-color: #E31B23;
+            background: rgba(227, 27, 35, 0.1);
+        }
+        
         /* Auto-Pilot 开关 */
         .auto-pilot-toggle {
             display: flex;
@@ -2479,7 +2496,7 @@
             <div class="header-project">
                 <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
                 <div class="header-title" id="headerTitle">FizzDragon AIGC番劇系統</div>
-<!-- 进度条已移除 -->
+                <button class="header-btn" onclick="showStartOptions()" title="導入或寫作">📄 導入/寫作</button>
                 <button class="auto-pilot-toggle" id="autoPilotToggle" onclick="toggleAutoPilotMode()" title="Auto-Pilot 模式">
                     🚀 <span id="autoPilotLabel">OFF</span>
                 </button>
