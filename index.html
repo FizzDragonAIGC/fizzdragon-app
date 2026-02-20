@@ -5150,8 +5150,8 @@ async function convertToStoryboard() {
 // ==================== 项目管理 ====================
 // 用户级项目隔离 - 每个用户有独立的项目存储
 function getProjectsKey() {
-    const userId = currentUser?.id || 'guest';
-    return `fizzdragon_projects_${userId}`;
+    // 使用固定key，确保项目持久化（内测阶段不做用户隔离）
+    return 'fizzdragon_projects';
 }
 
 function getProjects() {
