@@ -7874,10 +7874,16 @@ function showEditableResult(type, data, onConfirm, onRegenerate) {
 }
 
 function confirmResult() {
-    if (!pendingEditData) return;
+    console.log('🔔 confirmResult called, pendingEditData:', pendingEditData);
+    
+    if (!pendingEditData) {
+        console.log('❌ No pendingEditData!');
+        return;
+    }
     
     const textarea = document.getElementById('editableTextarea');
     const editedText = textarea?.value || '';
+    console.log('📝 editedText length:', editedText.length);
     
     // 解析编辑后的内容
     let finalData = pendingEditData.data;
@@ -7900,7 +7906,8 @@ function confirmResult() {
     } else if (pendingEditData.type === 'characters') {
         // 解析编辑后的角色
         const charBlocks = editedText.split('════════════════════════════').filter(b => b.trim());
-        finalData = charBlocks.map(block => {
+        console.log('📝 Parsing', charBlocks.length, 'character blocks');
+        finalData = charBlocks.map((block, idx) => {
             const char = {};
             // 解析角色名和类型
             const nameMatch = block.match(/【(.+?)】\((.+?)\)/);
@@ -7917,8 +7924,10 @@ function confirmResult() {
             // 解析Prompt
             const promptMatch = block.match(/🎨 AI形象Prompt:\n([\s\S]*?)$/);
             if (promptMatch) char.prompt = promptMatch[1].trim();
+            console.log(`📝 Char ${idx}:`, char.name, '| prompt:', char.prompt?.substring(0, 30));
             return char;
         }).filter(c => c.name);
+        console.log('📝 Final characters:', finalData.length);
     } else if (pendingEditData.type === 'chapters') {
         // 解析编辑后的章节
         const chapterBlocks = editedText.split('════════════════════════════').filter(b => b.trim());
@@ -7953,8 +7962,16 @@ function confirmResult() {
     if (card) card.remove();
     
     // 调用确认回调
+    console.log('🔔 Calling onConfirm with finalData:', finalData);
     if (pendingEditData.onConfirm) {
-        pendingEditData.onConfirm(finalData);
+        try {
+            pendingEditData.onConfirm(finalData);
+            console.log('✅ onConfirm executed');
+        } catch (err) {
+            console.error('❌ onConfirm error:', err);
+        }
+    } else {
+        console.log('❌ No onConfirm callback!');
     }
     
     pendingEditData = null;
