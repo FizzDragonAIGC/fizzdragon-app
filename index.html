@@ -9045,6 +9045,13 @@ function clearActiveStatus() {
 async function runCharacterAnalysis() {
     if (!checkNovelExists()) return;
     
+    // 标记处理中
+    if (currentProjectId) {
+        activeProjects[currentProjectId] = true;
+        delete errorProjects[currentProjectId];
+        renderProjectList();
+    }
+    
     state.step = 2;
     addTypingIndicator();
     
@@ -9229,6 +9236,7 @@ ${formattedChars.map(c => `• ${c.name} (${c.role})`).join('\n')}
 ───────────────────────
 Auto-Pilot: 進入製作設置...`);
             
+            clearActiveStatus();
             saveProject();
             updateAssetsPanel();
             setTimeout(() => runProductionEvaluation(), 1000);
@@ -9541,6 +9549,13 @@ ${paceDesc}
 async function runChapterPlanning() {
     if (!checkNovelExists()) return;
     
+    // 标记处理中
+    if (currentProjectId) {
+        activeProjects[currentProjectId] = true;
+        delete errorProjects[currentProjectId];
+        renderProjectList();
+    }
+    
     addTypingIndicator();
     
     // 详细步骤
@@ -9789,6 +9804,13 @@ async function runProductionDesign() {
 async function runScriptWriting(chapterNum) {
     if (!checkNovelExists()) return;
     
+    // 标记处理中
+    if (currentProjectId) {
+        activeProjects[currentProjectId] = true;
+        delete errorProjects[currentProjectId];
+        renderProjectList();
+    }
+    
     const chapter = state.assets.chapters?.[chapterNum - 1];
     if (!chapter) {
         addAIMessage(`⚠️ **第${chapterNum}集不存在**
@@ -9798,6 +9820,7 @@ ${state.assets.chapters?.length > 0
     : '請先生成章節規劃，輸入「生成章節」'}`, [
             { text: '📝 生成章節規劃', action: () => runChapterPlanning() }
         ]);
+        clearActiveStatus();
         return;
     }
     
@@ -10458,6 +10481,13 @@ async function callAgentStream(agentId, content, context = {}, onChunk = null) {
 // ==================== 分镜生成（步骤6，分章）====================
 async function runStoryboardGeneration(chapterNum) {
     if (!checkNovelExists()) return;
+    
+    // 标记处理中
+    if (currentProjectId) {
+        activeProjects[currentProjectId] = true;
+        delete errorProjects[currentProjectId];
+        renderProjectList();
+    }
     
     const chapter = state.assets.chapters?.[chapterNum - 1];
     const script = state.assets.scripts?.[chapterNum];
