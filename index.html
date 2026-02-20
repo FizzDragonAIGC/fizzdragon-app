@@ -4752,7 +4752,21 @@ async function generateAIStory(idea) {
             title = idea.substring(0, 20) + (idea.length > 20 ? '...' : '');
         }
         
-        // 保存到资产
+        // 🔧 清空旧项目数据，开始新项目
+        currentProjectId = null;
+        state.assets = {
+            concept: null,
+            characters: [],
+            chapters: [],
+            costumes: null,
+            scripts: {},
+            storyboards: {}
+        };
+        state.concept = null;
+        state.characters = null;
+        state.storyboard = null;
+        
+        // 保存新故事到资产
         state.assets.story = {
             title,
             content: result,
@@ -4763,7 +4777,6 @@ async function generateAIStory(idea) {
         state.novel = result;
         state.novelTitle = title;
         
-        currentProjectId = null;
         saveProject(title, true);
         updateAssetsPanel();
         
