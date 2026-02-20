@@ -1123,6 +1123,35 @@
         .status-dot.offline { background: #ef4444; }
         .status-dot.loading { background: #E31B23; animation: pulse 1s infinite; }
         
+        /* Auto-Pilot 开关 */
+        .auto-pilot-toggle {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            background: #1a1a22;
+            color: #666;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: 8px;
+        }
+        .auto-pilot-toggle:hover {
+            border-color: #E31B23;
+            color: #ccc;
+        }
+        .auto-pilot-toggle.active {
+            background: linear-gradient(135deg, #E31B23, #C41920);
+            border-color: #E31B23;
+            color: white;
+            box-shadow: 0 0 10px rgba(227, 27, 35, 0.4);
+        }
+        .auto-pilot-toggle.active:hover {
+            background: linear-gradient(135deg, #ff3b42, #E31B23);
+        }
+        
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
@@ -2237,6 +2266,9 @@
                 <div class="status-dot" id="statusDot"></div>
                 <span id="statusText">連接中...</span>
             </div>
+            <button class="auto-pilot-toggle" id="autoPilotToggle" onclick="toggleAutoPilotMode()" title="Auto-Pilot 模式">
+                🚀 <span id="autoPilotLabel">OFF</span>
+            </button>
             <select class="lang-select" id="langSelect" onchange="changeLanguage(this.value)">
                 <option value="en">English</option>
                 <option value="zh-CN">简体中文</option>
@@ -2867,6 +2899,78 @@ ${projectCount > 0 ? `📂 你有 **${projectCount}** 個已保存的項目\n` :
     ]);
 }
 
+// ==================== Auto-Pilot 模式開關 ====================
+function toggleAutoPilotMode() {
+    state.autoPilotMode = !state.autoPilotMode;
+    updateAutoPilotToggle();
+    
+    if (state.autoPilotMode) {
+        addAIMessage(`🚀 **Auto-Pilot 模式已開啟**
+
+系統將自動推進每個步驟。
+完成一步後自動進入下一步。
+
+點擊按鈕再次關閉，回到對話模式。`);
+    } else {
+        addAIMessage(`⏸️ **Auto-Pilot 已關閉**
+
+回到對話模式。
+每個步驟完成後會等待你的指令。`);
+    }
+}
+
+function updateAutoPilotToggle() {
+    const btn = document.getElementById('autoPilotToggle');
+    const label = document.getElementById('autoPilotLabel');
+    if (state.autoPilotMode) {
+        btn.classList.add('active');
+        label.textContent = 'ON';
+    } else {
+        btn.classList.remove('active');
+        label.textContent = 'OFF';
+    }
+}
+
+// 检查是否应该自动进入下一步
+function checkAutoPilotNext(currentStep) {
+    if (!state.autoPilotMode) return;
+    
+    const steps = ['concept', 'character', 'chapters', 'production', 'script', 'storyboard'];
+    const currentIndex = steps.indexOf(currentStep);
+    
+    if (currentIndex < 0 || currentIndex >= steps.length - 1) return;
+    
+    const nextStep = steps[currentIndex + 1];
+    
+    // 延迟1秒后自动进入下一步
+    setTimeout(() => {
+        if (!state.autoPilotMode) return; // 再次检查，用户可能关闭了
+        
+        switch(nextStep) {
+            case 'character':
+                addAIMessage('🚀 Auto-Pilot: 進入角色設計...');
+                runCharacterAnalysis();
+                break;
+            case 'chapters':
+                addAIMessage('🚀 Auto-Pilot: 進入章節規劃...');
+                runChapterPlanning();
+                break;
+            case 'production':
+                addAIMessage('🚀 Auto-Pilot: 進入服化道設計...');
+                runProductionDesign();
+                break;
+            case 'script':
+                addAIMessage('🚀 Auto-Pilot: 進入劇本生成...');
+                runScriptWriting(1);
+                break;
+            case 'storyboard':
+                addAIMessage('🚀 Auto-Pilot: 進入分鏡生成...');
+                runStoryboardGeneration(1);
+                break;
+        }
+    }, 1000);
+}
+
 // ==================== Auto-Pilot 全自動模式 ====================
 function showAutoPilotOptions() {
     addAIMessage(`🚀 **Auto-Pilot 全自動模式**
@@ -3391,6 +3495,7 @@ const state = {
     
     // Auto-Pilot 状态
     autoPilotEnabled: false,
+    autoPilotMode: false,  // 持续开关模式
     adjustMode: null,  // 'character' | 'chapters' | 'storyboard'
     currentQuestion: 0,
     
@@ -8760,7 +8865,29 @@ async function runConceptStep() {
         removeTypingIndicator();
         hideAgentStatus();
         
-        // 显示可编辑确认框
+        // Auto-Pilot 模式：自动确认并继续
+        if (state.autoPilotMode) {
+            state.concept = conceptData;
+            state.assets.concept = conceptData;
+            state.step = 1;
+            
+            addAIMessage(`🚀 **高概念已自動確認**
+
+**類型**: ${conceptData.genre || '-'}
+**主題**: ${conceptData.theme || '-'}
+**Logline**: ${conceptData.logline || '-'}
+
+───────────────────────
+Auto-Pilot: 進入角色設計...`);
+            
+            clearActiveStatus();
+            saveProject();
+            updateAssetsPanel();
+            setTimeout(() => runCharacterAnalysis(), 1000);
+            return;
+        }
+        
+        // 对话模式：显示可编辑确认框
         showEditableResult('concept', conceptData, 
             // 确认回调
             (finalData) => {
@@ -8984,7 +9111,25 @@ Keys: ${Object.keys(charData || {}).join(', ') || '無'}
         removeTypingIndicator();
         hideAgentStatus();
         
-        // 显示可编辑确认框
+        // Auto-Pilot 模式：自动确认并继续
+        if (state.autoPilotMode) {
+            state.assets.characters = formattedChars;
+            
+            addAIMessage(`🚀 **角色已自動確認**
+
+共 **${formattedChars.length}** 個角色：
+${formattedChars.map(c => `• ${c.name} (${c.role})`).join('\n')}
+
+───────────────────────
+Auto-Pilot: 進入製作設置...`);
+            
+            saveProject();
+            updateAssetsPanel();
+            setTimeout(() => runProductionEvaluation(), 1000);
+            return;
+        }
+        
+        // 对话模式：显示可编辑确认框
         showEditableResult('characters', formattedChars,
             // 确认回调
             (finalData) => {
@@ -9102,6 +9247,21 @@ async function runProductionEvaluation() {
             totalMinutes
         };
         
+        // Auto-Pilot 模式：自动采用建议
+        if (state.autoPilotMode) {
+            addAIMessage(`🚀 **Auto-Pilot 自動採用建議**
+
+📊 ${suggestedEpisodes}集 × ${suggestedDuration}分鐘 × ${suggestedDensity}鏡/分
+📈 總分鏡: **${totalShots.toLocaleString()}** 個
+
+───────────────────────
+Auto-Pilot: 進入章節規劃...`);
+            
+            applyProductionSuggestion(suggestion);
+            return;
+        }
+        
+        // 对话模式：显示选项
         addAIMessage(`🎯 **智能製作評估**
 
 ${reasoning}
