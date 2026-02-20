@@ -1238,6 +1238,27 @@
             background: #C41920;
         }
         
+        /* 生成按钮 - 明显突出 */
+        .gen-btn {
+            background: linear-gradient(135deg, #E31B23 0%, #ff4757 100%);
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(227,27,35,0.4);
+            transition: all 0.2s;
+        }
+        .gen-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(227,27,35,0.5);
+        }
+        .gen-btn:active {
+            transform: translateY(0);
+        }
+        
         /* 章节内容展开面板 */
         .chapter-content-panel {
             max-height: 0;
@@ -6033,21 +6054,21 @@ function getChaptersHtml(a) {
                     ${ch.scenes ? `<div style="color:var(--text2);margin-top:4px;">🎬 場景: ${ch.scenes}</div>` : ''}
                 </div>
                 <div class="chapter-box-content">
-                    <div class="chapter-box-left" style="cursor:pointer;" onclick="showChapterScript(${num})" id="scriptBox${num}">
+                    <div class="chapter-box-left" style="cursor:pointer;" onclick="${hasScript ? `showChapterScript(${num})` : `runScriptWriting(${num})`}" id="scriptBox${num}">
                         <div class="chapter-box-label">✍️ 劇本</div>
                         ${generatingScripts[num] 
                             ? `<span style="color:#E31B23;" class="generating-pulse">🔄 生成中...</span>`
                             : (hasScript 
                                 ? `<span style="color:#38a169;">✅ 點擊查看</span>` 
-                                : `<span style="color:var(--text2);">⏳ 待生成</span>`)}
+                                : `<button class="gen-btn" onclick="event.stopPropagation();runScriptWriting(${num})">🚀 生成第${num}集</button>`)}
                     </div>
-                    <div class="chapter-box-right" style="cursor:pointer;" onclick="showChapterStoryboard(${num})" id="storyboardBox${num}">
+                    <div class="chapter-box-right" style="cursor:pointer;" onclick="${hasStoryboard ? `showChapterStoryboard(${num})` : `runStoryboardGeneration(${num})`}" id="storyboardBox${num}">
                         <div class="chapter-box-label">🎬 分鏡</div>
                         ${generatingStoryboards[num] 
                             ? `<span style="color:#E31B23;" class="generating-pulse">🔄 生成中...</span>`
                             : (hasStoryboard 
                                 ? `<span style="color:#38a169;">✅ ${shotCount}鏡 點擊查看</span>` 
-                                : `<span style="color:var(--text2);">⏳ 待生成</span>`)}
+                                : `<button class="gen-btn" onclick="event.stopPropagation();runStoryboardGeneration(${num})">🚀 生成第${num}集</button>`)}
                     </div>
                 </div>
                 <!-- 展开的内容面板 -->
