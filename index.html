@@ -544,6 +544,44 @@
             border-radius: 12px;
             overflow: hidden;
         }
+        /* Tab导航样式 */
+        .assets-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 6px 8px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+        .assets-tab {
+            flex: 1;
+            padding: 6px 8px;
+            font-size: 11px;
+            border: none;
+            background: transparent;
+            color: var(--text2);
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .assets-tab:hover {
+            background: rgba(227,27,35,0.1);
+            color: var(--text);
+        }
+        .assets-tab.active {
+            background: linear-gradient(135deg, #E31B23, #C41920);
+            color: white;
+            font-weight: 600;
+        }
+        .assets-tab small {
+            opacity: 0.7;
+            font-size: 9px;
+        }
+        .assets-tab-content {
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        
         .assets-section-header {
             display: flex;
             align-items: center;
@@ -3916,15 +3954,24 @@ function updateAssetsPanel() {
         `;
     }
     
-    // ==================== 区块1：基础设定 ====================
+    // ==================== Tab导航 ====================
     const hasBaseSettings = a.concept || a.characters?.length > 0 || a.costumes?.length > 0 || a.sets?.length > 0;
-    if (hasBaseSettings) {
-        html += `<div class="assets-section">
-            <div class="assets-section-header" onclick="toggleSection('baseSettings')">
-                <span>📋 基礎設定</span>
-                <span id="baseSettingsToggle">▼</span>
-            </div>
-            <div class="assets-section-body" id="baseSettingsBody">`;
+    const hasProduction = a.chapters?.length > 0;
+    const hasAnyAssets = a.characters?.length > 0 || Object.keys(a.storyboards || {}).length > 0;
+    const scriptCount = Object.keys(a.scripts || {}).length;
+    const sbCount = Object.keys(a.storyboards || {}).length;
+    const totalShots = Object.values(a.storyboards || {}).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+    const charCount = a.characters?.length || 0;
+    
+    html += `
+    <div class="assets-tabs">
+        <button class="assets-tab active" onclick="switchAssetsTab('base')" id="tabBase">📋 設定</button>
+        <button class="assets-tab" onclick="switchAssetsTab('prod')" id="tabProd">📝 生產 <small>${scriptCount}/${a.chapters?.length || 0}</small></button>
+        <button class="assets-tab" onclick="switchAssetsTab('studio')" id="tabStudio">🚀 素材 <small>${charCount}人</small></button>
+    </div>`;
+    
+    // ==================== Tab1：基础设定 ====================
+    html += `<div class="assets-tab-content" id="tabContentBase" style="display:block;">`;
         
         // 01 高概念
         if (a.concept) {
@@ -4013,37 +4060,26 @@ function updateAssetsPanel() {
             `;
         }
         
-        html += `</div></div>`; // 关闭 baseSettings
     }
+    html += `</div>`; // 关闭 tabContentBase
     
-    // ==================== 区块2：内容生产 ====================
-    const hasProduction = a.chapters?.length > 0;
+    // ==================== Tab2：内容生产 ====================
+    html += `<div class="assets-tab-content" id="tabContentProd" style="display:none;">`;
     if (hasProduction) {
-        const scriptCount = Object.keys(a.scripts || {}).length;
-        const sbCount = Object.keys(a.storyboards || {}).length;
-        const totalShots = Object.values(a.storyboards || {}).reduce((sum, arr) => sum + (arr?.length || 0), 0);
-        
-        html += `<div class="assets-section">
-            <div class="assets-section-header" onclick="toggleSection('production')">
-                <span>📝 內容生產</span>
-                <span class="assets-section-stats">${a.chapters.length}章 | ${scriptCount}劇本 | ${totalShots}鏡</span>
-                <span id="productionToggle2">▼</span>
-            </div>
-            <div class="assets-section-body" id="productionBody">`;
         
         // 章节列表（包含剧本和分镜）
         html += getChaptersHtml(a);
         
-        html += `</div></div>`; // 关闭 production
+    } else {
+        html += `<div style="padding:20px;text-align:center;color:var(--text2);font-size:12px;">尚無章節規劃<br><button class="story-btn" onclick="triggerAgentWithCheck('chapters')">📝 生成章節</button></div>`;
     }
+    html += `</div>`; // 关闭 tabContentProd
     
-    // ==================== 区块3：FizzStudio 素材庫 ====================
-    const hasAnyAssets = a.characters?.length > 0 || Object.keys(a.storyboards || {}).length > 0;
+    // ==================== Tab3：FizzStudio 素材庫 ====================
+    html += `<div class="assets-tab-content" id="tabContentStudio" style="display:none;">`;
     if (hasAnyAssets) {
-        const charCount = a.characters?.length || 0;
         const charWithImage = a.characters?.filter(c => c.image_url)?.length || 0;
         const charWithPrompt = a.characters?.filter(c => c.ai_prompt || c.prompt)?.length || 0;
-        const totalShots = Object.values(a.storyboards || {}).reduce((sum, arr) => sum + (arr?.length || 0), 0);
         const costumeCount = a.costumes?.length || 0;
         const setCount = a.sets?.length || 0;
         
@@ -4107,9 +4143,27 @@ function updateAssetsPanel() {
                 
             </div>
         </div>`;
+    } else {
+        html += `<div style="padding:20px;text-align:center;color:var(--text2);font-size:12px;">尚無素材<br>完成角色設計後可生成形象</div>`;
     }
+    html += `</div>`; // 关闭 tabContentStudio
     
     container.innerHTML = html;
+}
+
+// Tab切换函数
+function switchAssetsTab(tab) {
+    // 隐藏所有tab内容
+    document.querySelectorAll('.assets-tab-content').forEach(el => el.style.display = 'none');
+    // 移除所有tab的active
+    document.querySelectorAll('.assets-tab').forEach(el => el.classList.remove('active'));
+    
+    // 显示对应tab
+    const tabMap = { base: 'tabContentBase', prod: 'tabContentProd', studio: 'tabContentStudio' };
+    const btnMap = { base: 'tabBase', prod: 'tabProd', studio: 'tabStudio' };
+    
+    document.getElementById(tabMap[tab]).style.display = 'block';
+    document.getElementById(btnMap[tab]).classList.add('active');
 }
 
 // 切换区块展开/收起
