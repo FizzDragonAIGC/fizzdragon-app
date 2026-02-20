@@ -8795,25 +8795,102 @@ async function startWriteCreation() {
     addAIMessage(`🚀 **開始創作！**
 
 現在開始創作流程：
+0️⃣ **先寫故事** ← 根據訪談生成故事
 1️⃣ 生成高概念
 2️⃣ 設計角色
 3️⃣ 規劃章節（${state.production.episodes}集）
 4️⃣ 設計服化道
 5️⃣ 寫劇本
 
-正在生成**高概念**...`);
+正在根據訪談內容**創作故事**...`);
     
     // 切换到导入模式的资产流程
     state.mode = 'write';
-    state.step = 1;
+    state.step = 0;
     
     // 创建项目
     state.novelTitle = writeState.idea?.premise?.substring(0, 20) || '創作項目';
     currentProjectId = null;
     saveProject(state.novelTitle, true);
     
-    // 用访谈内容生成高概念
-    await generateWriteConcept();
+    // 🔧 先用访谈内容生成小说，然后再进入高概念流程
+    await generateStoryFromInterview();
+}
+
+// 🔧 根据访谈内容生成故事
+async function generateStoryFromInterview() {
+    showAgentStatus('✍️ 故事創作者', '正在創作故事...', 'screenwriter');
+    startThinkingAnimation('screenwriter');
+    
+    try {
+        const interviewSummary = Object.entries(writeState.interview || {})
+            .map(([k, v]) => `${k}: ${v}`)
+            .join('\n');
+        
+        const prompt = `你是一位專業的故事創作者。根據用戶的創作訪談，創作一個完整的短篇故事。
+
+用戶想法：${writeState.idea?.premise || ''}
+類型偏好：${writeState.idea?.genre || ''}
+
+創作者訪談回答：
+${interviewSummary}
+
+製作規格：${state.production.episodes}集 × ${state.production.durationMin}分鐘/集
+
+要求：
+1. 故事長度：5000-10000字（根據集數調整）
+2. 包含清晰的開頭、發展、高潮、結局
+3. 人物形象鮮明，關係清楚
+4. 對話生動自然
+5. 情感真實感人
+6. 結構適合改編成${state.production.episodes}集番劇
+
+直接輸出故事正文，不要輸出任何解釋。`;
+
+        const result = await callAgent('screenwriter', prompt, { useReasoner: false });
+        
+        stopThinkingAnimation();
+        hideAgentStatus();
+        
+        // 提取或生成标题
+        const lines = result.split('\n').filter(l => l.trim());
+        let title = lines[0]?.replace(/^[#《「\[]+/, '').replace(/[》」\]]+$/, '').trim();
+        if (!title || title.length > 30) {
+            title = (writeState.idea?.premise || '').substring(0, 20) || '創作項目';
+        }
+        
+        // 设置故事内容
+        state.novel = result;
+        state.novelTitle = title;
+        state.assets.story = {
+            title,
+            content: result,
+            type: 'ai',
+            idea: writeState.idea,
+            interview: writeState.interview,
+            createdAt: new Date().toISOString()
+        };
+        
+        saveProject(title, true);
+        
+        addAIMessage(`✅ **故事創作完成！**
+
+📖 **${title}**
+📊 ${result.length.toLocaleString()} 字
+
+${result.substring(0, 300)}...
+
+───────────────────────
+✅ 故事已保存，繼續生成高概念...`);
+        
+        // 继续进入高概念流程
+        setTimeout(() => generateWriteConcept(), 1000);
+        
+    } catch (err) {
+        stopThinkingAnimation();
+        hideAgentStatus();
+        showFriendlyError(err, '故事創作', () => generateStoryFromInterview());
+    }
 }
 
 // 写作模式 - 生成高概念
