@@ -210,7 +210,7 @@
     </div>
     
     <script>
-        const API_BASE = '/api';
+        const API_BASE = window.location.hostname.includes('github.io') ? 'https://fizzdragon-backend.onrender.com/api' : '/api';
         
         // 检查是否已登录
         const token = localStorage.getItem('fizzdragon_token');
