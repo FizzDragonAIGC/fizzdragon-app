@@ -14417,13 +14417,22 @@ function handleUserInput(text) {
     // 写作模式 - 访谈问题
     if (state.mode === 'write' && typeof writeState.currentQuestion === 'number' && writeState.currentQuestion >= 0 && writeState.currentQuestion < WRITE_QUESTIONS.length) {
         console.log('写作模式: 回答访谈问题', writeState.currentQuestion);
+        
+        // 🔧 先显示用户消息
+        addUserMessage(text);
+        
+        // 🔧 显示确认反馈
+        const qNum = writeState.currentQuestion + 1;
         if (text.toLowerCase() === '跳過' || text.toLowerCase() === '跳过') {
             writeState.interview[writeState.currentQuestion] = '(跳過)';
+            addAIMessage(`⏭️ 跳過第 ${qNum} 題`);
         } else {
             writeState.interview[writeState.currentQuestion] = text;
+            addAIMessage(`✅ 收到！(${qNum}/${WRITE_QUESTIONS.length})`);
         }
+        
         writeState.currentQuestion++;
-        setTimeout(() => askWriteQuestion(), 500);
+        setTimeout(() => askWriteQuestion(), 800);
         return;
     }
     
