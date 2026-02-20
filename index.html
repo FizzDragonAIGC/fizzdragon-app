@@ -7589,7 +7589,9 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
         
         removeTypingIndicator();
         
-        const preview = text.substring(0, 200) + (text.length > 200 ? '...' : '');
+        // 保留换行的预览
+        const previewText = text.substring(0, 300).replace(/\n/g, '\n');
+        const preview = previewText + (text.length > 300 ? '...' : '');
         
         // 🚀 检查是否启用 Auto-Pilot
         if (state.autoPilotEnabled) {
@@ -7605,7 +7607,9 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
         addAIMessage(`✅ 成功導入《${state.novelTitle}》
 
 **字數**: ${text.length.toLocaleString()} 字
-**預覽**: ${preview}
+
+**預覽**:
+<div style="background:var(--surface);padding:12px;border-radius:8px;white-space:pre-wrap;font-size:13px;max-height:200px;overflow-y:auto;border-left:3px solid var(--accent);">${escapeHtml(preview)}</div>
 
 ───────────────────────
 請選擇分析方式：`, [
