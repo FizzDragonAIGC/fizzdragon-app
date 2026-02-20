@@ -1259,6 +1259,23 @@
             transform: translateY(0);
         }
         
+        /* 迷你生成按钮 - 在章节行上 */
+        .gen-btn-mini {
+            background: linear-gradient(135deg, #E31B23 0%, #ff4757 100%);
+            color: white;
+            border: none;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(227,27,35,0.3);
+            margin-left: 8px;
+        }
+        .gen-btn-mini:hover {
+            box-shadow: 0 3px 10px rgba(227,27,35,0.5);
+        }
+        
         /* 章节内容展开面板 */
         .chapter-content-panel {
             max-height: 0;
@@ -6031,11 +6048,14 @@ function getChaptersHtml(a) {
         
         html += `
             <div class="chapter-box" id="chapterBox${num}">
-                <div class="chapter-box-header" style="cursor:pointer;" onclick="toggleChapterContent(${num})">
+                <div class="chapter-box-header" style="cursor:pointer;">
                     <span style="background:${phaseColor};color:white;padding:1px 6px;border-radius:3px;margin-right:6px;font-size:9px;font-weight:600;">【${phase}】</span>
                     <span style="color:var(--accent);margin-right:6px;font-weight:600;">E${String(num).padStart(2,'0')}</span>
-                    <span style="flex:1;font-weight:500;">${ch.title || `第${num}集`}</span>
-                    <span id="chapterToggle${num}" style="font-size:10px;color:#666;">▼</span>
+                    <span style="flex:1;font-weight:500;" onclick="toggleChapterContent(${num})">${ch.title || `第${num}集`}</span>
+                    ${!hasStoryboard && !generatingStoryboards[num] ? `<button class="gen-btn-mini" onclick="event.stopPropagation();runStoryboardGeneration(${num})">🎬 生成分鏡</button>` : ''}
+                    ${generatingStoryboards[num] ? `<span style="color:#E31B23;font-size:10px;" class="generating-pulse">🔄 生成中...</span>` : ''}
+                    ${hasStoryboard ? `<span style="color:#38a169;font-size:10px;">✅ ${shotCount}鏡</span>` : ''}
+                    <span id="chapterToggle${num}" style="font-size:10px;color:#666;margin-left:6px;" onclick="toggleChapterContent(${num})">▼</span>
                 </div>
                 <!-- 章节详情（大纲、冲突、亮点）-->
                 <div class="chapter-info" style="padding:8px 10px;background:rgba(0,0,0,0.2);font-size:10px;line-height:1.6;">
