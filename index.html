@@ -4427,10 +4427,10 @@ function updateAssetsPanel() {
     html += `<div class="workflow-status">
         <div class="ws-steps">
             <span class="ws-item ${hasConcept ? 'done' : ''}" title="高概念">💡</span>
-            <span class="ws-item ${hasChars ? 'done' : ''}" title="人物">${hasChars ? charCount : '👤'}</span>
-            <span class="ws-item ${hasChaps ? 'done' : ''}" title="章節">📝</span>
-            <span class="ws-item ${hasScripts ? 'done' : ''}" title="劇本">✍️</span>
-            <span class="ws-item ${hasSB ? 'done' : ''}" title="分鏡">🎬</span>
+            <span class="ws-item ${hasChars ? 'done' : ''}" title="人物 ${charCount}">${charCount || '👤'}</span>
+            <span class="ws-item ${hasChaps ? 'done' : ''}" title="章節 ${a.chapters?.length || 0}">${a.chapters?.length || '📝'}</span>
+            <span class="ws-item ${hasScripts ? 'done' : ''}" title="劇本">${hasScripts ? scriptCount + '/' + (a.chapters?.length || 0) : '✍️'}</span>
+            <span class="ws-item ${hasSB ? 'done' : ''}" title="分鏡">${hasSB ? sbCount + '/' + (a.chapters?.length || 0) : '🎬'}</span>
         </div>
         <div class="ws-actions">
             <button class="ws-btn" onclick="runAutoPilot()" title="Auto-Pilot">🚀</button>
