@@ -545,6 +545,68 @@
             overflow: hidden;
         }
         /* Tab导航样式 */
+        /* 项目工具栏 */
+        .project-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--border);
+        }
+        .project-agents {
+            display: flex;
+            gap: 4px;
+        }
+        .toolbar-agent {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            background: #1a1a22;
+            color: #888;
+            font-size: 11px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .toolbar-agent:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+        .toolbar-agent.done {
+            background: rgba(74, 222, 128, 0.15);
+            border-color: #4ade80;
+            color: #4ade80;
+        }
+        .project-actions {
+            display: flex;
+            gap: 4px;
+        }
+        .toolbar-btn {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            background: #1a1a22;
+            color: #888;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .toolbar-btn:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+        .toolbar-btn.auto {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: #6366F1;
+            color: #6366F1;
+        }
+        .toolbar-btn.auto:hover {
+            background: rgba(99, 102, 241, 0.25);
+        }
         .assets-tabs {
             display: flex;
             gap: 4px;
@@ -4212,7 +4274,21 @@ function updateAssetsPanel() {
     const totalShots = Object.values(a.storyboards || {}).reduce((sum, arr) => sum + (arr?.length || 0), 0);
     const charCount = a.characters?.length || 0;
     
+    // 项目快捷操作工具栏
     html += `
+    <div class="project-toolbar">
+        <div class="project-agents">
+            <button class="toolbar-agent ${a.concept ? 'done' : ''}" onclick="triggerAgentWithCheck('concept')" title="概念">💡</button>
+            <button class="toolbar-agent ${charCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('character')" title="人物">${charCount > 0 ? charCount : '👤'}</button>
+            <button class="toolbar-agent ${a.chapters?.length > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('chapters')" title="章節">${a.chapters?.length || '📝'}</button>
+            <button class="toolbar-agent ${scriptCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('script')" title="編劇">${scriptCount > 0 ? scriptCount + '/' + (a.chapters?.length || 0) : '✍️'}</button>
+            <button class="toolbar-agent ${sbCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('storyboard')" title="分鏡">${sbCount > 0 ? sbCount + '/' + (a.chapters?.length || 0) : '🎬'}</button>
+        </div>
+        <div class="project-actions">
+            <button class="toolbar-btn auto" onclick="runAutoPilot()" title="Auto-Pilot">🚀</button>
+            <button class="toolbar-btn" onclick="exportToExcel()" title="導出Excel">📤</button>
+        </div>
+    </div>
     <div class="assets-tabs">
         <button class="assets-tab active" onclick="switchAssetsTab('base')" id="tabBase">📋 設定</button>
         <button class="assets-tab" onclick="switchAssetsTab('prod')" id="tabProd">📝 生產 <small>${scriptCount}/${a.chapters?.length || 0}</small></button>
