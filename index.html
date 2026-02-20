@@ -2653,26 +2653,36 @@ async function runAutoPilot() {
 請在右側「項目資產」面板查看進度 →
 
 <div id="autoPilotProgress" style="background:var(--surface);padding:16px;border-radius:8px;margin:12px 0;">
-    <div class="ap-step" id="ap-concept">⏳ 1. 高概念分析...</div>
-    <div class="ap-step" id="ap-character">⏸️ 2. 角色設計</div>
-    <div class="ap-step" id="ap-chapters">⏸️ 3. 章節規劃</div>
-    <div class="ap-step" id="ap-production">⏸️ 4. 服化道設計</div>
-    <div class="ap-step" id="ap-script">⏸️ 5. 劇本生成</div>
-    <div class="ap-step" id="ap-storyboard">⏸️ 6. 分鏡生成</div>
+    <div class="ap-step" id="ap-concept"><span class="ap-indicator ap-waiting"></span> 1. 高概念分析</div>
+    <div class="ap-step" id="ap-character"><span class="ap-indicator ap-pending"></span> 2. 角色設計</div>
+    <div class="ap-step" id="ap-chapters"><span class="ap-indicator ap-pending"></span> 3. 章節規劃</div>
+    <div class="ap-step" id="ap-production"><span class="ap-indicator ap-pending"></span> 4. 服化道設計</div>
+    <div class="ap-step" id="ap-script"><span class="ap-indicator ap-pending"></span> 5. 劇本生成</div>
+    <div class="ap-step" id="ap-storyboard"><span class="ap-indicator ap-pending"></span> 6. 分鏡生成</div>
 </div>
 
 <style>
-.ap-step { padding:8px 12px; margin:4px 0; border-radius:6px; font-size:13px; }
-.ap-step.running { background:rgba(99,102,241,0.2); color:#6366F1; }
-.ap-step.done { background:rgba(74,222,128,0.2); color:#4ade80; }
-.ap-step.error { background:rgba(239,68,68,0.2); color:#ef4444; }
+.ap-step { padding:10px 12px; margin:4px 0; border-radius:6px; font-size:13px; display:flex; align-items:center; gap:10px; }
+.ap-indicator { width:12px; height:12px; border-radius:50%; display:inline-block; flex-shrink:0; }
+.ap-indicator.ap-pending { background:#555; }
+.ap-indicator.ap-waiting { background:#6366F1; animation: ap-pulse 1.5s infinite; }
+.ap-indicator.ap-running { border:2px solid #6366F1; border-top-color:transparent; animation: ap-spin 0.8s linear infinite; background:transparent; }
+.ap-indicator.ap-done { background:#E31B23; } /* 红点 = 完成 */
+.ap-indicator.ap-need-input { background:#4ade80; } /* 绿点 = 需沟通 */
+.ap-indicator.ap-error { background:#FFD700; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); border-radius:0; } /* 闪电/三角 = 失败 */
+.ap-step.running { background:rgba(99,102,241,0.15); }
+.ap-step.done { background:rgba(227,27,35,0.1); }
+.ap-step.error { background:rgba(239,68,68,0.15); }
+@keyframes ap-spin { to { transform: rotate(360deg); } }
+@keyframes ap-pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
 </style>`);
     
     const updateStep = (id, status, text) => {
         const el = document.getElementById(id);
         if (el) {
             el.className = 'ap-step ' + status;
-            el.textContent = text;
+            const indicatorClass = status === 'running' ? 'ap-running' : status === 'done' ? 'ap-done' : status === 'error' ? 'ap-error' : 'ap-pending';
+            el.innerHTML = `<span class="ap-indicator ${indicatorClass}"></span> ${text}`;
         }
     };
     
