@@ -3843,36 +3843,89 @@ async function handleScriptImport(e) {
             removeTypingIndicator();
             const sceneInfo = quickAnalysis.needsAI ? 
                 `\n🎬 檢測到 ${quickAnalysis.sceneCount} 個場景，AI將合併為集數...` : '';
+            
+            // 计算分批数量
+            const BATCH_SIZE = 10000;
+            const totalBatches = Math.ceil(text.length / BATCH_SIZE);
+            const batchInfo = text.length > BATCH_SIZE ? 
+                `\n📦 分 ${totalBatches} 批處理 (每批${BATCH_SIZE}字)` : '';
+            
             addAIMessage(`📋 **正在智能分析劇本結構...**
 
 📖 ${title}
-📊 ${text.length.toLocaleString()} 字${sceneInfo}
+📊 ${text.length.toLocaleString()} 字${sceneInfo}${batchInfo}
 
 🤖 調用劇本拆分Agent，識別章節和角色...`);
             
             try {
-                // 提取场景结构摘要，而不是发送完整内容
-                const sceneSummary = extractSceneSummary(text);
-                console.log('📋 场景摘要:', sceneSummary);
+                let parsed = null;
                 
-                const response = await fetch(`${API_BASE}/agent/script_parser`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userMessage: `請分析並拆分這個劇本，將場景合併為3-8集：
+                if (text.length <= BATCH_SIZE) {
+                    // 短剧本：直接发送
+                    const response = await fetch(`${API_BASE}/agent/script_parser`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            content: `請分析並拆分這個劇本，將場景合併為3-8集：\n\n${text}`,
+                            projectAssets: {}
+                        })
+                    });
+                    const result = await response.json();
+                    const rawJson = result.result || result.response || result.content;
+                    parsed = safeJSONParse(rawJson, 'script_parser');
+                } else {
+                    // 长剧本：分批处理
+                    const sceneSummary = extractSceneSummary(text);
+                    let allScenes = [];
+                    let allCharacters = new Set();
+                    
+                    // 分批读取，收集场景信息
+                    for (let i = 0; i < totalBatches; i++) {
+                        const start = i * BATCH_SIZE;
+                        const end = Math.min((i + 1) * BATCH_SIZE + 500, text.length); // 重叠500字
+                        const batchText = text.substring(start, end);
+                        const batchScenes = extractSceneSummary(batchText);
+                        
+                        // 累积场景
+                        if (batchScenes.sceneList) {
+                            allScenes.push(`[批次${i+1}] ${batchScenes.sceneList}`);
+                        }
+                        
+                        // 更新进度
+                        if (totalBatches > 2) {
+                            updateTypingIndicator(`分析中... ${i+1}/${totalBatches} 批`);
+                        }
+                    }
+                    
+                    // 最后调用AI做分集决策
+                    const response = await fetch(`${API_BASE}/agent/script_parser`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            content: `請分析並拆分這個劇本，將場景合併為3-10集：
 
 📊 劇本統計：
 - 總字數：${text.length}
 - 識別到 ${sceneSummary.sceneCount} 個場景/段落
+- 分 ${totalBatches} 批讀取完成
 
-📋 場景列表：
-${sceneSummary.sceneList}
+📋 完整場景列表：
+${allScenes.join('\n').substring(0, 8000)}
 
-📖 開頭內容（用於識別風格）：
-${text.substring(0, 3000)}`,
-                        projectAssets: {}
-                    })
-                });
+📖 開頭內容：
+${text.substring(0, 2000)}
+
+📖 結尾內容：
+${text.substring(text.length - 2000)}`,
+                            projectAssets: {}
+                        })
+                    });
+                    const result = await response.json();
+                    const rawJson = result.result || result.response || result.content;
+                    parsed = safeJSONParse(rawJson, 'script_parser');
+                }
+                
+                console.log('📋 script_parser返回:', parsed);
                 
                 const result = await response.json();
                 console.log('📋 script_parser返回:', result);
@@ -9475,6 +9528,14 @@ function addTypingIndicator() {
 function removeTypingIndicator() {
     const el = document.getElementById('typingIndicator');
     if (el) el.remove();
+}
+
+function updateTypingIndicator(text) {
+    const el = document.getElementById('typingIndicator');
+    if (el) {
+        const contentEl = el.querySelector('.content') || el;
+        contentEl.innerHTML = `<span class="typing-text">${text}</span><span class="typing-dots">...</span>`;
+    }
 }
 
 function addProgressCard(title, progress = 0) {
