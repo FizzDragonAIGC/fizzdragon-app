@@ -3621,11 +3621,6 @@ async function handleScriptImport(e) {
             }
         }
         
-        removeTypingIndicator();
-        
-        // 分析剧本结构
-        const scriptAnalysis = analyzeScriptStructure(text);
-        
         // 提取标题
         const title = extractTitleFromText(text) || file.name.replace(/\.[^/.]+$/, '');
         
@@ -3639,51 +3634,115 @@ async function handleScriptImport(e) {
             scripts: {},
             storyboards: {}
         };
-        state.novel = text; // 保存原文（可能需要提取角色等）
+        state.novel = text;
         state.novelTitle = title;
         state.mode = 'script';
         
-        // 保存剧本到资产
-        if (scriptAnalysis.chapters.length > 0) {
-            // 多集剧本
-            scriptAnalysis.chapters.forEach((ch, i) => {
+        // 先用简单规则快速检测
+        const quickAnalysis = analyzeScriptStructure(text);
+        
+        if (quickAnalysis.chapters.length > 1) {
+            // 已有明显章节标记，直接用
+            removeTypingIndicator();
+            quickAnalysis.chapters.forEach((ch, i) => {
                 state.assets.scripts[i + 1] = ch.content;
                 state.assets.chapters.push({
                     number: i + 1,
                     title: ch.title || `第${i + 1}集`,
-                    duration: 5, // 默认5分钟
+                    duration: Math.round(ch.content.length / 150), // 150字/分钟
                     summary: ch.content.substring(0, 100) + '...'
                 });
             });
+            saveProject(title, true);
+            updateAssetsPanel();
+            showScriptImportSuccess(title, text.length);
         } else {
-            // 单集剧本
-            state.assets.scripts[1] = text;
-            state.assets.chapters.push({
-                number: 1,
-                title: title,
-                duration: 10,
-                summary: text.substring(0, 100) + '...'
-            });
-        }
-        
-        saveProject(title, true);
-        updateAssetsPanel();
-        
-        addAIMessage(`✅ **劇本導入成功！**
+            // 无明显章节标记，调用AI智能拆分
+            removeTypingIndicator();
+            addAIMessage(`📋 **正在智能分析劇本結構...**
 
-📖 **${title}**
+📖 ${title}
 📊 ${text.length.toLocaleString()} 字
-📑 識別到 **${state.assets.chapters.length}** 集
+
+🤖 調用劇本拆分Agent，識別章節和角色...`);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/agent/script_parser`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userMessage: `請分析並拆分這個劇本：\n\n${text.substring(0, 15000)}`,
+                        projectAssets: {}
+                    })
+                });
+                
+                const result = await response.json();
+                const parsed = extractJsonFromResponse(result.response || result.content);
+                
+                if (parsed && parsed.episodes) {
+                    // AI拆分成功
+                    parsed.episodes.forEach((ep, i) => {
+                        state.assets.scripts[ep.ep || i + 1] = ep.content || '';
+                        state.assets.chapters.push({
+                            number: ep.ep || i + 1,
+                            title: ep.title || `第${ep.ep || i + 1}集`,
+                            duration: parseInt(ep.estimated_duration) || 5,
+                            summary: ep.content?.substring(0, 100) + '...' || ''
+                        });
+                    });
+                    
+                    // 提取角色
+                    if (parsed.characters) {
+                        state.assets.characters = parsed.characters.map(c => 
+                            typeof c === 'string' ? { name: c } : c
+                        );
+                    }
+                    
+                    saveProject(title, true);
+                    updateAssetsPanel();
+                    
+                    addAIMessage(`✅ **AI劇本拆分完成！**
+
+📖 **${parsed.title || title}**
+📊 ${text.length.toLocaleString()} 字
+📑 識別到 **${parsed.episodes.length}** 集
+👤 識別到 **${parsed.characters?.length || 0}** 個角色
+⏱️ 預估總時長：${parsed.summary?.estimated_total_duration || '未知'}
 
 ───────────────────────
-劇本已存入資產，你可以：
-• 🎬 直接生成分鏡
-• 💡 提取高概念（AI分析主題/類型）
-• 👤 提取角色（AI識別人物）`, [
-            { text: '🎬 生成第1集分鏡', action: () => runStoryboardGeneration(1) },
-            { text: '💡 提取高概念', action: () => runConceptStep() },
-            { text: '👤 提取角色', action: () => runCharacterAnalysis() }
-        ]);
+現在可以直接生成分鏡！`, [
+                        { text: '🎬 生成第1集分鏡', action: () => runStoryboardGeneration(1) },
+                        { text: '🚀 Auto-Pilot生成全部', action: () => runAutoPilot() },
+                        { text: '👀 查看角色', action: () => switchAssetsTab('settings') }
+                    ]);
+                } else {
+                    // AI拆分失败，用整体作为单集
+                    state.assets.scripts[1] = text;
+                    state.assets.chapters.push({
+                        number: 1,
+                        title: title,
+                        duration: Math.round(text.length / 150),
+                        summary: text.substring(0, 100) + '...'
+                    });
+                    saveProject(title, true);
+                    updateAssetsPanel();
+                    showScriptImportSuccess(title, text.length);
+                }
+            } catch (aiErr) {
+                console.error('AI拆分失敗:', aiErr);
+                // 回退到单集模式
+                state.assets.scripts[1] = text;
+                state.assets.chapters.push({
+                    number: 1,
+                    title: title,
+                    duration: Math.round(text.length / 150),
+                    summary: text.substring(0, 100) + '...'
+                });
+                saveProject(title, true);
+                updateAssetsPanel();
+                showScriptImportSuccess(title, text.length);
+            }
+        }
         
     } catch (err) {
         removeTypingIndicator();
@@ -3691,6 +3750,25 @@ async function handleScriptImport(e) {
             { text: '🔄 重試', action: () => importScript() }
         ]);
     }
+}
+
+// 剧本导入成功提示
+function showScriptImportSuccess(title, wordCount) {
+    addAIMessage(`✅ **劇本導入成功！**
+
+📖 **${title}**
+📊 ${wordCount.toLocaleString()} 字
+📑 識別到 **${state.assets.chapters.length}** 集
+
+───────────────────────
+劇本已存入資產，你可以：
+• 🎬 直接生成分鏡
+• 💡 提取高概念（AI分析主題/類型）
+• 👤 提取角色（AI識別人物）`, [
+        { text: '🎬 生成第1集分鏡', action: () => runStoryboardGeneration(1) },
+        { text: '💡 提取高概念', action: () => runConceptStep() },
+        { text: '👤 提取角色', action: () => runCharacterAnalysis() }
+    ]);
 }
 
 // 分析剧本结构
