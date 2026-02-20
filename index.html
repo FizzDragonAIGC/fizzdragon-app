@@ -732,6 +732,14 @@
             border-radius: 4px;
             font-size: 11px;
         }
+        .fizzstudio-ep-title {
+            font-size: 10px;
+            color: var(--text2);
+            max-width: 80px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
         .fizzstudio-ep-tag {
             color: var(--accent);
             font-weight: 600;
@@ -4645,10 +4653,14 @@ function updateAssetsPanel() {
                     </div>
                     ${totalShots > 0 ? `
                         <div class="fizzstudio-storyboard-list">
-                            ${Object.entries(a.storyboards || {}).sort((x,y) => Number(x[0]) - Number(y[0])).map(([ep, shots]) => `
+                            ${Object.entries(a.storyboards || {}).sort((x,y) => Number(x[0]) - Number(y[0])).map(([ep, shots]) => {
+                                const chapter = a.chapters?.[Number(ep) - 1];
+                                const chapterTitle = chapter?.title || chapter?.name || '';
+                                return `
                                 <div class="fizzstudio-storyboard-ep">
                                     <div class="fizzstudio-storyboard-row" onclick="toggleStoryboardDetail(${ep})">
                                         <span class="fizzstudio-ep-tag">E${String(ep).padStart(2,'0')}</span>
+                                        <span class="fizzstudio-ep-title" title="${chapterTitle}">${chapterTitle ? chapterTitle.substring(0, 8) : ''}</span>
                                         <span class="fizzstudio-shot-count">${Array.isArray(shots) ? shots.length : 0}鏡</span>
                                         <span id="sbToggle${ep}" style="font-size:10px;color:#666;">▼</span>
                                         <button onclick="event.stopPropagation();exportChapterStoryboard(${ep})" class="fizzstudio-mini-btn" title="導出">📥</button>
@@ -4681,7 +4693,7 @@ function updateAssetsPanel() {
                                         </table>
                                     </div>
                                 </div>
-                            `).join('')}
+                            `}).join('')}
                         </div>
                         <div class="fizzstudio-actions">
                             <button onclick="exportToExcel()" class="fizzstudio-btn">📥 導出全部Excel</button>
