@@ -7686,6 +7686,8 @@ function renderProjectListByMode() {
                         `}
                     </div>
                     ${stepName ? `<div class="meta-step">📍 ${stepName}</div>` : ''}
+                    ${isRunning ? `<div class="meta-step" style="color:#6366F1;">🔄 Auto-Pilot 運行中...</div>` : ''}
+                    ${isProcessing && !isRunning ? `<div class="meta-step" style="color:#6366F1;">⏳ 處理中...</div>` : ''}
                 </div>
                 <div class="actions">
                     <button class="action-btn" onclick="event.stopPropagation(); renameProject('${p.id}', '${safeName}')" title="${t('rename')}">✏️</button>
