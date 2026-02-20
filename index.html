@@ -2932,11 +2932,181 @@ ${projectCount > 0 ? `📂 你有 **${projectCount}** 個已保存的項目\n` :
     };
     
     addAIMessage(welcomeTexts[currentLang] || welcomeTexts['zh-TW'], [
-        { text: '📄 導入現有故事', action: () => document.getElementById('fileInput').click() },
+        { text: '📄 導入小說', action: () => document.getElementById('fileInput').click() },
+        { text: '📝 導入劇本', action: () => importScript() },
         { text: '✍️ 我要寫故事', action: () => startWriteStory() },
         { text: '🤖 AI幫我寫', action: () => startAIStoryWriting() },
-        { text: '🚀 Auto-Pilot 全自動', action: () => showAutoPilotOptions() }
+        { text: '🚀 Auto-Pilot', action: () => showAutoPilotOptions() }
     ]);
+}
+
+// ==================== 导入剧本模式 ====================
+function importScript() {
+    addAIMessage(`📝 **導入劇本模式**
+
+如果你已經有寫好的劇本，可以直接上傳！
+
+系統會自動：
+1. 分析劇本結構（識別場次/集數）
+2. 存入項目資產
+3. 你可以直接生成 🎬 分鏡
+
+支持格式：.txt .docx .pdf
+
+───────────────────────
+注：劇本格式建議包含場次標記，如「【第1集】」「場景1」等`);
+    
+    // 创建专门的剧本文件输入
+    let scriptInput = document.getElementById('scriptFileInput');
+    if (!scriptInput) {
+        scriptInput = document.createElement('input');
+        scriptInput.type = 'file';
+        scriptInput.id = 'scriptFileInput';
+        scriptInput.accept = '.txt,.docx,.pdf';
+        scriptInput.style.display = 'none';
+        scriptInput.addEventListener('change', handleScriptImport);
+        document.body.appendChild(scriptInput);
+    }
+    
+    showQuickReplies([
+        { text: '📄 選擇劇本文件', action: () => scriptInput.click() },
+        { text: '↩️ 返回', action: () => showWelcome() }
+    ]);
+}
+
+async function handleScriptImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = '';
+    
+    addUserMessage(`📝 導入劇本: ${file.name}`);
+    addTypingIndicator();
+    
+    try {
+        let text = '';
+        const ext = file.name.split('.').pop().toLowerCase();
+        
+        if (ext === 'txt') {
+            text = await file.text();
+        } else if (ext === 'docx') {
+            const arrayBuffer = await file.arrayBuffer();
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            text = result.value;
+        } else if (ext === 'pdf') {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                text += content.items.map(item => item.str).join(' ') + '\n';
+            }
+        }
+        
+        removeTypingIndicator();
+        
+        // 分析剧本结构
+        const scriptAnalysis = analyzeScriptStructure(text);
+        
+        // 提取标题
+        const title = extractTitleFromText(text) || file.name.replace(/\.[^/.]+$/, '');
+        
+        // 清空旧项目，开始新项目
+        currentProjectId = null;
+        state.assets = {
+            concept: null,
+            characters: [],
+            chapters: [],
+            costumes: null,
+            scripts: {},
+            storyboards: {}
+        };
+        state.novel = text; // 保存原文（可能需要提取角色等）
+        state.novelTitle = title;
+        state.mode = 'script';
+        
+        // 保存剧本到资产
+        if (scriptAnalysis.chapters.length > 0) {
+            // 多集剧本
+            scriptAnalysis.chapters.forEach((ch, i) => {
+                state.assets.scripts[i + 1] = ch.content;
+                state.assets.chapters.push({
+                    number: i + 1,
+                    title: ch.title || `第${i + 1}集`,
+                    duration: 5, // 默认5分钟
+                    summary: ch.content.substring(0, 100) + '...'
+                });
+            });
+        } else {
+            // 单集剧本
+            state.assets.scripts[1] = text;
+            state.assets.chapters.push({
+                number: 1,
+                title: title,
+                duration: 10,
+                summary: text.substring(0, 100) + '...'
+            });
+        }
+        
+        saveProject(title, true);
+        updateAssetsPanel();
+        
+        addAIMessage(`✅ **劇本導入成功！**
+
+📖 **${title}**
+📊 ${text.length.toLocaleString()} 字
+📑 識別到 **${state.assets.chapters.length}** 集
+
+───────────────────────
+劇本已存入資產，你可以：
+• 🎬 直接生成分鏡
+• 💡 提取高概念（AI分析主題/類型）
+• 👤 提取角色（AI識別人物）`, [
+            { text: '🎬 生成第1集分鏡', action: () => runStoryboardGeneration(1) },
+            { text: '💡 提取高概念', action: () => runConceptStep() },
+            { text: '👤 提取角色', action: () => runCharacterAnalysis() }
+        ]);
+        
+    } catch (err) {
+        removeTypingIndicator();
+        addAIMessage(`❌ 導入失敗：${err.message}`, [
+            { text: '🔄 重試', action: () => importScript() }
+        ]);
+    }
+}
+
+// 分析剧本结构
+function analyzeScriptStructure(text) {
+    const chapters = [];
+    
+    // 尝试匹配常见的章节标记
+    const patterns = [
+        /【第(\d+)集】/g,
+        /第(\d+)集[：:]/g,
+        /第(\d+)幕/g,
+        /EP(\d+)/gi,
+        /Episode\s*(\d+)/gi,
+        /場景\s*(\d+)/g,
+        /SCENE\s*(\d+)/gi
+    ];
+    
+    for (const pattern of patterns) {
+        const matches = [...text.matchAll(pattern)];
+        if (matches.length > 1) {
+            // 找到多个匹配，按位置分割
+            for (let i = 0; i < matches.length; i++) {
+                const start = matches[i].index;
+                const end = matches[i + 1]?.index || text.length;
+                chapters.push({
+                    number: parseInt(matches[i][1]),
+                    title: matches[i][0],
+                    content: text.substring(start, end).trim()
+                });
+            }
+            break;
+        }
+    }
+    
+    return { chapters };
 }
 
 // ==================== Auto-Pilot 模式開關 ====================
