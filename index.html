@@ -7243,16 +7243,19 @@ function loadProject(projectId) {
     
     // 智能体状态HTML - 与红色按钮对齐样式
     const agentHtml = `
-<div class="quick-replies" style="margin-top:10px;">
-    <button class="quick-reply agent-btn ${assets.concept ? 'done' : ''}" onclick="triggerAgentWithCheck('concept')">💡 概念 ${assets.concept ? '✅' : ''}</button>
-    <button class="quick-reply agent-btn ${charCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('character')">👤 人物 ${charCount > 0 ? charCount : ''}</button>
-    <button class="quick-reply agent-btn ${chapterCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('chapters')">📝 章節 ${chapterCount > 0 ? chapterCount + '集' : ''}</button>
-    <button class="quick-reply agent-btn ${scriptCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('script')">✍️ 編劇 ${scriptCount > 0 ? scriptCount + '/' + chapterCount : ''}</button>
-    <button class="quick-reply agent-btn ${sbCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('storyboard')">🎬 分鏡 ${sbCount > 0 ? sbCount + '/' + chapterCount : ''}</button>
-    <button class="quick-reply agent-btn auto" onclick="runAutoPilot()" style="background:rgba(99,102,241,0.15);color:#6366F1;">🚀 自動</button>
+<div class="quick-replies agent-row">
+    <button class="quick-reply agent-btn ${assets.concept ? 'done' : ''}" onclick="triggerAgentWithCheck('concept')">💡 概念${assets.concept ? ' ✅' : ''}</button>
+    <button class="quick-reply agent-btn ${charCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('character')">👤 人物${charCount > 0 ? ' ' + charCount : ''}</button>
+    <button class="quick-reply agent-btn ${chapterCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('chapters')">📝 章節${chapterCount > 0 ? ' ' + chapterCount + '集' : ''}</button>
+    <button class="quick-reply agent-btn ${scriptCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('script')">✍️ 編劇${scriptCount > 0 ? ' ' + scriptCount + '/' + chapterCount : ''}</button>
+    <button class="quick-reply agent-btn ${sbCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('storyboard')">🎬 分鏡${sbCount > 0 ? ' ' + sbCount + '/' + chapterCount : ''}</button>
+    <button class="quick-reply agent-btn auto" onclick="runAutoPilot()">🚀 自動</button>
 </div>
 <style>
+.agent-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.agent-btn { padding:6px 10px !important; font-size:12px !important; }
 .agent-btn.done { background:rgba(74,222,128,0.15) !important; color:#4ade80 !important; }
+.agent-btn.auto { background:rgba(99,102,241,0.15) !important; color:#6366F1 !important; }
 .agent-btn.auto:hover { background:rgba(99,102,241,0.25) !important; }
 </style>`;
     
