@@ -24,6 +24,16 @@
             --ai-bg: transparent;
         }
         
+        /* 广告模式配色 - 蓝紫渐变 */
+        body.ad-mode {
+            --accent: #6366F1;      /* 靛蓝色 */
+            --accent2: #8B5CF6;     /* 紫色 */
+            --accent-gradient: linear-gradient(135deg, #6366F1, #8B5CF6);
+            --bg: #0f0f1a;
+            --surface: #161625;
+            --surface2: #1e1e30;
+        }
+        
         body {
             font-family: 'Inter', -apple-system, sans-serif;
             background: var(--bg);
@@ -3909,6 +3919,9 @@ function switchAppMode(mode) {
     appMode = mode;
     console.log('🔀 切换模式:', mode);
     
+    // 🎨 切换配色主题
+    document.body.classList.toggle('ad-mode', mode === 'ad');
+    
     // 更新Tab样式
     document.querySelectorAll('.mode-tab').forEach(tab => {
         tab.classList.toggle('active', tab.dataset.mode === mode);
@@ -4129,7 +4142,7 @@ function startAdCreation() {
     color:var(--text); cursor:pointer; text-align:center; transition:all 0.2s;
 }
 .duration-btn:hover { border-color:var(--accent); }
-.duration-btn.active { background:rgba(227,27,35,0.15); border-color:var(--accent); color:var(--accent); }
+.duration-btn.active { background:rgba(99,102,241,0.15); border-color:var(--accent); color:var(--accent); }
 </style>
 
 **4️⃣ 演員（可選）**
