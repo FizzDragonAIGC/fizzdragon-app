@@ -605,6 +605,41 @@
         }
         .copy-btn:hover { background: var(--accent); color: white; }
         
+        /* 角色编辑按钮 */
+        .char-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+        }
+        .char-edit-btn, .char-delete-btn {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .char-edit-btn {
+            background: rgba(227, 27, 35, 0.1);
+            color: var(--accent);
+        }
+        .char-edit-btn:hover {
+            background: var(--accent);
+            color: white;
+        }
+        .char-delete-btn {
+            background: transparent;
+            color: #888;
+        }
+        .char-delete-btn:hover {
+            background: #ff4444;
+            color: white;
+            border-color: #ff4444;
+        }
+        
         /* 章节盒子 */
         .chapter-box {
             background: var(--surface);
@@ -2902,6 +2937,10 @@ function updateAssetsPanel() {
                                     ${c.bio ? `<div class="char-section"><div class="char-section-title">📖 小傳</div><div class="char-section-content">${c.bio}</div></div>` : ''}
                                     ${c.appearance ? `<div class="char-section"><div class="char-section-title">👤 外貌</div><div class="char-section-content">${c.appearance}</div></div>` : ''}
                                     ${c.prompt ? `<div class="char-section"><div class="char-section-title">🎨 Prompt <button class="copy-btn" onclick="event.stopPropagation();copyCharPrompt(${i})">📋</button></div><div class="char-section-content char-prompt" id="charPrompt${i}">${c.prompt}</div></div>` : ''}
+                                    <div class="char-section char-actions">
+                                        <button class="char-edit-btn" onclick="event.stopPropagation();editCharacter(${i})">✏️ 編輯此角色</button>
+                                        <button class="char-delete-btn" onclick="event.stopPropagation();deleteCharacter(${i})">🗑️ 刪除</button>
+                                    </div>
                                 </div>
                             </div>
                         `).join('')}
@@ -3100,6 +3139,98 @@ function copyCharPrompt(index) {
                 btn.style.background = '';
             }, 1500);
         });
+    }
+}
+
+// 编辑单个角色
+function editCharacter(index) {
+    const chars = state.assets?.characters || [];
+    const char = chars[index];
+    if (!char) return;
+    
+    addAIMessage(`📝 **編輯角色：${char.name}**
+
+當前內容：
+- 📖 小傳：${(char.bio || '').substring(0, 100)}...
+- 👤 外貌：${(char.appearance || '').substring(0, 50)}...
+
+請告訴我你想怎麼修改這個角色？
+例如：
+- "讓他的性格更內向一點"
+- "增加童年創傷的描述"
+- "修改外貌，讓他戴眼鏡"
+- "重新生成AI Prompt"`);
+    
+    // 设置等待用户输入的状态
+    window.pendingCharacterEdit = {
+        index,
+        character: char,
+        onEdit: async (feedback) => {
+            await reviseCharacter(index, char, feedback);
+        }
+    };
+    
+    scrollToBottom();
+}
+
+// 修改角色
+async function reviseCharacter(index, originalChar, feedback) {
+    addAIMessage(`🔄 正在修改角色 **${originalChar.name}**...`);
+    
+    try {
+        const revisionPrompt = `
+這是原始角色資料：
+${JSON.stringify(originalChar, null, 2)}
+
+用戶的修改意見：
+${feedback}
+
+請根據意見修改，輸出完整的角色JSON（保持原有格式）：
+{
+  "name": "角色名",
+  "role": "主角/配角/反派",
+  "bio": "【人物小傳】完整描述...",
+  "appearance": "【外貌特徵】完整描述...",
+  "ai_prompt": "英文Prompt..."
+}`;
+        
+        const result = await callAgent('character', revisionPrompt, { revision: true });
+        const revisedChar = safeJSONParse(result, 'character');
+        
+        // 如果返回的是characters数组，取第一个
+        const newChar = revisedChar.characters?.[0] || revisedChar;
+        
+        // 更新角色
+        state.assets.characters[index] = { ...originalChar, ...newChar };
+        
+        // 保存并刷新
+        saveProject(null, true);
+        updateAssetsPanel();
+        
+        addAIMessage(`✅ 角色 **${newChar.name || originalChar.name}** 已更新！
+
+查看右側資產面板確認修改。`);
+        
+    } catch (err) {
+        addAIMessage(`❌ 修改失敗：${err.message}
+
+請重試或手動編輯。`);
+    }
+    
+    window.pendingCharacterEdit = null;
+}
+
+// 删除角色
+function deleteCharacter(index) {
+    const chars = state.assets?.characters || [];
+    const char = chars[index];
+    if (!char) return;
+    
+    if (confirm(`確定要刪除角色「${char.name}」嗎？此操作不可撤銷。`)) {
+        state.assets.characters.splice(index, 1);
+        saveProject(null, true);
+        updateAssetsPanel();
+        addAIMessage(`🗑️ 已刪除角色：${char.name}`);
     }
 }
 
@@ -9430,6 +9561,12 @@ function handleUserInput(text) {
     // ==================== 修改意見處理 ====================
     if (window.pendingRevision) {
         handleRevisionFeedback(text);
+        return;
+    }
+    
+    // ==================== 角色編輯處理 ====================
+    if (window.pendingCharacterEdit) {
+        window.pendingCharacterEdit.onEdit(text);
         return;
     }
     
