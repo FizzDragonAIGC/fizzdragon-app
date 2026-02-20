@@ -7813,40 +7813,66 @@ function loadProject(projectId) {
         return;
     }
     
-    // 🔧 保存当前项目的聊天历史（如果有的话）
+    // 🔧 1. 先保存当前项目（如果有）
     if (currentProjectId && currentProjectId !== projectId) {
+        console.log('📂 保存当前项目:', currentProjectId);
         saveProject(null, true);
     }
     
-    // 🔧 恢复目标项目的聊天历史
+    // 🔧 2. 完全清空所有状态，避免污染
+    console.log('📂 清空状态，准备加载项目:', projectId, p.name);
+    
+    // 清空聊天
     const chatContainer = document.getElementById('chatContainer');
+    chatContainer.innerHTML = '';
+    
+    // 清空state
+    state.novel = null;
+    state.novelTitle = '';
+    state.concept = null;
+    state.interview = null;
+    state.characters = null;
+    state.storyboard = null;
+    state.mode = '';
+    state.step = 0;
+    state.assets = { concept: null, characters: [], chapters: [], costumes: null, scripts: {}, storyboards: {} };
+    state.production = { episodes: 10, durationMin: 3, shotsPerMin: 10 };
+    
+    // 清空writeState
+    writeState.idea = null;
+    writeState.interview = null;
+    writeState.outline = null;
+    writeState.chapters = [];
+    writeState.storyboard = null;
+    
+    // 🔧 3. 加载目标项目
+    console.log('📂 加载项目数据:', projectId, { hasNovel: !!p.novel, novelLen: p.novel?.length });
+    
+    // 恢复聊天历史
     const hasChatHistory = p.chatHistory && p.chatHistory.trim().length > 0;
     if (hasChatHistory) {
         chatContainer.innerHTML = p.chatHistory;
         console.log('📂 聊天历史已恢复');
-    } else {
-        chatContainer.innerHTML = '';
     }
     
-    console.log('📂 loadProject:', projectId, { hasNovel: !!p.novel, novelLen: p.novel?.length });
-    
     // 恢复写作模式状态
-    writeState.idea = p.idea;
-    writeState.interview = p.interview;
-    writeState.outline = p.outline;
+    writeState.idea = p.idea || null;
+    writeState.interview = p.interview || null;
+    writeState.outline = p.outline || null;
     writeState.chapters = p.chapters || [];
-    writeState.storyboard = p.writeStoryboard;
+    writeState.storyboard = p.writeStoryboard || null;
     
     // 恢复导入模式状态
-    state.novel = p.novel;
-    console.log('📂 state.novel restored:', !!state.novel, state.novel?.length);
-    state.novelTitle = p.novelTitle || p.name;
-    state.concept = p.concept;
-    state.interview = p.importInterview;
-    state.characters = p.characters;
-    state.storyboard = p.storyboard;
-    state.mode = p.stage;
+    state.novel = p.novel || null;
+    state.novelTitle = p.novelTitle || p.name || '';
+    state.concept = p.concept || null;
+    state.interview = p.importInterview || null;
+    state.characters = p.characters || null;
+    state.storyboard = p.storyboard || null;
+    state.mode = p.stage || '';
     state.step = p.step || 0;
+    
+    console.log('📂 state.novel 已恢复:', !!state.novel, state.novel?.length, '前50字:', state.novel?.substring(0, 50));
     
     // 🔧 恢复项目资产（先清空再加载，确保不污染）
     state.assets = {
