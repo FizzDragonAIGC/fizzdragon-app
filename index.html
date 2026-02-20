@@ -7076,8 +7076,8 @@ async function generateAIStory(idea) {
 
 > "${idea}"`);
     
-    showAgentStatus('✍️ 編劇', '正在創作故事...', 'screenwriter');
-    startThinkingAnimation('screenwriter');
+    showAgentStatus('📖 小說家', '正在創作故事...', 'novelist');
+    startThinkingAnimation('novelist');
     
     try {
         const prompt = `你是一位專業的故事創作者。根據用戶的想法，創作一個完整的短篇故事。
@@ -7090,10 +7090,11 @@ async function generateAIStory(idea) {
 3. 人物形象鮮明
 4. 對話生動自然
 5. 情感真實感人
+6. 寫到故事結束就停，不要寫「下一集預告」
 
 直接輸出故事正文，不要輸出任何解釋或標題（標題我會自動提取）。`;
 
-        const result = await callAgent('screenwriter', prompt, { useReasoner: false });
+        const result = await callAgent('novelist', prompt, { useReasoner: false });
         
         stopThinkingAnimation();
         
@@ -9084,8 +9085,8 @@ async function startWriteCreation() {
 
 // 🔧 根据访谈内容生成故事
 async function generateStoryFromInterview() {
-    showAgentStatus('✍️ 故事創作者', '正在創作故事...', 'screenwriter');
-    startThinkingAnimation('screenwriter');
+    showAgentStatus('📖 小說家', '正在創作故事...', 'novelist');
+    startThinkingAnimation('novelist');
     
     try {
         const interviewSummary = Object.entries(writeState.interview || {})
@@ -9134,7 +9135,7 @@ ${styleInstruction}
 
 直接輸出故事正文，不要輸出任何解釋。`;
 
-        const result = await callAgent('screenwriter', prompt, { useReasoner: false });
+        const result = await callAgent('novelist', prompt, { useReasoner: false });
         
         stopThinkingAnimation();
         hideAgentStatus();
@@ -9510,10 +9511,11 @@ ${prevContext ? prevContext.substring(0, 2000) : ''}
 - 保持人物性格一致
 - 承接上文，鋪墊下文
 - 章節結尾留懸念或情感高潮
-- 直接輸出正文，不要標題和解釋`;
+- 直接輸出正文，不要標題和解釋
+- 不要寫「下一集預告」`;
 
         updateProgress(50);
-        const result = await callAgent('screenwriter', prompt);
+        const result = await callAgent('novelist', prompt);
         updateProgress(100);
         
         // 保存章节
