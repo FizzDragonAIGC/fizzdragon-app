@@ -7763,7 +7763,7 @@ function runScriptStepForNextChapter() {
 function runStoryboardStepForNextChapter() {
     const sbCount = Object.keys(state.assets.storyboards || {}).length;
     const nextChapter = sbCount + 1;
-    generateChapterStoryboard(nextChapter);
+    runStoryboardGeneration(nextChapter);
 }
 
 function continueWriteProject() {
