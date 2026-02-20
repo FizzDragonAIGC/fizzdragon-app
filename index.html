@@ -5050,7 +5050,18 @@ function manualInputChapters() {
 }
 
 async function runChaptersStepSilent() {
-    const result = await callAgent('narrative', state.novel.substring(0, 3000), { 
+    // 🔧 安全获取文本内容
+    const novelText = state.novel || 
+                      state.assets?.story?.content || 
+                      JSON.stringify(state.assets?.concept || {}) ||
+                      '';
+    
+    if (!novelText || novelText.length < 50) {
+        console.warn('⚠️ runChaptersStepSilent: 没有足够的内容进行章节规划');
+        throw new Error('需要先導入故事或生成內容');
+    }
+    
+    const result = await callAgent('narrative', novelText.substring(0, 3000), { 
         concept: state.assets.concept,
         production: state.production 
     });
@@ -12972,16 +12983,35 @@ async function finishInterview() {
 }
 
 async function runChaptersStep() {
+    // 🔧 前置检查：确保有内容可以规划
+    const hasNovel = state.novel && state.novel.length > 100;
+    const hasIdea = writeState.idea?.premise && writeState.idea.premise.length > 20;
+    const hasConcept = state.assets?.concept;
+    
+    if (!hasNovel && !hasIdea && !hasConcept) {
+        addAIMessage(`⚠️ **無法規劃章節**
+
+需要先有故事內容才能規劃章節。`, [
+            { text: '📄 導入故事', action: () => showStartOptions() },
+            { text: '🤖 AI幫我寫', action: () => startAIStoryWriting() }
+        ]);
+        return;
+    }
+    
     addProgressCard('生成章節規劃', 0);
     
     try {
         const context = {
-            concept: state.concept,
-            interview: state.interview
+            concept: state.concept || state.assets?.concept,
+            interview: state.interview || writeState.interview
         };
         
-        // 🔧 修复Bug#3: 防止null.substring()错误
-        const novelText = state.novel || writeState.idea?.premise || writeState.outline?.synopsis || '';
+        // 🔧 修复Bug#3: 防止null.substring()错误，增加更多fallback
+        const novelText = state.novel || 
+                          (state.assets?.story?.content) || 
+                          writeState.idea?.premise || 
+                          writeState.outline?.synopsis || 
+                          JSON.stringify(state.assets?.concept || {});
         
         // 🔧 调试：确保使用正确的项目内容
         console.log('📝 runChaptersStep - novelText前100字:', novelText.substring(0, 100));
