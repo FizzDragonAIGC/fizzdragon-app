@@ -3538,7 +3538,7 @@ function updateAssetsPanel() {
                                     <span class="character-asset-toggle" id="charToggle${i}">▼</span>
                                 </div>
                                 <div class="character-asset-detail" id="charDetail${i}" style="display:none;">
-                                    ${c.bio ? `<div class="char-section"><div class="char-section-title">📖 小傳</div><div class="char-section-content">${c.bio}</div></div>` : ''}
+                                    ${c.bio ? `<div class="char-section"><div class="char-section-title">📖 小傳</div><div class="char-section-content">${formatBio(c.bio)}</div></div>` : ''}
                                     ${c.appearance ? `<div class="char-section"><div class="char-section-title">👤 外貌</div><div class="char-section-content">${c.appearance}</div></div>` : ''}
                                     ${c.prompt ? `<div class="char-section"><div class="char-section-title">🎨 Prompt <button class="copy-btn" onclick="event.stopPropagation();copyCharPrompt(${i})">📋</button></div><div class="char-section-content char-prompt" id="charPrompt${i}">${c.prompt}</div></div>` : ''}
                                     <div class="char-section char-actions">
@@ -7038,6 +7038,23 @@ function formatMessage(text) {
     return text
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/\n/g, '<br>');
+}
+
+// 格式化人物小傳 - 分行顯示各個元素
+function formatBio(bio) {
+    if (!bio) return '';
+    // 在關鍵詞前加換行
+    return bio
+        .replace(/Ghost[：:]/gi, '\n🔮 Ghost：')
+        .replace(/Wound[：:]/gi, '\n💔 Wound：')
+        .replace(/Lie[：:]/gi, '\n🎭 Lie：')
+        .replace(/Want[：:]/gi, '\n🎯 Want：')
+        .replace(/Need[：:]/gi, '\n💡 Need：')
+        .replace(/Truth[：:]/gi, '\n✨ Truth：')
+        .replace(/背景[：:]/gi, '\n📚 背景：')
+        .replace(/性格[：:]/gi, '\n🧠 性格：')
+        .replace(/弧[线線][：:]/gi, '\n📈 弧線：')
+        .trim();
 }
 
 function escapeHtml(text) {
