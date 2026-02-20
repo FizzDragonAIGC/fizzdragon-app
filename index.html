@@ -8984,19 +8984,7 @@ function showFinalConfirmation() {
 }
 
 async function startWriteCreation() {
-    addAIMessage(`🚀 **開始創作！**
-
-現在開始創作流程：
-0️⃣ **先寫故事** ← 根據訪談生成故事
-1️⃣ 生成高概念
-2️⃣ 設計角色
-3️⃣ 規劃章節（${state.production.episodes}集）
-4️⃣ 設計服化道
-5️⃣ 寫劇本
-
-正在根據訪談內容**創作故事**...`);
-    
-    // 切换到导入模式的资产流程
+    // 切换到写作模式
     state.mode = 'write';
     state.step = 0;
     
@@ -9005,8 +8993,92 @@ async function startWriteCreation() {
     currentProjectId = null;
     saveProject(state.novelTitle, true);
     
-    // 🔧 先用访谈内容生成小说，然后再进入高概念流程
-    await generateStoryFromInterview();
+    // 🆕 标记项目为运行状态（显示转圈）
+    if (currentProjectId) {
+        runningProjects[currentProjectId] = true;
+        renderProjectList();
+        console.log('🚀 写作模式开始，项目ID:', currentProjectId, '状态已标记');
+    }
+    
+    addAIMessage(`🚀 **開始創作！**
+
+📊 配置：${state.production?.episodes || 12}集 × ${state.production?.durationMin || 5}分鐘
+🎨 風格：${state.narrativeStyle?.primaryName || '好萊塢三幕式'}
+
+<div id="writeProgress" style="background:var(--surface);padding:16px;border-radius:8px;margin:12px 0;">
+    <div class="ap-step" id="wp-story"><span class="ap-indicator ap-running"></span> 0. 創作故事中...</div>
+    <div class="ap-step" id="wp-concept"><span class="ap-indicator ap-pending"></span> 1. 高概念分析</div>
+    <div class="ap-step" id="wp-character"><span class="ap-indicator ap-pending"></span> 2. 角色設計</div>
+    <div class="ap-step" id="wp-chapters"><span class="ap-indicator ap-pending"></span> 3. 章節規劃</div>
+    <div class="ap-step" id="wp-production"><span class="ap-indicator ap-pending"></span> 4. 服化道設計</div>
+    <div class="ap-step" id="wp-script"><span class="ap-indicator ap-pending"></span> 5. 劇本生成</div>
+</div>
+
+<style>
+.ap-step { padding:8px 12px; margin:4px 0; border-radius:6px; font-size:13px; display:flex; align-items:center; gap:10px; }
+.ap-indicator { width:12px; height:12px; border-radius:50%; display:inline-block; flex-shrink:0; }
+.ap-indicator.ap-pending { background:#555; }
+.ap-indicator.ap-running { border:2px solid #E31B23; border-top-color:transparent; animation: ap-spin 0.8s linear infinite; background:transparent; }
+.ap-indicator.ap-done { background:#E31B23; }
+@keyframes ap-spin { to { transform: rotate(360deg); } }
+</style>`);
+    
+    // 更新步骤状态的函数
+    const updateWriteStep = (id, status, text) => {
+        const el = document.getElementById(id);
+        if (el) {
+            const indicatorClass = status === 'running' ? 'ap-running' : status === 'done' ? 'ap-done' : 'ap-pending';
+            el.innerHTML = `<span class="ap-indicator ${indicatorClass}"></span> ${text}`;
+            scrollToBottom();
+        }
+    };
+    
+    try {
+        // 0. 生成故事
+        await generateStoryFromInterview();
+        updateWriteStep('wp-story', 'done', '✅ 0. 故事創作完成');
+        
+        // 1. 高概念
+        updateWriteStep('wp-concept', 'running', '🔄 1. 高概念分析中...');
+        await generateWriteConceptSilent();
+        updateWriteStep('wp-concept', 'done', '✅ 1. 高概念分析完成');
+        
+        // 2. 角色
+        updateWriteStep('wp-character', 'running', '🔄 2. 角色設計中...');
+        await generateWriteCharactersSilent();
+        updateWriteStep('wp-character', 'done', '✅ 2. 角色設計完成');
+        
+        // 3. 章节
+        updateWriteStep('wp-chapters', 'running', '🔄 3. 章節規劃中...');
+        await runChaptersStepSilent();
+        updateWriteStep('wp-chapters', 'done', '✅ 3. 章節規劃完成');
+        
+        // 完成提示
+        if (currentProjectId) {
+            delete runningProjects[currentProjectId];
+            renderProjectList();
+        }
+        
+        addAIMessage(`🎉 **創作完成！**
+
+📖 故事：${state.novelTitle}
+👤 角色：${state.assets.characters?.length || 0} 個
+📝 章節：${state.assets.chapters?.length || 0} 集
+
+接下來可以：`, [
+            { text: '👗 設計服化道', action: () => triggerAgentWithCheck('production') },
+            { text: '✍️ 開始寫劇本', action: () => triggerAgentWithCheck('script') },
+            { text: '🚀 Auto-Pilot 全自動', action: () => runAutoPilot() }
+        ]);
+        
+    } catch (err) {
+        if (currentProjectId) {
+            delete runningProjects[currentProjectId];
+            renderProjectList();
+        }
+        console.error('写作创作失败:', err);
+        showFriendlyError(err, '創作流程', () => startWriteCreation());
+    }
 }
 
 // 🔧 根据访谈内容生成故事
@@ -9103,11 +9175,48 @@ ${result.substring(0, 300)}...
     } catch (err) {
         stopThinkingAnimation();
         hideAgentStatus();
-        showFriendlyError(err, '故事創作', () => generateStoryFromInterview());
+        throw err; // 向上传递错误让startWriteCreation处理
     }
 }
 
-// 写作模式 - 生成高概念
+// 🆕 写作模式 - 静默生成高概念
+async function generateWriteConceptSilent() {
+    const prompt = `根據以下創作意圖，生成高概念分析：
+
+故事內容摘要：${(state.novel || '').substring(0, 2000)}
+故事靈感：${JSON.stringify(writeState.idea)}
+創作者訪談：${JSON.stringify(writeState.interview)}
+
+請輸出JSON：{genre, theme, tone, logline, hooks[], emotionalJourney}`;
+
+    const result = await callAgent('concept', prompt);
+    const concept = safeJSONParse(result, 'concept');
+    
+    state.assets.concept = concept;
+    state.novelTitle = concept.title || state.novelTitle || '創作項目';
+    state.step = 1;
+    saveProject(null, true);
+}
+
+// 🆕 写作模式 - 静默生成角色
+async function generateWriteCharactersSilent() {
+    const prompt = `根據以下高概念，設計主要角色：
+
+故事內容：${(state.novel || '').substring(0, 3000)}
+高概念：${JSON.stringify(state.assets.concept)}
+故事靈感：${JSON.stringify(writeState.idea)}
+
+請設計3-5個主要角色，輸出JSON：{characters: [{name, role, bio, appearance, ai_prompt}]}`;
+
+    const result = await callAgent('character', prompt);
+    const charData = safeJSONParse(result, 'characters');
+    
+    state.assets.characters = charData.characters || [];
+    state.step = 2;
+    saveProject(null, true);
+}
+
+// 写作模式 - 生成高概念（带UI）
 async function generateWriteConcept() {
     // 🔧 详细步骤显示
     const steps = [
