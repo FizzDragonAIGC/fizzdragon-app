@@ -9142,12 +9142,15 @@ Keys: ${Object.keys(charData || {}).join(', ') || '無'}
                 appearanceText = vParts.join('，');
             }
             
+            const promptValue = c.prompt || c.ai_prompt || c.image_prompt || c['AI Prompt'] || '';
+            console.log(`🔍 角色 ${c.name}: prompt=${c.prompt?.substring(0,30)}, ai_prompt=${c.ai_prompt?.substring(0,30)}, final=${promptValue?.substring(0,30)}`);
+            
             return {
                 name: c.name || '未命名',
                 role: c.role || c.type || '角色',
                 bio: bioText || '(需補充人物小傳)',
                 appearance: appearanceText || '(需補充外貌描述)',
-                prompt: c.prompt || c.ai_prompt || c.image_prompt || c['AI Prompt'] || ''
+                prompt: promptValue
             };
         });
         
