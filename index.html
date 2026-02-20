@@ -952,20 +952,28 @@
             background: var(--surface);
             border-bottom: 1px solid var(--border);
         }
-        .ws-steps { display: flex; gap: 4px; }
+        .ws-steps { display: flex; gap: 8px; }
         .ws-actions { display: flex; gap: 4px; }
         .ws-item {
-            width: 26px;
-            height: 26px;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            border-radius: 4px;
+            padding: 4px 6px;
+            border-radius: 6px;
             background: var(--surface2);
-            font-size: 11px;
+            font-size: 14px;
             color: var(--text2);
-            cursor: default;
+            cursor: pointer;
             transition: all 0.2s;
+        }
+        .ws-item:hover {
+            background: var(--surface);
+            transform: scale(1.05);
+        }
+        .ws-item small {
+            font-size: 9px;
+            margin-top: 2px;
+            white-space: nowrap;
         }
         .ws-item.done {
             background: rgba(227,27,35,0.2);
@@ -5727,11 +5735,11 @@ function updateAssetsPanel() {
     
     html += `<div class="workflow-status">
         <div class="ws-steps">
-            <span class="ws-item ${hasConcept ? 'done' : ''}" title="高概念">💡</span>
-            <span class="ws-item ${hasChars ? 'done' : ''}" title="人物 ${charCount}">${charCount || '👤'}</span>
-            <span class="ws-item ${hasChaps ? 'done' : ''}" title="章節 ${a.chapters?.length || 0}">${a.chapters?.length || '📝'}</span>
-            <span class="ws-item ${hasScripts ? 'done' : ''}" title="劇本">${hasScripts ? scriptCount + '/' + (a.chapters?.length || 0) : '✍️'}</span>
-            <span class="ws-item ${hasSB ? 'done' : ''}" title="分鏡">${hasSB ? sbCount + '/' + (a.chapters?.length || 0) : '🎬'}</span>
+            <span class="ws-item ${hasConcept ? 'done' : ''}" onclick="triggerAgentWithCheck('concept')" title="點擊生成高概念">💡<small>概念</small></span>
+            <span class="ws-item ${hasChars ? 'done' : ''}" onclick="triggerAgentWithCheck('character')" title="點擊生成角色">👤<small>角色${charCount ? '('+charCount+')' : ''}</small></span>
+            <span class="ws-item ${hasChaps ? 'done' : ''}" onclick="triggerAgentWithCheck('chapters')" title="點擊規劃章節">📝<small>章節${a.chapters?.length ? '('+a.chapters.length+')' : ''}</small></span>
+            <span class="ws-item ${hasScripts ? 'done' : ''}" onclick="triggerAgentWithCheck('script')" title="點擊生成劇本">✍️<small>劇本${hasScripts ? '('+scriptCount+')' : ''}</small></span>
+            <span class="ws-item ${hasSB ? 'done' : ''}" onclick="triggerAgentWithCheck('storyboard')" title="點擊生成分鏡">🎬<small>分鏡${hasSB ? '('+sbCount+')' : ''}</small></span>
         </div>
         <div class="ws-actions">
             <button class="ws-btn" onclick="runAutoPilot()" title="Auto-Pilot">🚀</button>
