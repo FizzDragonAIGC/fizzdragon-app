@@ -7264,12 +7264,20 @@ function saveProject(name = null, silent = false) {
     const projectId = currentProjectId || projectName.replace(/\s+/g, '_').toLowerCase() + '_' + Date.now();
     currentProjectId = projectId;
     
+    // 🔧 保存聊天历史（限制大小，只保留最近50条消息）
+    const chatContainer = document.getElementById('chatContainer');
+    const messages = chatContainer ? Array.from(chatContainer.children).slice(-50) : [];
+    const chatHistory = messages.map(m => m.outerHTML).join('\n');
+    
     projects[projectId] = {
         id: projectId,
         name: projectName,
         stage: state.mode === 'write' ? 'write' : 'import',
         step: state.step,
         timestamp: new Date().toISOString(),
+        
+        // 🔧 聊天历史
+        chatHistory: chatHistory,
         
         // 项目资产（新结构）
         assets: state.assets,
@@ -7405,8 +7413,19 @@ function loadProject(projectId) {
         return;
     }
     
-    // 🔧 清空对话框，避免遗留
-    document.getElementById('chatContainer').innerHTML = '';
+    // 🔧 保存当前项目的聊天历史（如果有的话）
+    if (currentProjectId && currentProjectId !== projectId) {
+        saveProject(null, true);
+    }
+    
+    // 🔧 恢复目标项目的聊天历史
+    const chatContainer = document.getElementById('chatContainer');
+    if (p.chatHistory) {
+        chatContainer.innerHTML = p.chatHistory;
+        console.log('📂 聊天历史已恢复');
+    } else {
+        chatContainer.innerHTML = '';
+    }
     
     console.log('📂 loadProject:', projectId, { hasNovel: !!p.novel, novelLen: p.novel?.length });
     
