@@ -4099,32 +4099,6 @@ function updateAssetsPanel() {
     
     let html = '';
     
-    // ==================== 区块0：故事源 ====================
-    if (a.story) {
-        const storyTypeLabels = { upload: '📄 上傳', ai: '🤖 AI生成', manual: '✍️ 自己寫' };
-        const storyLabel = storyTypeLabels[a.story.type] || '📖 故事';
-        html += `
-            <div class="canvas-card story-card">
-                <div class="canvas-card-header">
-                    <span class="canvas-card-num">00</span>
-                    <span class="canvas-card-title">📖 故事源</span>
-                    <span class="canvas-card-status">${storyLabel}</span>
-                </div>
-                <div class="canvas-card-body">
-                    <div class="story-info">
-                        <div class="story-title"><b>${a.story.title || '未命名故事'}</b></div>
-                        <div class="story-meta">${(a.story.content?.length || 0).toLocaleString()} 字</div>
-                    </div>
-                    <div class="story-preview">${(a.story.content || '').substring(0, 200)}${(a.story.content?.length || 0) > 200 ? '...' : ''}</div>
-                    <div class="story-actions">
-                        <button class="story-btn" onclick="viewFullStory()">👁️ 查看全文</button>
-                        ${a.story.type !== 'upload' ? '<button class="story-btn" onclick="editStory()">✏️ 編輯</button>' : ''}
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
     // ==================== Tab导航 ====================
     const hasBaseSettings = a.concept || a.characters?.length > 0 || a.costumes?.length > 0 || a.sets?.length > 0;
     const hasProduction = a.chapters?.length > 0;
@@ -4143,6 +4117,33 @@ function updateAssetsPanel() {
     
     // ==================== Tab1：基础设定 ====================
     html += `<div class="assets-tab-content" id="tabContentBase" style="display:block;">`;
+    
+        // 00 故事源
+        if (a.story) {
+            const storyTypeLabels = { upload: '📄 上傳', ai: '🤖 AI生成', manual: '✍️ 自己寫' };
+            const storyLabel = storyTypeLabels[a.story.type] || '📖 故事';
+            html += `
+                <div class="canvas-card story-card" style="margin-bottom:8px;">
+                    <div class="canvas-card-header">
+                        <span class="canvas-card-num">00</span>
+                        <span class="canvas-card-title">📖 故事源</span>
+                        <span class="canvas-card-status">${storyLabel}</span>
+                    </div>
+                    <div class="canvas-card-body" style="padding:6px 8px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <div style="font-weight:600;font-size:12px;">${a.story.title || '未命名故事'}</div>
+                                <div style="font-size:10px;color:var(--text2);">${(a.story.content?.length || 0).toLocaleString()} 字</div>
+                            </div>
+                            <div style="display:flex;gap:4px;">
+                                <button class="story-btn" style="padding:3px 6px;font-size:10px;" onclick="viewFullStory()">👁️</button>
+                                ${a.story.type !== 'upload' ? '<button class="story-btn" style="padding:3px 6px;font-size:10px;" onclick="editStory()">✏️</button>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
         
         // 01 高概念
         if (a.concept) {
