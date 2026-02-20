@@ -3209,21 +3209,7 @@ ${projectCount > 0 ? `📂 你有 **${projectCount}** 個已保存的項目\n` :
 
 // ==================== 导入剧本模式 ====================
 function importScript() {
-    addAIMessage(`📝 **導入劇本模式**
-
-如果你已經有寫好的劇本，可以直接上傳！
-
-系統會自動：
-1. 分析劇本結構（識別場次/集數）
-2. 存入項目資產
-3. 你可以直接生成 🎬 分鏡
-
-支持格式：.txt .docx .pdf
-
-───────────────────────
-注：劇本格式建議包含場次標記，如「【第1集】」「場景1」等`);
-    
-    // 创建专门的剧本文件输入
+    // 直接打开文件选择器
     let scriptInput = document.getElementById('scriptFileInput');
     if (!scriptInput) {
         scriptInput = document.createElement('input');
@@ -3234,11 +3220,7 @@ function importScript() {
         scriptInput.addEventListener('change', handleScriptImport);
         document.body.appendChild(scriptInput);
     }
-    
-    showQuickReplies([
-        { text: '📄 選擇劇本文件', action: () => scriptInput.click() },
-        { text: '↩️ 返回', action: () => showWelcome() }
-    ]);
+    scriptInput.click();
 }
 
 async function handleScriptImport(e) {
