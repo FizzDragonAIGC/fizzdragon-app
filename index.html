@@ -8072,15 +8072,17 @@ const AGENT_NAMES = {
     screenwriter: '✍️ 編劇'
 };
 
-// ==================== API调用（带状态显示）====================
-async function callAgent(agentId, content, context = {}) {
+// ==================== API调用（带状态显示 + 自动重试）====================
+async function callAgent(agentId, content, context = {}, retryCount = 0) {
+    const MAX_RETRIES = 3;
     const agentName = AGENT_NAMES[agentId] || agentId;
     
     // 显示调用状态
-    showAgentStatus(agentName, '準備中...');
+    const retryText = retryCount > 0 ? ` (重試 ${retryCount}/${MAX_RETRIES})` : '';
+    showAgentStatus(agentName, `準備中...${retryText}`);
     
     // 🧠 启动思考动画
-    startThinkingAnimation(agentId);
+    if (retryCount === 0) startThinkingAnimation(agentId);
     
     // 🔧 某些agent使用快速模型（章節規劃、訪談等需要快速響應的）
     const fastAgents = ['narrative', 'interview', 'concept'];
@@ -8101,7 +8103,6 @@ async function callAgent(agentId, content, context = {}) {
         clearTimeout(timeoutId);
         
         if (!response.ok) {
-            hideAgentStatus();
             throw new Error(`API錯誤: ${response.status}`);
         }
         
@@ -8125,7 +8126,24 @@ async function callAgent(agentId, content, context = {}) {
         
     } catch (err) {
         clearTimeout(timeoutId);
-        stopThinkingAnimation();  // 🧠 出错也停止动画
+        
+        // 🔄 自动重试机制
+        const isRetryable = err.name === 'AbortError' || 
+                           err.message.includes('fetch') || 
+                           err.message.includes('network') ||
+                           err.message.includes('Failed') ||
+                           err.message.includes('502') ||
+                           err.message.includes('503') ||
+                           err.message.includes('504');
+        
+        if (isRetryable && retryCount < MAX_RETRIES) {
+            console.log(`🔄 重試 ${retryCount + 1}/${MAX_RETRIES}: ${agentId}`);
+            showAgentStatus(agentName, `連接中斷，${3}秒後重試... (${retryCount + 1}/${MAX_RETRIES})`);
+            await new Promise(r => setTimeout(r, 3000 * (retryCount + 1)));  // 指数退避
+            return callAgent(agentId, content, context, retryCount + 1);
+        }
+        
+        stopThinkingAnimation();
         hideAgentStatus();
         
         // 🔧 处理超时错误
