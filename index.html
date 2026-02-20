@@ -699,6 +699,46 @@
         .fizzstudio-mini-btn:hover {
             background: rgba(227,27,35,0.3);
         }
+        .fizzstudio-storyboard-ep {
+            margin-bottom: 2px;
+        }
+        .fizzstudio-storyboard-detail {
+            background: rgba(0,0,0,0.3);
+            border-radius: 4px;
+            margin-top: 2px;
+            max-height: 300px;
+            overflow: auto;
+        }
+        .sb-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+        }
+        .sb-table th {
+            background: rgba(227,27,35,0.3);
+            color: var(--accent);
+            padding: 4px 3px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+            font-weight: 600;
+        }
+        .sb-table td {
+            padding: 3px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            vertical-align: top;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .sb-table tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        .sb-id { color: var(--accent); font-weight: 600; white-space: nowrap; }
+        .sb-desc { color: var(--text); }
+        .sb-prompt { color: #88c; font-family: monospace; font-size: 8px; }
+        .sb-music { color: #c8a; }
+        .sb-narr { color: #8c8; font-style: italic; }
         .fizzstudio-char-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
@@ -4301,7 +4341,7 @@ function updateAssetsPanel() {
             </div>
             <div class="assets-section-body" id="fizzstudioBody">
                 
-                <!-- 分镜表 - 按章节显示 -->
+                <!-- 分镜表 - 按章节显示，点击展开详细表格 -->
                 <div class="fizzstudio-item">
                     <div class="fizzstudio-item-header">
                         <span>📊 分鏡表</span>
@@ -4310,11 +4350,33 @@ function updateAssetsPanel() {
                     ${totalShots > 0 ? `
                         <div class="fizzstudio-storyboard-list">
                             ${Object.entries(a.storyboards || {}).sort((x,y) => Number(x[0]) - Number(y[0])).map(([ep, shots]) => `
-                                <div class="fizzstudio-storyboard-row">
-                                    <span class="fizzstudio-ep-tag">E${String(ep).padStart(2,'0')}</span>
-                                    <span class="fizzstudio-shot-count">${Array.isArray(shots) ? shots.length : 0}鏡</span>
-                                    <button onclick="exportChapterStoryboard(${ep})" class="fizzstudio-mini-btn" title="導出第${ep}集">📥</button>
-                                    <button onclick="copyChapterPrompts(${ep})" class="fizzstudio-mini-btn" title="複製Prompt">📋</button>
+                                <div class="fizzstudio-storyboard-ep">
+                                    <div class="fizzstudio-storyboard-row" onclick="toggleStoryboardDetail(${ep})">
+                                        <span class="fizzstudio-ep-tag">E${String(ep).padStart(2,'0')}</span>
+                                        <span class="fizzstudio-shot-count">${Array.isArray(shots) ? shots.length : 0}鏡</span>
+                                        <span id="sbToggle${ep}" style="font-size:10px;color:#666;">▼</span>
+                                        <button onclick="event.stopPropagation();exportChapterStoryboard(${ep})" class="fizzstudio-mini-btn" title="導出">📥</button>
+                                        <button onclick="event.stopPropagation();copyChapterPrompts(${ep})" class="fizzstudio-mini-btn" title="複製">📋</button>
+                                    </div>
+                                    <div class="fizzstudio-storyboard-detail" id="sbDetail${ep}" style="display:none;">
+                                        <table class="sb-table">
+                                            <thead><tr>
+                                                <th>鏡號</th><th>描述</th><th>圖片詞</th><th>視頻詞</th><th>音樂</th><th>旁白</th>
+                                            </tr></thead>
+                                            <tbody>
+                                                ${Array.isArray(shots) ? shots.map((s, i) => `
+                                                    <tr>
+                                                        <td class="sb-id">S${String(i+1).padStart(3,'0')}</td>
+                                                        <td class="sb-desc">${s.description || s.画面描述 || '-'}</td>
+                                                        <td class="sb-prompt">${s.Image_Prompt || s.image_prompt || s.ai_prompt || '-'}</td>
+                                                        <td class="sb-prompt">${s.Video_Prompt || s.video_prompt || '-'}</td>
+                                                        <td class="sb-music">${s.music || s.音乐 || s.Music_Prompt || '-'}</td>
+                                                        <td class="sb-narr">${s.narration || s.旁白 || s.dialogue || '-'}</td>
+                                                    </tr>
+                                                `).join('') : ''}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             `).join('')}
                         </div>
@@ -4538,6 +4600,55 @@ function copyAllCharacterPrompts() {
 }
 
 // 📋 复制所有分镜Prompt
+// 📥 导出全部分镜Excel（6列格式）
+function exportToExcel() {
+    const sbs = state.assets?.storyboards || {};
+    if (Object.keys(sbs).length === 0) {
+        addAIMessage('❌ 沒有分鏡數據可導出');
+        return;
+    }
+    
+    const headers = ['鏡頭ID', '分鏡描述', 'Image_Prompt', 'Video_Prompt', '音樂提示', '旁白'];
+    let csvContent = '\uFEFF' + headers.join(',') + '\n';
+    let totalShots = 0;
+    
+    Object.entries(sbs).sort((a,b) => Number(a[0]) - Number(b[0])).forEach(([ep, shots]) => {
+        if (Array.isArray(shots)) {
+            shots.forEach((shot, i) => {
+                totalShots++;
+                const row = [
+                    `E${String(ep).padStart(2,'0')}_S${String(i+1).padStart(3,'0')}`,
+                    `"${(shot.description || shot.画面描述 || '').replace(/"/g, '""')}"`,
+                    `"${(shot.Image_Prompt || shot.image_prompt || shot.ai_prompt || '').replace(/"/g, '""')}"`,
+                    `"${(shot.Video_Prompt || shot.video_prompt || '').replace(/"/g, '""')}"`,
+                    `"${(shot.music || shot.音乐 || shot.Music_Prompt || '').replace(/"/g, '""')}"`,
+                    `"${(shot.narration || shot.旁白 || shot.dialogue || '').replace(/"/g, '""')}"`
+                ];
+                csvContent += row.join(',') + '\n';
+            });
+        }
+    });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${state.novelTitle || 'project'}_全部分镜_${totalShots}镜.csv`;
+    link.click();
+    
+    addAIMessage(`📥 全部分鏡 (${totalShots}鏡) 導出成功！`);
+}
+
+// 🔄 展开/收起分镜详情表格
+function toggleStoryboardDetail(epNum) {
+    const detail = document.getElementById(`sbDetail${epNum}`);
+    const toggle = document.getElementById(`sbToggle${epNum}`);
+    if (detail && toggle) {
+        const isHidden = detail.style.display === 'none';
+        detail.style.display = isHidden ? 'block' : 'none';
+        toggle.textContent = isHidden ? '▲' : '▼';
+    }
+}
+
 // 📥 导出单集分镜Excel
 function exportChapterStoryboard(epNum) {
     const shots = state.assets?.storyboards?.[epNum];
@@ -4546,8 +4657,8 @@ function exportChapterStoryboard(epNum) {
         return;
     }
     
-    // CSV格式
-    const headers = ['镜头ID', '画面描述', 'Image_Prompt', 'Video_Prompt'];
+    // CSV格式 - 6列
+    const headers = ['鏡頭ID', '分鏡描述', 'Image_Prompt', 'Video_Prompt', '音樂提示', '旁白'];
     let csvContent = '\uFEFF' + headers.join(',') + '\n';
     
     shots.forEach((shot, i) => {
@@ -4555,7 +4666,9 @@ function exportChapterStoryboard(epNum) {
             `E${String(epNum).padStart(2,'0')}_S${String(i+1).padStart(3,'0')}`,
             `"${(shot.description || shot.画面描述 || '').replace(/"/g, '""')}"`,
             `"${(shot.Image_Prompt || shot.image_prompt || shot.ai_prompt || '').replace(/"/g, '""')}"`,
-            `"${(shot.Video_Prompt || shot.video_prompt || '').replace(/"/g, '""')}"`
+            `"${(shot.Video_Prompt || shot.video_prompt || '').replace(/"/g, '""')}"`,
+            `"${(shot.music || shot.音乐 || shot.Music_Prompt || '').replace(/"/g, '""')}"`,
+            `"${(shot.narration || shot.旁白 || shot.dialogue || '').replace(/"/g, '""')}"`
         ];
         csvContent += row.join(',') + '\n';
     });
