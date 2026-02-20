@@ -8988,17 +8988,19 @@ async function startWriteCreation() {
     state.mode = 'write';
     state.step = 0;
     
-    // 创建项目
+    // 创建项目（saveProject会设置currentProjectId）
     state.novelTitle = writeState.idea?.premise?.substring(0, 20) || '創作項目';
     currentProjectId = null;
     saveProject(state.novelTitle, true);
     
-    // 🆕 标记项目为运行状态（显示转圈）
+    // 🆕 标记项目为运行状态（显示转圈）- saveProject之后currentProjectId已设置
+    console.log('🚀 写作模式开始，项目ID:', currentProjectId);
     if (currentProjectId) {
         runningProjects[currentProjectId] = true;
-        renderProjectList();
-        console.log('🚀 写作模式开始，项目ID:', currentProjectId, '状态已标记');
+        console.log('📊 runningProjects更新:', JSON.stringify(runningProjects));
     }
+    // 强制刷新项目列表
+    renderProjectList();
     
     addAIMessage(`🚀 **開始創作！**
 
