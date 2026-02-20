@@ -4173,6 +4173,140 @@ async function runCharacterStepSilent() {
     updateAssetsPanel();
 }
 
+// 上传章节文件
+function uploadChaptersFile() {
+    let input = document.getElementById('chaptersFileInput');
+    if (!input) {
+        input = document.createElement('input');
+        input.type = 'file';
+        input.id = 'chaptersFileInput';
+        input.accept = '.txt,.json,.csv';
+        input.style.display = 'none';
+        input.addEventListener('change', handleChaptersUpload);
+        document.body.appendChild(input);
+    }
+    input.click();
+}
+
+async function handleChaptersUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = '';
+    
+    addUserMessage(`📄 上傳章節: ${file.name}`);
+    addTypingIndicator();
+    
+    try {
+        const text = await file.text();
+        const ext = file.name.split('.').pop().toLowerCase();
+        let chapters = [];
+        
+        if (ext === 'json') {
+            const data = JSON.parse(text);
+            chapters = data.chapters || data.episodes || data;
+        } else if (ext === 'csv') {
+            // CSV格式：每行一个章节，格式：集数,标题,简介
+            const lines = text.split('\n').filter(l => l.trim());
+            chapters = lines.map((line, i) => {
+                const parts = line.split(',');
+                return {
+                    episode: i + 1,
+                    title: parts[1]?.trim() || parts[0]?.trim() || `第${i+1}集`,
+                    summary: parts[2]?.trim() || ''
+                };
+            });
+        } else {
+            // TXT格式：每行一个章节标题，或用【】标记
+            const lines = text.split('\n').filter(l => l.trim());
+            chapters = lines.map((line, i) => {
+                const match = line.match(/(?:第(\d+)[集章]|【.*?】|EP?\d+)/i);
+                return {
+                    episode: match ? parseInt(match[1]) || (i + 1) : (i + 1),
+                    title: line.replace(/^[第\d集章：:.\s【】EP]+/gi, '').trim() || line.trim(),
+                    summary: ''
+                };
+            });
+        }
+        
+        removeTypingIndicator();
+        
+        if (chapters.length === 0) {
+            addAIMessage('⚠️ 未識別到章節，請檢查文件格式');
+            return;
+        }
+        
+        state.assets.chapters = chapters;
+        saveProject(null, true);
+        updateAssetsPanel();
+        
+        addAIMessage(`✅ **已導入 ${chapters.length} 個章節！**
+
+${chapters.slice(0, 5).map((c, i) => `${i+1}. ${c.title}`).join('\n')}
+${chapters.length > 5 ? `\n...還有 ${chapters.length - 5} 個章節` : ''}`, [
+            { text: '👤 繼續設計角色', action: () => triggerAgentWithCheck('character') },
+            { text: '✍️ 開始寫劇本', action: () => triggerAgentWithCheck('script') }
+        ]);
+        
+    } catch (err) {
+        removeTypingIndicator();
+        addAIMessage(`❌ 解析失敗: ${err.message}`, [
+            { text: '🔄 重試', action: () => uploadChaptersFile() }
+        ]);
+    }
+}
+
+// 处理手动输入的章节
+function handleManualChaptersInput(text) {
+    const lines = text.split('\n').filter(l => l.trim());
+    
+    if (lines.length === 0) {
+        addAIMessage('❌ 請輸入至少一個章節標題');
+        return;
+    }
+    
+    const chapters = lines.map((line, i) => {
+        const match = line.match(/^(?:第(\d+)[集章]|EP?(\d+)|(\d+)[.、])/i);
+        const epNum = match ? parseInt(match[1] || match[2] || match[3]) : (i + 1);
+        const title = line.replace(/^(?:第\d+[集章]|EP?\d+|\d+[.、:：\s]+)/gi, '').trim() || line.trim();
+        return { episode: epNum, title: title, summary: '' };
+    });
+    
+    state.assets.chapters = chapters;
+    state.mode = '';
+    saveProject(null, true);
+    updateAssetsPanel();
+    
+    addAIMessage(`✅ **已保存 ${chapters.length} 個章節！**
+
+${chapters.map((c, i) => `${i+1}. ${c.title}`).join('\n')}`, [
+        { text: '👤 設計角色', action: () => triggerAgentWithCheck('character') },
+        { text: '✍️ 寫劇本', action: () => triggerAgentWithCheck('script') }
+    ]);
+}
+
+// 手动输入章节
+function manualInputChapters() {
+    addAIMessage(`✍️ **手動輸入章節**
+
+請輸入章節列表，每行一個：
+
+格式範例：
+\`\`\`
+第1集 命運的相遇
+第2集 危機四伏
+第3集 真相大白
+\`\`\`
+
+或直接輸入標題（自動編號）：
+\`\`\`
+命運的相遇
+危機四伏
+真相大白
+\`\`\``);
+    
+    state.mode = 'manual_chapters';
+}
+
 async function runChaptersStepSilent() {
     const result = await callAgent('narrative', state.novel.substring(0, 3000), { 
         concept: state.assets.concept,
@@ -4664,13 +4798,22 @@ function triggerAgentWithCheck(agentType) {
             break;
             
         case 'chapters':
-            if (!hasConcept) {
-                addAIMessage('⚠️ 請先完成「💡 概念分析」，才能規劃章節', [
-                    { text: '💡 先分析概念', action: () => triggerAgentWithCheck('concept') }
-                ]);
-                return;
-            }
-            runChaptersStep();
+            // 提供上传或AI生成两种选择
+            addAIMessage(`📝 **章節規劃**
+
+選擇方式：`, [
+                { text: '📄 上傳章節文件', action: () => uploadChaptersFile() },
+                { text: '🤖 AI智能規劃', action: () => {
+                    if (!hasConcept) {
+                        addAIMessage('⚠️ AI規劃需要先完成「💡 概念分析」', [
+                            { text: '💡 先分析概念', action: () => triggerAgentWithCheck('concept') }
+                        ]);
+                    } else {
+                        runChaptersStep();
+                    }
+                }},
+                { text: '✍️ 手動輸入', action: () => manualInputChapters() }
+            ]);
             break;
             
         case 'script':
@@ -12901,6 +13044,12 @@ function handleUserInput(text) {
     // ==================== 快速通道人物輸入 ====================
     if (state.mode === 'fasttrack_char') {
         handleFastTrackCharInput(text);
+        return;
+    }
+    
+    // ==================== 手動輸入章節 ====================
+    if (state.mode === 'manual_chapters') {
+        handleManualChaptersInput(text);
         return;
     }
     
