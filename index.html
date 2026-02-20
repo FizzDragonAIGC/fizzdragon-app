@@ -2702,6 +2702,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <script>
 // ==================== 配置 ====================
@@ -3291,9 +3292,26 @@ async function handleFastTrackScript(e) {
         
         if (ext === 'txt') {
             text = await file.text();
+        } else if (ext === 'docx') {
+            const arrayBuffer = await file.arrayBuffer();
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            text = result.value;
+        } else if (ext === 'pdf') {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                text += content.items.map(item => item.str).join(' ') + '\n';
+            }
+        } else if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
+            const arrayBuffer = await file.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            text = XLSX.utils.sheet_to_txt(firstSheet);
         } else {
             removeTypingIndicator();
-            addAIMessage('⚠️ 目前只支持 .txt 格式，請轉換後重試');
+            addAIMessage(`⚠️ 不支持的格式：.${ext}\n\n✅ 支持：.txt .docx .pdf .xlsx .csv`);
             return;
         }
         
