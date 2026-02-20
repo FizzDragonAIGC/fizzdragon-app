@@ -267,6 +267,22 @@
             font-size: 11px;
             color: var(--text2);
         }
+        .project-item .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px 8px;
+            font-size: 10px;
+            color: var(--text2);
+            margin-top: 4px;
+        }
+        .project-item .meta-grid span {
+            white-space: nowrap;
+        }
+        .project-item .meta-step {
+            font-size: 10px;
+            color: var(--accent);
+            margin-top: 3px;
+        }
         
         .project-item .action-btn {
             opacity: 0;
@@ -4527,7 +4543,18 @@ function renderProjectListByMode() {
                 <div class="icon">${icon}</div>
                 <div class="info">
                     <div class="title">${displayName}</div>
-                    <div class="meta">${p.type === 'ad' ? `${p.duration || 30}秒 · ${sbCount}鏡頭` : `${chapterCount} ${t('episodes')} · ${scriptCount} ${t('scriptsCount')} · ${sbCount} ${t('storyboardsCount')}`} ${stepName ? '· '+stepName : ''}</div>
+                    <div class="meta-grid">
+                        ${p.type === 'ad' ? `
+                            <span>• ${p.duration || 30}秒</span>
+                            <span>• ${sbCount} 鏡頭</span>
+                        ` : `
+                            <span>• ${chapterCount} 集</span>
+                            <span>• ${charCount} 角色</span>
+                            <span>• ${scriptCount} 劇本</span>
+                            <span>• ${sbCount} 分鏡</span>
+                        `}
+                    </div>
+                    ${stepName ? `<div class="meta-step">📍 ${stepName}</div>` : ''}
                 </div>
                 <div class="actions">
                     <button class="action-btn" onclick="event.stopPropagation(); renameProject('${p.id}', '${safeName}')" title="${t('rename')}">✏️</button>
