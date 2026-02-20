@@ -4334,20 +4334,10 @@ function toggleAutoPilotMode() {
     updateAutoPilotToggle();
     
     if (state.autoPilotMode) {
-        // 🔧 开启后立即开始执行
-        const hasContent = state.novel || Object.keys(state.assets?.scripts || {}).length > 0;
-        if (hasContent) {
-            addAIMessage(`🚀 **Auto-Pilot 啟動！**\n\n正在自動執行所有步驟...`);
-            setTimeout(() => runAutoPilot(), 500);
-        } else {
-            addAIMessage(`🚀 **Auto-Pilot 模式已開啟**\n\n請先導入故事內容：`);
-            showQuickReplies([
-                { text: '📄 導入故事', action: () => document.getElementById('fileInput').click() },
-                { text: '🤖 AI寫故事', action: () => startAIStoryWriting() }
-            ]);
-        }
+        // 🔧 只设置模式，不中断当前步骤
+        addAIMessage(`🚀 **Auto-Pilot 已開啟**\n\n當前步驟完成後，系統將自動保存並繼續下一步。\n\n💡 正在進行中的步驟不會中斷。`);
     } else {
-        addAIMessage(`⏸️ **Auto-Pilot 已關閉**\n\n回到對話模式。`);
+        addAIMessage(`⏸️ **Auto-Pilot 已關閉**\n\n回到對話模式，每步完成後等待你的確認。`);
     }
 }
 
