@@ -3231,7 +3231,6 @@ ${projectCount > 0 ? `📂 你有 **${projectCount}** 個已保存的項目\n` :
     
     addAIMessage(welcomeTexts[currentLang] || welcomeTexts['zh-TW'], [
         { text: '📄 導入小說', action: () => document.getElementById('fileInput').click() },
-        { text: '📝 導入劇本', action: () => showScriptImportOptions() },
         { text: '📦 我有劇本/人物', action: () => showFastTrack() },
         { text: '✍️ 我要寫故事', action: () => startWriteStory() },
         { text: '🤖 AI幫我寫', action: () => startAIStoryWriting() },
@@ -3243,20 +3242,19 @@ ${projectCount > 0 ? `📂 你有 **${projectCount}** 個已保存的項目\n` :
 function showFastTrack() {
     addAIMessage(`📦 **快速通道 - 我已有內容**
 
-選擇你已有的內容：
+選擇你的情況：
 
-**方式A：上傳劇本**
-→ 系統拆分章節（不重寫）
-→ 直接生成分鏡
+**📝 上傳劇本**
+• 🤖 AI智能分集（上傳檔案，AI自動拆分）
+• 📋 手動分集（一集一集複製貼上）
 
-**方式B：輸入人物**
-→ 問答方式錄入人物小傳
-→ 再上傳劇本或寫劇本
+**👤 輸入人物**
+• 問答方式錄入人物小傳
 
-**方式C：都有**
-→ 先輸入人物，再上傳劇本
-→ 直接生成分鏡`, [
-        { text: '📝 上傳劇本', action: () => importScriptForFastTrack() },
+**📝+👤 都有**
+• 先輸入人物，再上傳劇本`, [
+        { text: '🤖 AI智能分集', action: () => importScript() },
+        { text: '📋 手動分集', action: () => startManualEpisodeInput() },
         { text: '👤 輸入人物', action: () => inputCharactersFastTrack() },
         { text: '📝+👤 都有', action: () => inputCharactersFastTrack(true) },
         { text: '↩️ 返回', action: () => showStartOptions() }
