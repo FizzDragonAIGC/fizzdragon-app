@@ -605,6 +605,32 @@
         }
         .copy-btn:hover { background: var(--accent); color: white; }
         
+        /* 故事源卡片 */
+        .story-card { border-left: 3px solid #E31B23 !important; }
+        .story-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .story-title { font-size: 13px; }
+        .story-meta { font-size: 11px; color: var(--text2); }
+        .story-preview { font-size: 11px; color: #888; line-height: 1.5; max-height: 60px; overflow: hidden; margin-bottom: 8px; }
+        .story-actions { display: flex; gap: 8px; }
+        .story-btn { flex: 1; padding: 6px; background: rgba(227,27,35,0.1); border: 1px solid var(--border); border-radius: 4px; color: var(--accent); font-size: 11px; cursor: pointer; }
+        .story-btn:hover { background: var(--accent); color: white; }
+        
+        /* 故事模态框 */
+        .story-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .story-modal-content { background: var(--surface); border-radius: 12px; width: 90%; max-width: 800px; max-height: 80vh; display: flex; flex-direction: column; }
+        .story-edit-content { max-width: 900px; height: 80vh; }
+        .story-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+        .story-modal-header h3 { margin: 0; font-size: 16px; }
+        .story-modal-close { background: none; border: none; color: #888; font-size: 20px; cursor: pointer; }
+        .story-modal-close:hover { color: white; }
+        .story-modal-body { flex: 1; padding: 20px; overflow-y: auto; }
+        .story-full-text { white-space: pre-wrap; font-size: 14px; line-height: 1.8; font-family: inherit; }
+        .story-modal-footer { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-top: 1px solid var(--border); }
+        .story-modal-footer button { padding: 8px 16px; background: var(--accent); border: none; border-radius: 6px; color: white; cursor: pointer; }
+        .story-title-input { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 16px; margin-bottom: 12px; }
+        .story-content-edit { width: 100%; height: calc(100% - 60px); padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px; line-height: 1.8; resize: none; font-family: inherit; }
+        .story-save-btn { background: var(--accent) !important; }
+        
         /* 角色编辑按钮 */
         .char-actions {
             display: flex;
@@ -2544,8 +2570,9 @@ ${projectCount > 0 ? `📂 你有 **${projectCount}** 個已保存的項目\n` :
     };
     
     addAIMessage(welcomeTexts[currentLang] || welcomeTexts['zh-TW'], [
-        { text: t('importNovel'), action: () => document.getElementById('fileInput').click() },
-        { text: t('aiWrite'), action: () => startWriteMode() }
+        { text: '📄 導入現有故事', action: () => document.getElementById('fileInput').click() },
+        { text: '✍️ 我要寫故事', action: () => startWriteStory() },
+        { text: '🤖 AI幫我寫', action: () => startAIStoryWriting() }
     ]);
 }
 
@@ -2871,7 +2898,7 @@ function updateAssetsPanel() {
     const container = document.getElementById('canvasFlow');
     
     // 检查是否有任何内容
-    const hasContent = a.concept || a.characters?.length > 0 || a.chapters?.length > 0 || a.costumes?.length > 0 || a.sets?.length > 0;
+    const hasContent = a.story || a.concept || a.characters?.length > 0 || a.chapters?.length > 0 || a.costumes?.length > 0 || a.sets?.length > 0;
     
     if (!hasContent) {
         container.innerHTML = `
@@ -2884,6 +2911,32 @@ function updateAssetsPanel() {
     }
     
     let html = '';
+    
+    // ==================== 区块0：故事源 ====================
+    if (a.story) {
+        const storyTypeLabels = { upload: '📄 上傳', ai: '🤖 AI生成', manual: '✍️ 自己寫' };
+        const storyLabel = storyTypeLabels[a.story.type] || '📖 故事';
+        html += `
+            <div class="canvas-card story-card">
+                <div class="canvas-card-header">
+                    <span class="canvas-card-num">00</span>
+                    <span class="canvas-card-title">📖 故事源</span>
+                    <span class="canvas-card-status">${storyLabel}</span>
+                </div>
+                <div class="canvas-card-body">
+                    <div class="story-info">
+                        <div class="story-title"><b>${a.story.title || '未命名故事'}</b></div>
+                        <div class="story-meta">${(a.story.content?.length || 0).toLocaleString()} 字</div>
+                    </div>
+                    <div class="story-preview">${(a.story.content || '').substring(0, 200)}${(a.story.content?.length || 0) > 200 ? '...' : ''}</div>
+                    <div class="story-actions">
+                        <button class="story-btn" onclick="viewFullStory()">👁️ 查看全文</button>
+                        ${a.story.type !== 'upload' ? '<button class="story-btn" onclick="editStory()">✏️ 編輯</button>' : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
     
     // ==================== 区块1：基础设定 ====================
     const hasBaseSettings = a.concept || a.characters?.length > 0 || a.costumes?.length > 0 || a.sets?.length > 0;
@@ -3232,6 +3285,193 @@ function deleteCharacter(index) {
         updateAssetsPanel();
         addAIMessage(`🗑️ 已刪除角色：${char.name}`);
     }
+}
+
+// ==================== 故事源管理 ====================
+// 查看完整故事
+function viewFullStory() {
+    const story = state.assets?.story;
+    if (!story) return;
+    
+    // 创建模态框显示全文
+    const modal = document.createElement('div');
+    modal.className = 'story-modal';
+    modal.innerHTML = `
+        <div class="story-modal-content">
+            <div class="story-modal-header">
+                <h3>📖 ${story.title || '故事全文'}</h3>
+                <button class="story-modal-close" onclick="this.closest('.story-modal').remove()">✕</button>
+            </div>
+            <div class="story-modal-body">
+                <pre class="story-full-text">${story.content || '(無內容)'}</pre>
+            </div>
+            <div class="story-modal-footer">
+                <span>${(story.content?.length || 0).toLocaleString()} 字</span>
+                <button onclick="copyStoryContent()">📋 複製全文</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// 编辑故事
+function editStory() {
+    const story = state.assets?.story;
+    if (!story) return;
+    
+    // 创建编辑模态框
+    const modal = document.createElement('div');
+    modal.className = 'story-modal';
+    modal.id = 'storyEditModal';
+    modal.innerHTML = `
+        <div class="story-modal-content story-edit-content">
+            <div class="story-modal-header">
+                <h3>✏️ 編輯故事</h3>
+                <button class="story-modal-close" onclick="this.closest('.story-modal').remove()">✕</button>
+            </div>
+            <div class="story-modal-body">
+                <input type="text" id="storyTitleEdit" class="story-title-input" value="${story.title || ''}" placeholder="故事標題">
+                <textarea id="storyContentEdit" class="story-content-edit">${story.content || ''}</textarea>
+            </div>
+            <div class="story-modal-footer">
+                <span id="storyCharCount">${(story.content?.length || 0).toLocaleString()} 字</span>
+                <button class="story-save-btn" onclick="saveStoryEdit()">💾 保存</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // 实时字数统计
+    const textarea = document.getElementById('storyContentEdit');
+    const counter = document.getElementById('storyCharCount');
+    textarea.addEventListener('input', () => {
+        counter.textContent = textarea.value.length.toLocaleString() + ' 字';
+    });
+}
+
+// 保存故事编辑
+function saveStoryEdit() {
+    const title = document.getElementById('storyTitleEdit').value.trim();
+    const content = document.getElementById('storyContentEdit').value;
+    
+    if (!state.assets.story) state.assets.story = {};
+    state.assets.story.title = title || state.assets.story.title;
+    state.assets.story.content = content;
+    state.assets.story.type = state.assets.story.type || 'manual';
+    
+    saveProject(null, true);
+    updateAssetsPanel();
+    
+    document.getElementById('storyEditModal')?.remove();
+    addAIMessage(`✅ 故事已保存！(${content.length.toLocaleString()} 字)`);
+}
+
+// 复制故事内容
+function copyStoryContent() {
+    const story = state.assets?.story;
+    if (story?.content) {
+        navigator.clipboard.writeText(story.content).then(() => {
+            addAIMessage('📋 故事全文已複製到剪貼板！');
+        });
+    }
+}
+
+// 创建新故事（我要写故事）
+function startWriteStory() {
+    addAIMessage(`✍️ **開始創作故事**
+
+你可以選擇：
+1. **自己寫** - 打開編輯器，從零開始創作
+2. **AI輔助** - 告訴我故事概念，我幫你寫
+3. **上傳現有故事** - 上傳txt/doc文件
+
+請選擇或直接開始描述你的故事想法：`);
+    
+    showQuickReplies([
+        { text: '✏️ 自己寫', action: () => openStoryEditor('manual') },
+        { text: '🤖 AI幫我寫', action: () => startAIStoryWriting() },
+        { text: '📄 上傳文件', action: () => document.getElementById('novelFile').click() }
+    ]);
+}
+
+// 打开故事编辑器
+function openStoryEditor(type = 'manual') {
+    const modal = document.createElement('div');
+    modal.className = 'story-modal';
+    modal.id = 'storyEditModal';
+    modal.innerHTML = `
+        <div class="story-modal-content story-edit-content">
+            <div class="story-modal-header">
+                <h3>✍️ 創作故事</h3>
+                <button class="story-modal-close" onclick="this.closest('.story-modal').remove()">✕</button>
+            </div>
+            <div class="story-modal-body">
+                <input type="text" id="storyTitleEdit" class="story-title-input" placeholder="故事標題（必填）">
+                <textarea id="storyContentEdit" class="story-content-edit" placeholder="開始寫你的故事..."></textarea>
+            </div>
+            <div class="story-modal-footer">
+                <span id="storyCharCount">0 字</span>
+                <button class="story-save-btn" onclick="saveNewStory('${type}')">💾 保存並開始分析</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    const textarea = document.getElementById('storyContentEdit');
+    const counter = document.getElementById('storyCharCount');
+    textarea.addEventListener('input', () => {
+        counter.textContent = textarea.value.length.toLocaleString() + ' 字';
+    });
+    textarea.focus();
+}
+
+// 保存新故事
+function saveNewStory(type) {
+    const title = document.getElementById('storyTitleEdit').value.trim();
+    const content = document.getElementById('storyContentEdit').value.trim();
+    
+    if (!title) {
+        alert('請輸入故事標題');
+        return;
+    }
+    if (content.length < 100) {
+        alert('故事內容太短（至少100字）');
+        return;
+    }
+    
+    // 保存到资产
+    state.assets.story = { title, content, type, createdAt: new Date().toISOString() };
+    state.novel = content;
+    state.novelTitle = title;
+    
+    document.getElementById('storyEditModal')?.remove();
+    
+    saveProject(title, true);
+    updateAssetsPanel();
+    
+    addAIMessage(`✅ 故事「${title}」已保存！(${content.length.toLocaleString()} 字)
+
+正在分析故事，生成高概念...`);
+    
+    // 自动开始分析
+    runConceptAnalysis();
+}
+
+// AI辅助写故事
+function startAIStoryWriting() {
+    addAIMessage(`🤖 **AI輔助創作**
+
+請告訴我你的故事想法：
+- 類型？（愛情/懸疑/科幻/奇幻...）
+- 主角是誰？
+- 發生什麼事？
+- 你想傳達什麼？
+
+例如："一個香港滑板女孩，發現弟弟出車禍不是意外，而是地下賭盤..."
+
+直接打字描述吧！`);
+    
+    window.pendingAIStory = true;
 }
 
 // 切换服化道详情展开/收起
@@ -6895,6 +7135,15 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
         // 🔧 Bug #5 fix: 从文本内容提取标题，而不是用文件名
         const extractedTitle = extractTitleFromText(text);
         state.novelTitle = extractedTitle || fileToProcess.name.replace(/\.[^/.]+$/, '');
+        
+        // 📖 保存到故事资产
+        state.assets.story = {
+            title: state.novelTitle,
+            content: text,
+            type: 'upload',
+            filename: fileToProcess.name,
+            uploadedAt: new Date().toISOString()
+        };
         
         state.step = 1;
         state.mode = 'import';
