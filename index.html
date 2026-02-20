@@ -4408,7 +4408,10 @@ function showAutoPilotOptions() {
 **完成後**：可逐項調整並重新生成
 
 ───────────────────────
-請先導入你的故事：`, [
+請先導入你的故事：`);
+    
+    // 🔧 使用showQuickReplies确保按钮显示
+    showQuickReplies([
         { text: '📄 導入故事後啟動', action: () => { state.autoPilotEnabled = true; document.getElementById('fileInput').click(); } },
         { text: '🤖 AI寫故事後啟動', action: () => { state.autoPilotEnabled = true; startAIStoryWriting(); } },
         { text: '↩️ 返回', action: () => showWelcome() }
