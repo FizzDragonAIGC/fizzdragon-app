@@ -3851,11 +3851,25 @@ async function handleScriptImport(e) {
 🤖 調用劇本拆分Agent，識別章節和角色...`);
             
             try {
+                // 提取场景结构摘要，而不是发送完整内容
+                const sceneSummary = extractSceneSummary(text);
+                console.log('📋 场景摘要:', sceneSummary);
+                
                 const response = await fetch(`${API_BASE}/agent/script_parser`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        userMessage: `請分析並拆分這個劇本：\n\n${text.substring(0, 15000)}`,
+                        userMessage: `請分析並拆分這個劇本，將場景合併為3-8集：
+
+📊 劇本統計：
+- 總字數：${text.length}
+- 識別到 ${sceneSummary.sceneCount} 個場景/段落
+
+📋 場景列表：
+${sceneSummary.sceneList}
+
+📖 開頭內容（用於識別風格）：
+${text.substring(0, 3000)}`,
                         projectAssets: {}
                     })
                 });
@@ -3865,15 +3879,24 @@ async function handleScriptImport(e) {
                 const rawJson = result.result || result.response || result.content;
                 const parsed = safeJSONParse(rawJson, 'script_parser');
                 
-                if (parsed && parsed.episodes) {
-                    // AI拆分成功
+                if (parsed && parsed.episodes && parsed.episodes.length > 1) {
+                    // AI拆分成功，按集数平均分割原始文本
+                    const totalEps = parsed.episodes.length;
+                    const chunkSize = Math.ceil(text.length / totalEps);
+                    
                     parsed.episodes.forEach((ep, i) => {
-                        state.assets.scripts[ep.ep || i + 1] = ep.content || '';
+                        const epNum = ep.ep || i + 1;
+                        // 从原始文本中切分内容
+                        const start = i * chunkSize;
+                        const end = Math.min((i + 1) * chunkSize, text.length);
+                        const epContent = text.substring(start, end);
+                        
+                        state.assets.scripts[epNum] = epContent;
                         state.assets.chapters.push({
-                            number: ep.ep || i + 1,
-                            title: ep.title || `第${ep.ep || i + 1}集`,
-                            duration: parseInt(ep.estimated_duration) || 5,
-                            summary: ep.content?.substring(0, 100) + '...' || ''
+                            number: epNum,
+                            title: ep.title || `第${epNum}集`,
+                            duration: Math.round(epContent.length / 150),
+                            summary: ep.summary || epContent.substring(0, 100) + '...'
                         });
                     });
                     
@@ -3893,7 +3916,7 @@ async function handleScriptImport(e) {
 📊 ${text.length.toLocaleString()} 字
 📑 識別到 **${parsed.episodes.length}** 集
 👤 識別到 **${parsed.characters?.length || 0}** 個角色
-⏱️ 預估總時長：${parsed.summary?.estimated_total_duration || '未知'}
+⏱️ 預估總時長：${parsed.summary?.estimated_total_duration || Math.round(text.length/150) + '分鐘'}
 
 ───────────────────────
 現在可以直接生成分鏡！`, [
@@ -3936,6 +3959,65 @@ async function handleScriptImport(e) {
             { text: '🔄 重試', action: () => importScript() }
         ]);
     }
+}
+
+// 提取场景结构摘要（用于长剧本智能分集）
+function extractSceneSummary(text) {
+    const scenes = [];
+    
+    // 多种场景标记模式
+    const patterns = [
+        { regex: /【([^】]+)】/g, type: '【】' },
+        { regex: /場景\s*(\d+)[：:\s]*([^\n]*)/g, type: '場景' },
+        { regex: /SCENE\s*(\d+)[：:\s]*([^\n]*)/gi, type: 'SCENE' },
+        { regex: /第(\d+)場[：:\s]*([^\n]*)/g, type: '第X場' },
+        { regex: /INT\.\s*([^\n-]+)/gi, type: 'INT' },
+        { regex: /EXT\.\s*([^\n-]+)/gi, type: 'EXT' },
+        { regex: /△\s*([^\n]{10,50})/g, type: '△' }  // 动作描述
+    ];
+    
+    for (const {regex, type} of patterns) {
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+            scenes.push({
+                pos: match.index,
+                type: type,
+                text: match[1] || match[0],
+                preview: text.substring(match.index, match.index + 100).replace(/\n/g, ' ')
+            });
+        }
+    }
+    
+    // 按位置排序去重
+    scenes.sort((a, b) => a.pos - b.pos);
+    const uniqueScenes = [];
+    let lastPos = -100;
+    for (const s of scenes) {
+        if (s.pos - lastPos > 50) {
+            uniqueScenes.push(s);
+            lastPos = s.pos;
+        }
+    }
+    
+    // 如果没找到明显标记，按段落分
+    if (uniqueScenes.length < 3) {
+        const paragraphs = text.split(/\n\n+/).filter(p => p.length > 100);
+        return {
+            sceneCount: paragraphs.length,
+            sceneList: paragraphs.slice(0, 30).map((p, i) => 
+                `[段落${i+1}] ${p.substring(0, 50)}...`
+            ).join('\n'),
+            format: '段落式'
+        };
+    }
+    
+    return {
+        sceneCount: uniqueScenes.length,
+        sceneList: uniqueScenes.slice(0, 50).map((s, i) => 
+            `[${s.type}${i+1}] ${s.text.substring(0, 40)}`
+        ).join('\n'),
+        format: uniqueScenes[0]?.type || '混合'
+    };
 }
 
 // 剧本导入成功提示
