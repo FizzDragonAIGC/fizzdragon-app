@@ -3979,7 +3979,7 @@ function renderProjectListByMode() {
         const stepName = stepNameKeys[p.step] ? t(stepNameKeys[p.step]) : '';
         const icon = p.type === 'ad' ? '📺' : (p.stage === 'write' ? '✍️' : '📄');
         
-        const displayName = p.name || t('unnamed');
+        const displayName = String(p.name || t('unnamed') || '未命名');
         const safeName = displayName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         return `
             <div class="project-item ${isActive ? 'active' : ''}" 
