@@ -3685,8 +3685,8 @@ async function handleScriptImport(e) {
         // 先用简单规则快速检测
         const quickAnalysis = analyzeScriptStructure(text);
         
-        if (quickAnalysis.chapters.length > 1) {
-            // 已有明显章节标记，直接用
+        if (quickAnalysis.chapters.length > 1 && !quickAnalysis.needsAI) {
+            // 已有明显章节标记（第X集/章），直接用
             removeTypingIndicator();
             quickAnalysis.chapters.forEach((ch, i) => {
                 state.assets.scripts[i + 1] = ch.content;
@@ -3701,12 +3701,14 @@ async function handleScriptImport(e) {
             updateAssetsPanel();
             showScriptImportSuccess(title, text.length);
         } else {
-            // 无明显章节标记，调用AI智能拆分
+            // 需要AI智能拆分（场景格式或无明显标记）
             removeTypingIndicator();
+            const sceneInfo = quickAnalysis.needsAI ? 
+                `\n🎬 檢測到 ${quickAnalysis.sceneCount} 個場景，AI將合併為集數...` : '';
             addAIMessage(`📋 **正在智能分析劇本結構...**
 
 📖 ${title}
-📊 ${text.length.toLocaleString()} 字
+📊 ${text.length.toLocaleString()} 字${sceneInfo}
 
 🤖 調用劇本拆分Agent，識別章節和角色...`);
             
@@ -3819,15 +3821,25 @@ function showScriptImportSuccess(title, wordCount) {
 function analyzeScriptStructure(text) {
     const chapters = [];
     
-    // 尝试匹配常见的章节标记
+    // 检测是否是场景格式（场景≠集数，需要AI合并）
+    const scenePatterns = [/場景\s*\d+/g, /SCENE\s*\d+/gi];
+    for (const pattern of scenePatterns) {
+        const sceneMatches = text.match(pattern);
+        if (sceneMatches && sceneMatches.length > 3) {
+            // 检测到多个场景标记，返回空让AI处理合并
+            console.log(`📋 检测到 ${sceneMatches.length} 个场景，需要AI合并`);
+            return { chapters: [], needsAI: true, sceneCount: sceneMatches.length };
+        }
+    }
+    
+    // 只匹配明确的集数/章节标记（不包括场景）
     const patterns = [
         /【第(\d+)集】/g,
         /第(\d+)集[：:]/g,
         /第(\d+)幕/g,
+        /第(\d+)章/g,
         /EP(\d+)/gi,
-        /Episode\s*(\d+)/gi,
-        /場景\s*(\d+)/g,
-        /SCENE\s*(\d+)/gi
+        /Episode\s*(\d+)/gi
     ];
     
     for (const pattern of patterns) {
