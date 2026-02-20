@@ -1109,6 +1109,13 @@
             cursor: pointer;
         }
         
+        .generating-pulse {
+            animation: pulse-red 1s ease-in-out infinite;
+        }
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
         .chapter-box-btn:hover {
             background: #C41920;
         }
@@ -4097,6 +4104,8 @@ function updateUserUI() {
 let currentProjectId = null;
 let runningProjects = {}; // 追踪正在运行Auto-Pilot的项目
 let activeProjects = {}; // 追踪对话式处理中的项目
+let generatingScripts = {}; // 追踪正在生成剧本的章节 { chapterNum: true }
+let generatingStoryboards = {}; // 追踪正在生成分镜的章节 { chapterNum: true }
 let errorProjects = {}; // 追踪有错误的项目
 
 function toggleSidebar() {
@@ -4641,17 +4650,21 @@ function getChaptersHtml(a) {
                     ${ch.scenes ? `<div style="color:var(--text2);margin-top:4px;">🎬 場景: ${ch.scenes}</div>` : ''}
                 </div>
                 <div class="chapter-box-content">
-                    <div class="chapter-box-left" style="cursor:pointer;" onclick="showChapterScript(${num})">
+                    <div class="chapter-box-left" style="cursor:pointer;" onclick="showChapterScript(${num})" id="scriptBox${num}">
                         <div class="chapter-box-label">✍️ 劇本</div>
-                        ${hasScript 
-                            ? `<span style="color:#38a169;">✅ 點擊查看</span>` 
-                            : `<span style="color:var(--text2);">⏳ 待生成</span>`}
+                        ${generatingScripts[num] 
+                            ? `<span style="color:#E31B23;" class="generating-pulse">🔄 生成中...</span>`
+                            : (hasScript 
+                                ? `<span style="color:#38a169;">✅ 點擊查看</span>` 
+                                : `<span style="color:var(--text2);">⏳ 待生成</span>`)}
                     </div>
-                    <div class="chapter-box-right" style="cursor:pointer;" onclick="showChapterStoryboard(${num})">
+                    <div class="chapter-box-right" style="cursor:pointer;" onclick="showChapterStoryboard(${num})" id="storyboardBox${num}">
                         <div class="chapter-box-label">🎬 分鏡</div>
-                        ${hasStoryboard 
-                            ? `<span style="color:#38a169;">✅ ${shotCount}鏡 點擊查看</span>` 
-                            : `<span style="color:var(--text2);">⏳ 待生成</span>`}
+                        ${generatingStoryboards[num] 
+                            ? `<span style="color:#E31B23;" class="generating-pulse">🔄 生成中...</span>`
+                            : (hasStoryboard 
+                                ? `<span style="color:#38a169;">✅ ${shotCount}鏡 點擊查看</span>` 
+                                : `<span style="color:var(--text2);">⏳ 待生成</span>`)}
                     </div>
                 </div>
                 <!-- 展开的内容面板 -->
@@ -10403,6 +10416,10 @@ async function runScriptWriting(chapterNum) {
         renderProjectList();
     }
     
+    // 🔄 标记该章节正在生成剧本
+    generatingScripts[chapterNum] = true;
+    updateAssetsPanel();
+    
     const chapter = state.assets.chapters?.[chapterNum - 1];
     if (!chapter) {
         addAIMessage(`⚠️ **第${chapterNum}集不存在**
@@ -10492,6 +10509,10 @@ ${state.novel.substring(0, 2000)}`;
         removeTypingIndicator();
         hideAgentStatus();
         
+        // 🔄 清除生成状态
+        delete generatingScripts[chapterNum];
+        updateAssetsPanel();
+        
         addAIMessage(`✍️ **第${chapterNum}集劇本完成！**
 
 📄 **${chapter.title}**
@@ -10523,6 +10544,9 @@ ${chapterNum < state.assets.chapters.length ? `繼續寫第${chapterNum + 1}集.
     } catch (err) {
         removeTypingIndicator();
         hideAgentStatus();
+        // 🔄 出错时也要清除生成状态
+        delete generatingScripts[chapterNum];
+        updateAssetsPanel();
         showFriendlyError(err, `第${chapterNum}集劇本`, () => runScriptWriting(chapterNum));
     }
 }
@@ -11085,6 +11109,10 @@ async function runStoryboardGeneration(chapterNum) {
         renderProjectList();
     }
     
+    // 🔄 标记该章节正在生成分镜
+    generatingStoryboards[chapterNum] = true;
+    updateAssetsPanel(); // 刷新显示生成状态
+    
     const chapter = state.assets.chapters?.[chapterNum - 1];
     const script = state.assets.scripts?.[chapterNum];
     
@@ -11177,6 +11205,9 @@ ${totalChapters > 0
         removeTypingIndicator();
         hideAgentStatus();
         
+        // 🔄 清除生成状态
+        delete generatingStoryboards[chapterNum];
+        
         const totalChapters = state.assets.chapters.length;
         const isLastChapter = chapterNum >= totalChapters;
         
@@ -11219,6 +11250,9 @@ ${isLastChapter ? '🎉 全部分鏡完成！' : `繼續生成第${chapterNum + 
     } catch (err) {
         removeTypingIndicator();
         hideAgentStatus();
+        // 🔄 出错时也要清除生成状态
+        delete generatingStoryboards[chapterNum];
+        updateAssetsPanel();
         showFriendlyError(err, `第${chapterNum}集分鏡`, () => runStoryboardGeneration(chapterNum));
     }
 }
