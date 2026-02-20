@@ -4550,10 +4550,31 @@ async function runAutoPilotCore() {
             updateStep('ap-script', 'done', '⏭️ 7. 劇本（已有）');
         }
         
-        // 8. 分镜（第1章）
-        updateStep('ap-storyboard', 'running', '🔄 8. 分鏡生成中...');
-        await runStoryboardStepSilent(1);
-        updateStep('ap-storyboard', 'done', '✅ 8. 分鏡生成完成');
+        // 8. 分镜（循环生成所有章节）
+        const totalChapters = state.assets?.chapters?.length || 1;
+        const existingStoryboards = Object.keys(state.assets?.storyboards || {}).length;
+        
+        if (existingStoryboards < totalChapters) {
+            for (let i = 1; i <= totalChapters; i++) {
+                // 跳过已生成的分镜
+                if (state.assets?.storyboards?.[i]) {
+                    console.log(`⏭️ 第${i}集分鏡已存在，跳過`);
+                    continue;
+                }
+                
+                // 检查是否有对应的剧本
+                if (!state.assets?.scripts?.[i]) {
+                    console.log(`⚠️ 第${i}集無劇本，跳過分鏡`);
+                    continue;
+                }
+                
+                updateStep('ap-storyboard', 'running', `🔄 8. 分鏡生成中 (${i}/${totalChapters})...`);
+                await runStoryboardStepSilent(i);
+            }
+            updateStep('ap-storyboard', 'done', `✅ 8. 分鏡生成完成 (${totalChapters}集)`);
+        } else {
+            updateStep('ap-storyboard', 'done', '⏭️ 8. 分鏡（已有）');
+        }
         
         // 完成！
         showAutoPilotComplete();
