@@ -9367,6 +9367,16 @@ async function callAgent(agentId, content, context = {}, retryCount = 0) {
     const retryText = retryCount > 0 ? ` (重試 ${retryCount}/${MAX_RETRIES})` : '';
     showAgentStatus(agentName, `準備中...${retryText}`);
     
+    // 🔄 開始隊列狀態輪詢
+    startQueuePolling();
+    
+    // 先檢查隊列狀態
+    const queueStatus = await checkQueueStatus();
+    if (queueStatus && queueStatus.activeRequests >= queueStatus.maxConcurrent) {
+        const pos = queueStatus.queueLength + 1;
+        showAgentStatus(agentName, `🔄 排隊中 (第${pos}位)，正在等待...`);
+    }
+    
     // 🧠 启动思考动画
     if (retryCount === 0) startThinkingAnimation(agentId);
     
@@ -9407,11 +9417,15 @@ async function callAgent(agentId, content, context = {}, retryCount = 0) {
             showThinkingProcess(data.reasoning || data.thinking);
         }
         
+        // 🔄 停止隊列輪詢
+        stopQueuePolling();
+        
         setTimeout(hideAgentStatus, 2000);
         return data.result;
         
     } catch (err) {
         clearTimeout(timeoutId);
+        stopQueuePolling();  // 錯誤時也停止
         
         // 🔄 自动重试机制
         const isRetryable = err.name === 'AbortError' || 
@@ -10338,6 +10352,36 @@ function showAgentStatus(agentName, status, agentId = null, steps = null) {
                 background: rgba(227, 27, 35, 0.05) !important;
                 padding: 8px 12px !important;
             }
+            /* 隊列狀態條 */
+            .queue-status-bar {
+                position: fixed;
+                top: 60px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, #ff6b35, #f72c25);
+                color: white;
+                padding: 8px 20px;
+                border-radius: 20px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 13px;
+                font-weight: 500;
+                box-shadow: 0 4px 15px rgba(247, 44, 37, 0.4);
+                z-index: 1000;
+                animation: slideDown 0.3s ease;
+            }
+            @keyframes slideDown {
+                from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+                to { transform: translateX(-50%) translateY(0); opacity: 1; }
+            }
+            .queue-icon {
+                animation: spin 1s linear infinite;
+            }
+            .queue-waiting {
+                color: #ff9800;
+                font-style: italic;
+            }
             .agent-progress .content {
                 padding: 0 !important;
             }
@@ -10486,6 +10530,64 @@ function showAgentStatus(agentName, status, agentId = null, steps = null) {
         `;
         document.head.appendChild(style);
     }
+}
+
+// ========== 隊列狀態監控 ==========
+let queuePollInterval = null;
+
+async function checkQueueStatus() {
+    try {
+        const response = await fetch(`${API_BASE}/queue`);
+        if (response.ok) {
+            const queue = await response.json();
+            updateQueueDisplay(queue);
+            return queue;
+        }
+    } catch (e) {
+        console.log('Queue check failed:', e);
+    }
+    return null;
+}
+
+function updateQueueDisplay(queue) {
+    let queueBar = document.getElementById('queueStatusBar');
+    
+    // 如果沒有等待隊列，隱藏狀態條
+    if (queue.queueLength === 0) {
+        if (queueBar) queueBar.style.display = 'none';
+        return;
+    }
+    
+    // 創建或更新狀態條
+    if (!queueBar) {
+        queueBar = document.createElement('div');
+        queueBar.id = 'queueStatusBar';
+        queueBar.className = 'queue-status-bar';
+        document.querySelector('.chat-header')?.appendChild(queueBar);
+    }
+    
+    queueBar.style.display = 'flex';
+    queueBar.innerHTML = `
+        <span class="queue-icon">🔄</span>
+        <span class="queue-text">
+            排隊中 ${queue.queueLength} 個請求 | 
+            正在處理 ${queue.activeRequests}/${queue.maxConcurrent}
+        </span>
+    `;
+}
+
+function startQueuePolling() {
+    if (queuePollInterval) return;
+    queuePollInterval = setInterval(checkQueueStatus, 2000);
+}
+
+function stopQueuePolling() {
+    if (queuePollInterval) {
+        clearInterval(queuePollInterval);
+        queuePollInterval = null;
+    }
+    const queueBar = document.getElementById('queueStatusBar');
+    if (queueBar) queueBar.style.display = 'none';
 }
 
 function updateAgentStatus(agentName, status) {
