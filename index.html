@@ -24,14 +24,26 @@
             --ai-bg: transparent;
         }
         
-        /* 广告模式配色 - 蓝紫渐变 */
+        /* 广告模式配色 - 白色浅色主题 */
         body.ad-mode {
             --accent: #6366F1;      /* 靛蓝色 */
             --accent2: #8B5CF6;     /* 紫色 */
             --accent-gradient: linear-gradient(135deg, #6366F1, #8B5CF6);
-            --bg: #0f0f1a;
-            --surface: #161625;
-            --surface2: #1e1e30;
+            --bg: #f5f5f7;          /* 浅灰白背景 */
+            --surface: #ffffff;     /* 纯白卡片 */
+            --surface2: #f0f0f2;    /* 浅灰 */
+            --border: #e0e0e5;      /* 浅边框 */
+            --text: #1a1a2e;        /* 深色文字 */
+            --text2: #6b6b80;       /* 次要文字 */
+            --user-bg: #e8e8f0;     /* 用户消息背景 */
+        }
+        
+        body.ad-mode .sidebar {
+            background: #ffffff;
+        }
+        
+        body.ad-mode .sidebar-header {
+            background: #fafafa;
         }
         
         body {
