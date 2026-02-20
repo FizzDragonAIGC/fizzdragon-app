@@ -3724,7 +3724,8 @@ async function handleScriptImport(e) {
                 
                 const result = await response.json();
                 console.log('📋 script_parser返回:', result);
-                const parsed = extractJsonFromResponse(result.result || result.response || result.content);
+                const rawJson = result.result || result.response || result.content;
+                const parsed = safeJSONParse(rawJson, 'script_parser');
                 
                 if (parsed && parsed.episodes) {
                     // AI拆分成功
