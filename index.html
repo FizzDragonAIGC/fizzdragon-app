@@ -9386,8 +9386,8 @@ if (savedUser) {
 }
 
 if (!authToken) {
-    // 未登录，跳转到登录页
-    // window.location.href = 'login.html'; // 内测模式：跳过登录
+    // 未登录，内测模式直接初始化
+    init();
 } else {
     // 验证token
     fetch('/api/auth/verify', {
@@ -9396,7 +9396,7 @@ if (!authToken) {
         if (!res.ok) {
             localStorage.removeItem('fizzdragon_token');
             localStorage.removeItem('fizzdragon_user');
-            // window.location.href = 'login.html'; // 内测模式：跳过登录
+            init(); // 内测模式：验证失败也初始化
         } else {
             // 登录有效，初始化
             init();
