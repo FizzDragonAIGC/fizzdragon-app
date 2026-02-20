@@ -4238,7 +4238,7 @@ function handleLogout() {
     }
     localStorage.removeItem('fizzdragon_token');
     localStorage.removeItem('fizzdragon_user');
-    window.location.href = 'login.html';
+    // window.location.href = 'login.html'; // 内测模式：跳过登录
 }
 
 // 显示当前用户名
@@ -9387,7 +9387,7 @@ if (savedUser) {
 
 if (!authToken) {
     // 未登录，跳转到登录页
-    window.location.href = 'login.html';
+    // window.location.href = 'login.html'; // 内测模式：跳过登录
 } else {
     // 验证token
     fetch('/api/auth/verify', {
@@ -9396,7 +9396,7 @@ if (!authToken) {
         if (!res.ok) {
             localStorage.removeItem('fizzdragon_token');
             localStorage.removeItem('fizzdragon_user');
-            window.location.href = 'login.html';
+            // window.location.href = 'login.html'; // 内测模式：跳过登录
         } else {
             // 登录有效，初始化
             init();
