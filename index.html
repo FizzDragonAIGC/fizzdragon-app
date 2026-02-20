@@ -3407,6 +3407,89 @@ ${chapterCount > 1 ? `還有 ${chapterCount - 1} 章待生成` : ''}`, [
     }
 }
 
+// 处理快速通道人物输入
+function handleFastTrackCharInput(text) {
+    const step = state.fastTrackStep;
+    
+    if (step === 'name') {
+        // 记录角色名字
+        fastTrackChars[fastTrackCharIndex] = { name: text, role: '主角' };
+        state.fastTrackStep = 'role';
+        addAIMessage(`👤 **${text}**
+
+這個角色的身份/職業是？
+（例如：高中生、偵探、廚師、醫生等）`);
+        
+    } else if (step === 'role') {
+        fastTrackChars[fastTrackCharIndex].role = text;
+        state.fastTrackStep = 'bio';
+        addAIMessage(`角色身份：${text}
+
+請簡述 **${fastTrackChars[fastTrackCharIndex].name}** 的背景故事或性格特點：`);
+        
+    } else if (step === 'bio') {
+        fastTrackChars[fastTrackCharIndex].bio = text;
+        state.fastTrackStep = 'appearance';
+        addAIMessage(`好的！
+
+最後，請描述 **${fastTrackChars[fastTrackCharIndex].name}** 的外貌特徵：
+（髮型、服裝、體型等，用於AI生成圖像）`);
+        
+    } else if (step === 'appearance') {
+        fastTrackChars[fastTrackCharIndex].appearance = text;
+        
+        // 生成AI Prompt
+        const char = fastTrackChars[fastTrackCharIndex];
+        char.prompt = `${char.appearance}, ${char.role}, cinematic portrait, 8K, --ar 2:3`;
+        
+        // 询问是否添加更多角色
+        addAIMessage(`✅ **${char.name}** 已添加！
+
+${fastTrackChars.map((c, i) => `${i+1}. **${c.name}** (${c.role})`).join('\n')}
+
+還要添加更多角色嗎？`, [
+            { text: '➕ 添加角色', action: () => {
+                fastTrackCharIndex++;
+                state.fastTrackStep = 'name';
+                addAIMessage('請輸入下一個角色的名字：');
+            }},
+            { text: '✅ 完成', action: () => finishFastTrackCharacters() }
+        ]);
+        state.fastTrackStep = 'confirm';
+    }
+}
+
+function finishFastTrackCharacters() {
+    // 保存角色到资产
+    state.assets.characters = fastTrackChars;
+    state.mode = '';
+    state.fastTrackStep = '';
+    
+    saveProject(null, true);
+    updateAssetsPanel();
+    
+    const charCount = fastTrackChars.length;
+    
+    if (fastTrackHasBoth) {
+        // 用户还要上传剧本
+        addAIMessage(`✅ **${charCount} 個角色已保存！**
+
+現在請上傳你的劇本：`, [
+            { text: '📝 上傳劇本', action: () => importScriptForFastTrack() },
+            { text: '✍️ 手動輸入', action: () => addAIMessage('請在下方輸入框粘貼或輸入劇本內容：') }
+        ]);
+    } else {
+        // 只有角色，询问下一步
+        addAIMessage(`✅ **${charCount} 個角色已保存！**
+
+接下來你想？`, [
+            { text: '📝 上傳劇本', action: () => importScriptForFastTrack() },
+            { text: '✍️ AI寫劇本', action: () => startAIStoryWriting() },
+            { text: '↩️ 返回主選單', action: () => showStartOptions() }
+        ]);
+    }
+}
+
 async function generateNextFastTrackChapter(chapterNum) {
     const scripts = state.assets.scripts || {};
     const script = scripts[chapterNum];
@@ -12812,6 +12895,12 @@ function handleUserInput(text) {
         } else {
             addAIMessage('❌ 請輸入1-30之間的數字');
         }
+        return;
+    }
+    
+    // ==================== 快速通道人物輸入 ====================
+    if (state.mode === 'fasttrack_char') {
+        handleFastTrackCharInput(text);
         return;
     }
     
