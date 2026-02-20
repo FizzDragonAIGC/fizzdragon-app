@@ -909,30 +909,45 @@
         /* 工作流状态栏 */
         .workflow-status {
             display: flex;
-            justify-content: center;
-            gap: 6px;
-            padding: 8px;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
             background: var(--surface);
             border-bottom: 1px solid var(--border);
         }
+        .ws-steps { display: flex; gap: 4px; }
+        .ws-actions { display: flex; gap: 4px; }
         .ws-item {
-            width: 28px;
-            height: 28px;
+            width: 26px;
+            height: 26px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 6px;
+            border-radius: 4px;
             background: var(--surface2);
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text2);
             cursor: default;
             transition: all 0.2s;
         }
         .ws-item.done {
-            background: rgba(227,27,35,0.15);
+            background: rgba(227,27,35,0.2);
             color: var(--accent);
-            border: 1px solid var(--accent);
         }
+        .ws-btn {
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            border: none;
+            background: var(--surface2);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ws-btn:hover { background: rgba(227,27,35,0.2); }
         
         /* 画风选择 */
         .artstyle-options { display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
@@ -4410,13 +4425,17 @@ function updateAssetsPanel() {
     const hasSB = sbCount > 0;
     
     html += `<div class="workflow-status">
-        <span class="ws-item ${hasConcept ? 'done' : ''}" title="高概念">💡</span>
-        <span class="ws-item ${hasInterview ? 'done' : ''}" title="訪談">🎤</span>
-        <span class="ws-item ${hasArtstyle ? 'done' : ''}" title="畫風">🎨</span>
-        <span class="ws-item ${hasChars ? 'done' : ''}" title="人物">${hasChars ? charCount : '👤'}</span>
-        <span class="ws-item ${hasChaps ? 'done' : ''}" title="章節">${hasChaps ? a.chapters.length : '📝'}</span>
-        <span class="ws-item ${hasScripts ? 'done' : ''}" title="劇本">${hasScripts ? scriptCount + '/' + (a.chapters?.length || 0) : '✍️'}</span>
-        <span class="ws-item ${hasSB ? 'done' : ''}" title="分鏡">${hasSB ? sbCount + '/' + (a.chapters?.length || 0) : '🎬'}</span>
+        <div class="ws-steps">
+            <span class="ws-item ${hasConcept ? 'done' : ''}" title="高概念">💡</span>
+            <span class="ws-item ${hasChars ? 'done' : ''}" title="人物">${hasChars ? charCount : '👤'}</span>
+            <span class="ws-item ${hasChaps ? 'done' : ''}" title="章節">📝</span>
+            <span class="ws-item ${hasScripts ? 'done' : ''}" title="劇本">✍️</span>
+            <span class="ws-item ${hasSB ? 'done' : ''}" title="分鏡">🎬</span>
+        </div>
+        <div class="ws-actions">
+            <button class="ws-btn" onclick="runAutoPilot()" title="Auto-Pilot">🚀</button>
+            <button class="ws-btn" onclick="exportStoryboards()" title="導出">📤</button>
+        </div>
     </div>`;
     
     html += `<div class="assets-tabs">
