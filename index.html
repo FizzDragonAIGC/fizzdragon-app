@@ -3427,12 +3427,12 @@ function getChaptersHtml(a) {
                         <div style="color:var(--text2);">${summary}</div>
                     </div>` : ''}
                     <div style="display:flex;flex-wrap:wrap;gap:6px;">
-                        ${conflict ? `<div style="color:#E31B23;font-weight:500;flex:1;min-width:120px;">⚔️ ${conflict}</div>` : ''}
-                        ${highlight ? `<div style="color:#FFD700;flex:1;min-width:120px;">🌟 ${highlight}</div>` : ''}
+                        ${conflict ? `<div style="color:#E31B23;font-weight:500;flex:1;min-width:120px;"><b>⚔️ 衝突</b> ${conflict}</div>` : ''}
+                        ${highlight ? `<div style="color:#FFD700;flex:1;min-width:120px;"><b>🌟 亮點</b> ${highlight}</div>` : ''}
                     </div>
                     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
-                        ${hook ? `<div style="color:#9C27B0;flex:1;min-width:120px;">🎣 ${hook}</div>` : ''}
-                        ${emotion ? `<div style="color:#03A9F4;flex:1;min-width:120px;">💫 ${emotion}</div>` : ''}
+                        ${hook ? `<div style="color:#9C27B0;flex:1;min-width:120px;"><b>🎣 懸念鉤子</b> ${hook}</div>` : ''}
+                        ${emotion ? `<div style="color:#03A9F4;flex:1;min-width:120px;"><b>💫 情感弧線</b> ${emotion}</div>` : ''}
                     </div>
                     ${ch.scenes ? `<div style="color:var(--text2);margin-top:4px;">🎬 場景: ${ch.scenes}</div>` : ''}
                 </div>
