@@ -7652,13 +7652,19 @@ ${issues.map(i => `${i}`).join('\n')}
 
 // 用户是否正在往上滚动（查看历史）
 let userScrolledUp = false;
+let lastScrollTime = 0;
 
 function scrollToBottom(force = false) {
     const container = document.getElementById('chatContainer');
     if (!container) return;
     
-    // 检查用户是否滚动到接近底部（距底部100px内）
-    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    // 如果用户在3秒内手动滚动过，不自动滚动
+    if (Date.now() - lastScrollTime < 3000 && userScrolledUp) {
+        return;
+    }
+    
+    // 检查用户是否滚动到接近底部（距底部300px内）
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 300;
     
     // 只有在用户接近底部 或 强制滚动时才自动滚动
     if (isNearBottom || force) {
@@ -7672,8 +7678,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('chatContainer');
     if (container) {
         container.addEventListener('scroll', () => {
-            const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-            userScrolledUp = !isNearBottom;
+            const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 300;
+            if (!isNearBottom) {
+                userScrolledUp = true;
+                lastScrollTime = Date.now();
+            } else {
+                userScrolledUp = false;
+            }
         });
     }
 });
