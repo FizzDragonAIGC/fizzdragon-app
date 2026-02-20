@@ -3399,29 +3399,55 @@ function askShotDensity() {
 
 // 快速通道生成分镜
 async function startFastTrackStoryboard(shotsPerMin) {
+    console.log('🎬 startFastTrackStoryboard called:', shotsPerMin);
     state.production = state.production || {};
     state.production.shotsPerMin = shotsPerMin;
     
-    const scripts = state.assets.scripts || {};
-    const chapterCount = Object.keys(scripts).length;
+    const scripts = state.assets?.scripts || {};
+    const scriptKeys = Object.keys(scripts);
+    const chapterCount = scriptKeys.length;
+    
+    console.log('📊 Scripts:', { scripts, scriptKeys, chapterCount });
     
     if (chapterCount === 0) {
-        addAIMessage('❌ 還沒有劇本內容，請先上傳劇本');
-        return;
+        // 如果没有scripts，尝试用novel内容
+        if (state.novel && state.novel.length > 100) {
+            addAIMessage(`📝 使用原始內容生成分鏡...`);
+            scripts['1'] = state.novel;
+        } else {
+            addAIMessage('❌ 還沒有劇本內容，請先上傳劇本');
+            return;
+        }
     }
     
     addAIMessage(`🎬 **開始生成分鏡**
 
-📊 配置：${chapterCount} 章 × ${shotsPerMin} 鏡/分鐘
+📊 配置：${chapterCount || 1} 章 × ${shotsPerMin} 鏡/分鐘
 正在生成第 1 章分鏡...`);
     
-    // 生成第一章分镜
+    // 生成第一章分镜 (支持数字或字符串键)
     try {
-        const script = scripts[1];
-        const artstylePrompt = state.assets.artstyle?.final_suggestion?.full_prompt || '';
+        const script = scripts['1'] || scripts[1] || scripts[scriptKeys[0]] || state.novel;
+        console.log('📜 Using script:', script?.substring(0, 100));
+        
+        if (!script || script.length < 50) {
+            addAIMessage(`❌ **劇本內容不足**
+
+請確保已上傳或生成劇本內容。
+
+🔍 調試信息:
+• scripts keys: ${JSON.stringify(scriptKeys)}
+• novel長度: ${state.novel?.length || 0}字`, [
+                { text: '📝 重新上傳劇本', action: () => importScriptForFastTrack() }
+            ]);
+            return;
+        }
+        
+        const artstylePrompt = state.assets?.artstyle?.final_suggestion?.full_prompt || 
+                               state.assets?.artstyle?.selected?.prompt_keywords || '';
         
         addTypingIndicator();
-        const result = await callAgent('storyboard', script, {
+        const result = await callAgent('storyboard', script.substring(0, 15000), {
             concept: state.assets.concept,
             characters: state.assets.characters,
             artstyle: artstylePrompt,
