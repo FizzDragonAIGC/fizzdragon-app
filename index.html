@@ -7763,6 +7763,14 @@ window.addEventListener('beforeunload', () => {
     }
 });
 
+// 标签页切换时保存
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden && currentProjectId) {
+        saveProject(null, true);
+        console.log('💾 标签页隐藏，已自动保存');
+    }
+});
+
 function showProjectList() {
     const projects = getProjects();
     const list = Object.values(projects);
