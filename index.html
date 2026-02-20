@@ -5650,6 +5650,7 @@ function updateAssetsPanel() {
         const charWithPrompt = a.characters?.filter(c => c.ai_prompt || c.prompt)?.length || 0;
         const costumeCount = a.costumes?.length || 0;
         const setCount = a.sets?.length || 0;
+        const propCount = a.props?.length || 0;
         
         html += `<div class="assets-section">
             <div class="assets-section-header" onclick="toggleSection('fizzstudio')">
@@ -5739,22 +5740,67 @@ function updateAssetsPanel() {
                     ` : '<div style="font-size:10px;color:var(--text2);padding:4px;">尚未設計角色</div>'}
                 </div>
                 
-                <!-- 服化道 - 始终显示 -->
+                <!-- 服化道 - 展示详细卡片 -->
                 <div class="fizzstudio-item">
-                    <div class="fizzstudio-item-header">
+                    <div class="fizzstudio-item-header" onclick="toggleSection('production')" style="cursor:pointer;">
                         <span>👗 服化道</span>
-                        <span class="fizzstudio-count">${costumeCount} 服裝 / ${setCount} 場景</span>
+                        <span class="fizzstudio-count">${costumeCount} 服裝 / ${setCount} 場景 / ${propCount} 道具</span>
+                        <span id="productionToggle" style="font-size:10px;">▼</span>
                     </div>
-                    ${(costumeCount > 0 || setCount > 0) ? `
-                        <div class="fizzstudio-actions">
-                            <button onclick="copyAllProductionPrompts()" class="fizzstudio-btn">📋 複製全部Prompt</button>
-                        </div>
-                    ` : `
-                        <div style="font-size:10px;color:var(--text2);padding:4px 6px;">
-                            尚未設計
-                            <button class="fizzstudio-mini-btn" onclick="triggerAgentWithCheck('production')" style="margin-left:6px;">🎨 生成</button>
-                        </div>
-                    `}
+                    <div id="productionBody" style="display:none;">
+                        ${costumeCount > 0 ? `
+                            <div style="padding:8px;border-bottom:1px solid var(--border);">
+                                <div style="font-size:10px;color:var(--accent);margin-bottom:6px;">👔 服裝 (${costumeCount})</div>
+                                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;">
+                                    ${a.costumes.map((c, i) => `
+                                        <div class="production-card" onclick="showProductionDetail('costume', ${i})" style="background:var(--card);border-radius:6px;padding:8px;cursor:pointer;border:1px solid var(--border);">
+                                            <div style="font-size:11px;font-weight:bold;color:var(--text);margin-bottom:4px;">${c.character || c.name || '服裝'}</div>
+                                            <div style="font-size:9px;color:var(--text2);line-height:1.3;">${(c.occasion || c.style || '').substring(0,20)}</div>
+                                            ${c.ai_prompt ? '<div style="font-size:8px;color:var(--accent);margin-top:4px;">✓ Prompt</div>' : ''}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${setCount > 0 ? `
+                            <div style="padding:8px;border-bottom:1px solid var(--border);">
+                                <div style="font-size:10px;color:var(--accent);margin-bottom:6px;">🏠 場景 (${setCount})</div>
+                                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;">
+                                    ${a.sets.map((s, i) => `
+                                        <div class="production-card" onclick="showProductionDetail('set', ${i})" style="background:var(--card);border-radius:6px;padding:8px;cursor:pointer;border:1px solid var(--border);">
+                                            <div style="font-size:11px;font-weight:bold;color:var(--text);margin-bottom:4px;">${s.name || s.location || '場景'}</div>
+                                            <div style="font-size:9px;color:var(--text2);line-height:1.3;">${(s.time || s.atmosphere || '').substring(0,20)}</div>
+                                            ${s.ai_prompt ? '<div style="font-size:8px;color:var(--accent);margin-top:4px;">✓ Prompt</div>' : ''}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${propCount > 0 ? `
+                            <div style="padding:8px;">
+                                <div style="font-size:10px;color:var(--accent);margin-bottom:6px;">🎭 道具 (${propCount})</div>
+                                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;">
+                                    ${a.props.map((p, i) => `
+                                        <div class="production-card" onclick="showProductionDetail('prop', ${i})" style="background:var(--card);border-radius:6px;padding:8px;cursor:pointer;border:1px solid var(--border);">
+                                            <div style="font-size:11px;font-weight:bold;color:var(--text);margin-bottom:4px;">${p.name || '道具'}</div>
+                                            <div style="font-size:9px;color:var(--text2);line-height:1.3;">${(p.description || '').substring(0,20)}</div>
+                                            ${p.ai_prompt ? '<div style="font-size:8px;color:var(--accent);margin-top:4px;">✓ Prompt</div>' : ''}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${(costumeCount > 0 || setCount > 0 || propCount > 0) ? `
+                            <div class="fizzstudio-actions" style="padding:8px;border-top:1px solid var(--border);">
+                                <button onclick="copyAllProductionPrompts()" class="fizzstudio-btn">📋 複製全部Prompt</button>
+                            </div>
+                        ` : `
+                            <div style="font-size:10px;color:var(--text2);padding:8px;text-align:center;">
+                                尚未設計
+                                <button class="fizzstudio-mini-btn" onclick="triggerAgentWithCheck('production')" style="margin-left:6px;">🎨 生成</button>
+                            </div>
+                        `}
+                    </div>
                 </div>
                 
             </div>
@@ -6102,26 +6148,114 @@ function copyAllStoryboardPrompts() {
     }
 }
 
+// 📋 显示服化道详情弹窗
+function showProductionDetail(type, index) {
+    const a = state.assets;
+    let item, title, icon;
+    
+    if (type === 'costume') {
+        item = a.costumes?.[index];
+        title = item?.character || item?.name || '服裝';
+        icon = '👔';
+    } else if (type === 'set') {
+        item = a.sets?.[index];
+        title = item?.name || item?.location || '場景';
+        icon = '🏠';
+    } else if (type === 'prop') {
+        item = a.props?.[index];
+        title = item?.name || '道具';
+        icon = '🎭';
+    }
+    
+    if (!item) return;
+    
+    // 构建详情内容
+    let content = `<div style="max-width:400px;">`;
+    content += `<h3 style="margin:0 0 12px;color:var(--accent);">${icon} ${title}</h3>`;
+    
+    if (type === 'costume') {
+        if (item.occasion) content += `<p><b>場合:</b> ${item.occasion}</p>`;
+        if (item.description || item.outfit) content += `<p><b>描述:</b> ${item.description || item.outfit}</p>`;
+        if (item.style) content += `<p><b>風格:</b> ${item.style}</p>`;
+        if (item.key_features?.length) content += `<p><b>特徵:</b> ${item.key_features.join(', ')}</p>`;
+    } else if (type === 'set') {
+        if (item.time) content += `<p><b>時間:</b> ${item.time}</p>`;
+        if (item.atmosphere || item.description) content += `<p><b>氛圍:</b> ${item.atmosphere || item.description}</p>`;
+    } else if (type === 'prop') {
+        if (item.description || item.usage) content += `<p><b>描述:</b> ${item.description || item.usage}</p>`;
+        if (item.key_features?.length) content += `<p><b>特徵:</b> ${item.key_features.join(', ')}</p>`;
+    }
+    
+    const prompt = item.ai_prompt || item.prompt;
+    if (prompt) {
+        content += `<div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+            <div style="font-size:10px;color:var(--accent);margin-bottom:6px;">🎨 AI Prompt:</div>
+            <div style="font-size:11px;color:var(--text);word-break:break-all;">${prompt}</div>
+            <button onclick="navigator.clipboard.writeText('${prompt.replace(/'/g, "\\'")}');this.textContent='✓ 已複製'" 
+                style="margin-top:8px;padding:4px 10px;background:var(--accent);border:none;color:white;border-radius:4px;cursor:pointer;font-size:10px;">
+                📋 複製Prompt
+            </button>
+        </div>`;
+    } else {
+        content += `<p style="color:var(--text2);font-size:11px;">尚未生成AI Prompt</p>`;
+    }
+    
+    content += `</div>`;
+    
+    // 使用简单的alert或创建modal
+    showModal(title, content);
+}
+
+// 通用Modal显示函数
+function showModal(title, content) {
+    // 移除旧的modal
+    const old = document.getElementById('productionModal');
+    if (old) old.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'productionModal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;';
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+    
+    modal.innerHTML = `
+        <div style="background:var(--card);border-radius:12px;padding:20px;max-width:90%;max-height:80%;overflow:auto;border:1px solid var(--border);">
+            ${content}
+            <button onclick="this.closest('#productionModal').remove()" 
+                style="margin-top:16px;padding:8px 20px;background:var(--border);border:none;color:var(--text);border-radius:6px;cursor:pointer;width:100%;">
+                關閉
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
 // 📋 复制所有服化道Prompt
 function copyAllProductionPrompts() {
     const costumes = state.assets?.costumes || [];
     const sets = state.assets?.sets || [];
+    const props = state.assets?.props || [];
     
     let prompts = [];
     
     costumes.forEach(c => {
         const prompt = c.ai_prompt || c.prompt;
-        if (prompt) prompts.push(`【服裝】${c.character || '角色'}: ${prompt}`);
+        if (prompt) prompts.push(`【服裝】${c.character || c.name || '角色'}: ${prompt}`);
     });
     
     sets.forEach(s => {
         const prompt = s.ai_prompt || s.prompt;
-        if (prompt) prompts.push(`【場景】${s.name || '場景'}: ${prompt}`);
+        if (prompt) prompts.push(`【場景】${s.name || s.location || '場景'}: ${prompt}`);
+    });
+    
+    props.forEach(p => {
+        const prompt = p.ai_prompt || p.prompt;
+        if (prompt) prompts.push(`【道具】${p.name || '道具'}: ${prompt}`);
     });
     
     if (prompts.length > 0) {
         navigator.clipboard.writeText(prompts.join('\n\n'));
-        addAIMessage(`✅ 已複製 ${prompts.length} 個服化道Prompt！`);
+        addAIMessage(`✅ 已複製 ${prompts.length} 個服化道Prompt！（${costumes.length}服裝 + ${sets.length}場景 + ${props.length}道具）`);
     } else {
         addAIMessage('❌ 沒有服化道Prompt可複製');
     }
