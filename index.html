@@ -3901,7 +3901,8 @@ async function runStoryboardStepSilent(chapterNum) {
     });
     const parsed = safeJSONParse(result, 'storyboard');
     state.assets.storyboards = state.assets.storyboards || {};
-    state.assets.storyboards[chapterNum] = parsed.shots || parsed || [];
+    // 兼容多种返回格式：shots / storyboard / 直接数组
+    state.assets.storyboards[chapterNum] = parsed.shots || parsed.storyboard || (Array.isArray(parsed) ? parsed : []);
     state.step = 6;
     saveProject(null, true);
     updateAssetsPanel();
