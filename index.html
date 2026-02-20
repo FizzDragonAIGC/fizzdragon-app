@@ -2052,11 +2052,11 @@
             <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
             <div class="header-title" id="headerTitle">FizzDragon AIGC番劇系統</div>
             <div class="agent-progress-bar" id="agentProgressBar" style="display:none;">
-                <span class="ap-dot" id="apDot1" title="概念" onclick="runConceptStep()">💡</span>
-                <span class="ap-dot" id="apDot2" title="人物" onclick="runCharacterStep()">👤</span>
-                <span class="ap-dot" id="apDot3" title="章節" onclick="runChaptersStep()">📝</span>
-                <span class="ap-dot" id="apDot4" title="編劇" onclick="runScriptStepForNextChapter()">✍️</span>
-                <span class="ap-dot" id="apDot5" title="分鏡" onclick="runStoryboardStepForNextChapter()">🎬</span>
+                <span class="ap-dot" id="apDot1" title="概念" onclick="triggerAgentWithCheck('concept')">💡</span>
+                <span class="ap-dot" id="apDot2" title="人物" onclick="triggerAgentWithCheck('character')">👤</span>
+                <span class="ap-dot" id="apDot3" title="章節" onclick="triggerAgentWithCheck('chapters')">📝</span>
+                <span class="ap-dot" id="apDot4" title="編劇" onclick="triggerAgentWithCheck('script')">✍️</span>
+                <span class="ap-dot" id="apDot5" title="分鏡" onclick="triggerAgentWithCheck('storyboard')">🎬</span>
             </div>
             <div class="status">
                 <div class="status-dot" id="statusDot"></div>
@@ -3280,6 +3280,71 @@ function toggleAssetsPanel() {
 }
 
 // 更新右侧资产面板
+// 智能体依赖检查 - 带依赖的智能体触发
+function triggerAgentWithCheck(agentType) {
+    const a = state.assets || {};
+    const hasConcept = !!a.concept;
+    const hasChars = (a.characters?.length || 0) > 0;
+    const hasChapters = (a.chapters?.length || 0) > 0;
+    const hasScripts = Object.keys(a.scripts || {}).length > 0;
+    
+    switch(agentType) {
+        case 'concept':
+            if (!state.novel) {
+                addAIMessage('❌ 請先導入故事內容', [
+                    { text: '📄 導入故事', action: () => document.getElementById('fileInput').click() }
+                ]);
+                return;
+            }
+            runConceptStep();
+            break;
+            
+        case 'character':
+            if (!hasConcept) {
+                addAIMessage('⚠️ 請先完成「💡 概念分析」，才能生成角色', [
+                    { text: '💡 先分析概念', action: () => triggerAgentWithCheck('concept') }
+                ]);
+                return;
+            }
+            runCharacterStep();
+            break;
+            
+        case 'chapters':
+            if (!hasConcept) {
+                addAIMessage('⚠️ 請先完成「💡 概念分析」，才能規劃章節', [
+                    { text: '💡 先分析概念', action: () => triggerAgentWithCheck('concept') }
+                ]);
+                return;
+            }
+            runChaptersStep();
+            break;
+            
+        case 'script':
+            if (!hasConcept || !hasChars || !hasChapters) {
+                const missing = [];
+                if (!hasConcept) missing.push('💡 概念');
+                if (!hasChars) missing.push('👤 人物');
+                if (!hasChapters) missing.push('📝 章節');
+                addAIMessage(`⚠️ 編劇需要先完成：${missing.join('、')}`, [
+                    { text: '🚀 Auto-Pilot 自動完成', action: () => runAutoPilot() }
+                ]);
+                return;
+            }
+            runScriptStepForNextChapter();
+            break;
+            
+        case 'storyboard':
+            if (!hasScripts) {
+                addAIMessage('⚠️ 請先生成「✍️ 劇本」，才能生成分鏡', [
+                    { text: '✍️ 先寫劇本', action: () => triggerAgentWithCheck('script') }
+                ]);
+                return;
+            }
+            runStoryboardStepForNextChapter();
+            break;
+    }
+}
+
 // 更新顶部智能体进度条
 function updateAgentProgressBar(assets) {
     const bar = document.getElementById('agentProgressBar');
@@ -6388,30 +6453,34 @@ function loadProject(projectId) {
     // 智能体状态HTML
     const agentHtml = `
 <div class="agent-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0;">
-    <div class="agent-card ${assets.concept ? 'done' : ''}" onclick="runConceptStep()" style="padding:12px;background:var(--surface);border-radius:8px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;">
+    <div class="agent-card ${assets.concept ? 'done' : ''}" onclick="triggerAgentWithCheck('concept')" style="padding:12px;background:var(--surface);border-radius:8px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;">
         <div style="font-size:18px;margin-bottom:4px;">💡</div>
         <div style="font-weight:600;font-size:13px;">概念智能體</div>
         <div style="font-size:11px;color:var(--text2);">${assets.concept ? '✅ 已完成' : '❌ 待生成'}</div>
     </div>
-    <div class="agent-card ${charCount > 0 ? 'done' : ''}" onclick="runCharacterStep()" style="padding:12px;background:var(--surface);border-radius:8px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;">
+    <div class="agent-card ${charCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('character')" style="padding:12px;background:var(--surface);border-radius:8px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;">
         <div style="font-size:18px;margin-bottom:4px;">👤</div>
         <div style="font-weight:600;font-size:13px;">人物智能體</div>
         <div style="font-size:11px;color:var(--text2);">${charCount > 0 ? '✅ ' + charCount + ' 個角色' : '❌ 待生成'}</div>
+        <div style="font-size:10px;color:#888;margin-top:2px;">需先完成：💡</div>
     </div>
-    <div class="agent-card ${chapterCount > 0 ? 'done' : ''}" onclick="runChaptersStep()" style="padding:12px;background:var(--surface);border-radius:8px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;">
+    <div class="agent-card ${chapterCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('chapters')" style="padding:12px;background:var(--surface);border-radius:8px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;">
         <div style="font-size:18px;margin-bottom:4px;">📝</div>
         <div style="font-weight:600;font-size:13px;">章節智能體</div>
         <div style="font-size:11px;color:var(--text2);">${chapterCount > 0 ? '✅ ' + chapterCount + ' 集' : '❌ 待生成'}</div>
+        <div style="font-size:10px;color:#888;margin-top:2px;">需先完成：💡</div>
     </div>
-    <div class="agent-card ${scriptCount > 0 ? 'done' : ''}" onclick="runScriptStepForNextChapter()" style="padding:12px;background:var(--surface);border-radius:8px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;">
+    <div class="agent-card ${scriptCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('script')" style="padding:12px;background:var(--surface);border-radius:8px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;">
         <div style="font-size:18px;margin-bottom:4px;">✍️</div>
         <div style="font-weight:600;font-size:13px;">編劇智能體</div>
         <div style="font-size:11px;color:var(--text2);">${scriptCount > 0 ? '📄 ' + scriptCount + '/' + chapterCount + ' 集' : '❌ 待生成'}</div>
+        <div style="font-size:10px;color:#888;margin-top:2px;">需先完成：💡👤📝</div>
     </div>
-    <div class="agent-card ${sbCount > 0 ? 'done' : ''}" onclick="runStoryboardStepForNextChapter()" style="padding:12px;background:var(--surface);border-radius:8px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;">
+    <div class="agent-card ${sbCount > 0 ? 'done' : ''}" onclick="triggerAgentWithCheck('storyboard')" style="padding:12px;background:var(--surface);border-radius:8px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;">
         <div style="font-size:18px;margin-bottom:4px;">🎬</div>
         <div style="font-weight:600;font-size:13px;">分鏡智能體</div>
         <div style="font-size:11px;color:var(--text2);">${sbCount > 0 ? '🎬 ' + sbCount + '/' + chapterCount + ' 集' : '❌ 待生成'}</div>
+        <div style="font-size:10px;color:#888;margin-top:2px;">需先完成：✍️</div>
     </div>
     <div class="agent-card auto" onclick="runAutoPilot()" style="padding:12px;background:linear-gradient(135deg,rgba(99,102,241,0.2),rgba(139,92,246,0.2));border-radius:8px;cursor:pointer;border:1px solid #6366F1;transition:all 0.2s;">
         <div style="font-size:18px;margin-bottom:4px;">🚀</div>
