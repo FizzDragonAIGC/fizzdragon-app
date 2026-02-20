@@ -3925,11 +3925,6 @@ ${text.substring(text.length - 2000)}`,
                 
                 console.log('📋 script_parser返回:', parsed);
                 
-                const result = await response.json();
-                console.log('📋 script_parser返回:', result);
-                const rawJson = result.result || result.response || result.content;
-                const parsed = safeJSONParse(rawJson, 'script_parser');
-                
                 if (parsed && parsed.episodes && parsed.episodes.length > 1) {
                     // AI拆分成功，按集数平均分割原始文本
                     const totalEps = parsed.episodes.length;
