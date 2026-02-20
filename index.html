@@ -7244,16 +7244,18 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
         removeTypingIndicator();
         addAIMessage(`📄 **文件讀取遇到問題**
 
-**可能原因**: 
+**可能原因**:
 • 文件格式不支持（目前支持 .txt, .docx, .pdf）
 • 文件可能已損壞或加密
 • 文件太大（建議 < 5MB）
 
 **建議**:
 • 嘗試另存為 .txt 格式後重新導入
-• 確認文件可以正常打開`, [
+• 確認文件可以正常打開
+
+錯誤詳情: ${err.message}`, [
             { text: '📄 重新選擇文件', action: () => document.getElementById('fileInput').click() },
-            { text: '✍️ 改用創作模式', action: () => startWriteMode() }
+            { text: '✍️ 我要寫故事', action: () => startWriteStory() }
         ]);
     }
 });
