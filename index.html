@@ -4417,7 +4417,8 @@ function runAutoPilot() {
     // 检查是否有内容（小说或剧本）
     const hasContent = state.novel || Object.keys(state.assets?.scripts || {}).length > 0;
     if (!hasContent) {
-        addAIMessage('❌ 請先導入故事或劇本');
+        // 🔧 没有内容时显示选项，而不是报错
+        showAutoPilotOptions();
         return;
     }
     
