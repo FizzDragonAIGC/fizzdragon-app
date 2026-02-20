@@ -2739,6 +2739,7 @@
                 <!-- 智能体快捷工具栏 -->
                 <div class="agent-toolbar" id="agentToolbar" style="display:none;">
                     <button class="agent-btn" onclick="triggerAgentWithCheck('concept')" id="btnConcept">💡 概念</button>
+                    <button class="agent-btn" onclick="triggerAgentWithCheck('interview')" id="btnInterview">🎤 訪談</button>
                     <button class="agent-btn" onclick="triggerAgentWithCheck('character')" id="btnCharacter">👤 人物</button>
                     <button class="agent-btn" onclick="triggerAgentWithCheck('chapters')" id="btnChapters">📝 章節</button>
                     <button class="agent-btn" onclick="triggerAgentWithCheck('production')" id="btnProduction">👗 服化道</button>
@@ -4830,6 +4831,39 @@ async function runConceptStepSilent() {
     updateAssetsPanel();
 }
 
+// 🎤 运行访谈智能体（带UI提示）
+async function runInterviewStep() {
+    addAIMessage('🎤 **創意訪談中...**\n\n正在生成深度訪談問題，幫助挖掘故事核心...');
+    
+    try {
+        const result = await callAgent('interview', (state.novel || '').substring(0, 5000), { 
+            concept: state.assets.concept 
+        });
+        const parsed = safeJSONParse(result, 'interview');
+        state.assets.interview = parsed;
+        saveProject(null, true);
+        updateAssetsPanel();
+        updateAgentToolbar();
+        
+        // 显示访谈问题
+        const questions = parsed?.interview_questions || [];
+        if (questions.length > 0) {
+            addAIMessage(`✅ **訪談問題生成完成！**\n\n生成了 ${questions.length} 個深度問題：\n\n${questions.slice(0, 3).map((q, i) => `${i+1}. ${q.question || q}`).join('\n')}\n\n...等`, [
+                { text: '👤 繼續：人物設計', action: () => triggerAgentWithCheck('character') },
+                { text: '📝 繼續：章節規劃', action: () => triggerAgentWithCheck('chapters') }
+            ]);
+        } else {
+            addAIMessage('⚠️ 訪談問題生成失敗，請重試', [
+                { text: '🔄 重試', action: () => runInterviewStep() }
+            ]);
+        }
+    } catch (e) {
+        addAIMessage('❌ 訪談失敗: ' + e.message, [
+            { text: '🔄 重試', action: () => runInterviewStep() }
+        ]);
+    }
+}
+
 async function runInterviewStepSilent() {
     const result = await callAgent('interview', (state.novel || '').substring(0, 5000), { 
         concept: state.assets.concept 
@@ -5487,19 +5521,23 @@ document.addEventListener('keydown', (e) => {
                 e.preventDefault();
                 triggerAgentWithCheck('concept');
                 break;
-            case '2': // Alt+2 → 👤人物
+            case '2': // Alt+2 → 🎤访谈
+                e.preventDefault();
+                triggerAgentWithCheck('interview');
+                break;
+            case '3': // Alt+3 → 👤人物
                 e.preventDefault();
                 triggerAgentWithCheck('character');
                 break;
-            case '3': // Alt+3 → 📝章节
+            case '4': // Alt+4 → 📝章节
                 e.preventDefault();
                 triggerAgentWithCheck('chapters');
                 break;
-            case '4': // Alt+4 → ✍️编剧
+            case '5': // Alt+5 → ✍️编剧
                 e.preventDefault();
                 runScriptForNextChapter();
                 break;
-            case '5': // Alt+5 → 🎬分镜
+            case '6': // Alt+6 → 🎬分镜
                 e.preventDefault();
                 runStoryboardForNextChapter();
                 break;
@@ -5539,6 +5577,16 @@ function triggerAgentWithCheck(agentType) {
             }
             console.log('✅ Calling runConceptStep');
             runConceptStep();
+            break;
+        
+        case 'interview':
+            if (!hasConcept) {
+                addAIMessage('⚠️ 請先完成「💡 概念分析」，才能進行訪談', [
+                    { text: '💡 先分析概念', action: () => triggerAgentWithCheck('concept') }
+                ]);
+                return;
+            }
+            runInterviewStep();
             break;
             
         case 'character':
@@ -9662,7 +9710,10 @@ function updateAgentToolbar() {
         }
     };
     
+    const hasInterview = !!a.interview?.interview_questions?.length;
+    
     updateBtn('btnConcept', !!a.concept, `💡 概念${a.concept ? ' ✅' : ''}`);
+    updateBtn('btnInterview', hasInterview, `🎤 訪談${hasInterview ? ' ✅' : ''}`);
     updateBtn('btnCharacter', charCount > 0, `👤 人物${charCount > 0 ? ' ' + charCount : ''}`);
     updateBtn('btnChapters', chapterCount > 0, `📝 章節${chapterCount > 0 ? ' ' + chapterCount + '集' : ''}`);
     updateBtn('btnProduction', hasCostumes, `👗 服化道${hasCostumes ? ' ✅' : ''}`);
