@@ -4589,6 +4589,8 @@ function saveNewStory(type) {
 
 // AI辅助写故事
 function startAIStoryWriting() {
+    console.log('🎬 startAIStoryWriting called');
+    
     addAIMessage(`🤖 **AI輔助創作**
 
 請告訴我你的故事想法：
@@ -4602,15 +4604,19 @@ function startAIStoryWriting() {
 直接打字描述吧！`);
     
     window.pendingAIStory = true;
+    console.log('✅ pendingAIStory set to true');
 }
 
 // AI生成故事
 async function generateAIStory(idea) {
+    console.log('🎬 generateAIStory called with:', idea);
+    
     addAIMessage(`🤖 收到你的想法！正在為你創作故事...
 
 > "${idea}"`);
     
-    startThinkingAnimation('concept');
+    showAgentStatus('✍️ 編劇', '正在創作故事...', 'screenwriter');
+    startThinkingAnimation('screenwriter');
     
     try {
         const prompt = `你是一位專業的故事創作者。根據用戶的想法，創作一個完整的短篇故事。
@@ -11422,6 +11428,7 @@ function handleUserInput(text) {
     
     // ==================== AI寫故事處理 ====================
     if (window.pendingAIStory) {
+        console.log('🎯 pendingAIStory detected, calling generateAIStory');
         window.pendingAIStory = false;
         generateAIStory(text);
         return;
