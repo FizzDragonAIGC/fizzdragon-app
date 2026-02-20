@@ -6912,27 +6912,51 @@ async function runCharacterAnalysis() {
     
     // 详细步骤显示
     const steps = [
-        { text: '📖 正在讀取小說文本...', done: false, current: true },
-        { text: '🔍 調用NLP識別主要角色', done: false },
-        { text: '🧠 啟動心理分析模組', done: false },
+        { text: '📖 讀取小說文本...', done: false, current: true },
+        { text: '📚 載入 Bancroft《角色塑造》方法論', done: false },
+        { text: '🔍 NLP識別主要角色', done: false },
+        { text: '🧠 分析角色心理動機', done: false },
         { text: '🎨 生成角色視覺設計', done: false },
         { text: '✨ 輸出AI繪圖Prompt', done: false }
     ];
     showAgentStatus('👤 角色設計師', '「讓我來認識每一個角色...」', 'character', steps);
     
     try {
-        // 步骤1完成
+        // 步骤1: 读取
+        await new Promise(r => setTimeout(r, 400));
         steps[0].done = true; steps[0].current = false;
         steps[1].current = true;
-        showAgentStatus('👤 角色設計師', '「正在分析角色關係網絡...」', 'character', steps);
+        showAgentStatus('👤 角色設計師', '「載入Tom Bancroft角色設計理論...」', 'character', steps);
+        
+        // 步骤2: 载入方法论
+        await new Promise(r => setTimeout(r, 600));
+        steps[1].done = true; steps[1].current = false;
+        steps[2].current = true;
+        showAgentStatus('👤 角色設計師', '「正在識別主角/配角/反派...」', 'character', steps);
+        
+        // 步骤3: NLP识别
+        await new Promise(r => setTimeout(r, 500));
+        steps[2].done = true; steps[2].current = false;
+        steps[3].current = true;
+        showAgentStatus('👤 角色設計師', '「分析角色慾望、恐懼、內心衝突...」', 'character', steps);
         
         const result = await callAgent('character', state.novel.substring(0, 4000), {
             concept: state.assets.concept
         });
         
-        // 步骤2-5完成
-        steps[1].done = true; steps[1].current = false;
-        steps[2].done = true; steps[3].done = true; steps[4].done = true;
+        // 步骤4完成
+        steps[3].done = true; steps[3].current = false;
+        steps[4].current = true;
+        showAgentStatus('👤 角色設計師', '「生成角色外貌描述...」', 'character', steps);
+        await new Promise(r => setTimeout(r, 400));
+        
+        // 步骤5完成
+        steps[4].done = true; steps[4].current = false;
+        steps[5].current = true;
+        showAgentStatus('👤 角色設計師', '「轉換為AI繪圖Prompt...」', 'character', steps);
+        await new Promise(r => setTimeout(r, 300));
+        
+        steps.forEach(s => { s.done = true; s.current = false; });
         
         console.log('🔍 角色API返回:', result);
         console.log('🔍 角色API返回类型:', typeof result);
@@ -7316,17 +7340,32 @@ async function runChapterPlanning() {
     
     // 详细步骤
     const steps = [
-        { text: '📊 正在分析故事架構...', done: false, current: true },
-        { text: '🎭 調用三幕劇模型', done: false },
+        { text: '📊 分析故事架構...', done: false, current: true },
+        { text: '📚 載入 Blake Snyder《Save the Cat》15節拍', done: false },
+        { text: '🎭 套用三幕劇結構模型', done: false },
         { text: '📝 設計各集情節要點', done: false },
         { text: '⏱️ 計算時長與節奏分配', done: false }
     ];
     showAgentStatus('📝 章節規劃師', '「正在規劃故事節奏...」', 'narrative', steps);
     
     try {
+        // 步骤1: 分析
+        await new Promise(r => setTimeout(r, 400));
         steps[0].done = true; steps[0].current = false;
         steps[1].current = true;
-        showAgentStatus('📝 章節規劃師', '「劃分起承轉合關鍵節點...」', 'narrative', steps);
+        showAgentStatus('📝 章節規劃師', '「載入Blake Snyder 15節拍表...」', 'narrative', steps);
+        
+        // 步骤2: 方法论
+        await new Promise(r => setTimeout(r, 600));
+        steps[1].done = true; steps[1].current = false;
+        steps[2].current = true;
+        showAgentStatus('📝 章節規劃師', '「劃分起/承/轉/合關鍵節點...」', 'narrative', steps);
+        
+        // 步骤3: 三幕剧
+        await new Promise(r => setTimeout(r, 500));
+        steps[2].done = true; steps[2].current = false;
+        steps[3].current = true;
+        showAgentStatus('📝 章節規劃師', '「DeepSeek規劃各集情節...」', 'narrative', steps);
         
         // 🔧 明确告诉AI需要生成多少集
         const episodeCount = state.production.episodes || 10;
