@@ -4074,6 +4074,15 @@ function extractSceneSummary(text) {
 
 // 剧本导入成功提示
 function showScriptImportSuccess(title, wordCount) {
+    // 确保state.novel已设置
+    console.log('📋 showScriptImportSuccess:', { 
+        title, 
+        wordCount, 
+        novelLen: state.novel?.length,
+        chaptersLen: state.assets?.chapters?.length,
+        scriptsKeys: Object.keys(state.assets?.scripts || {})
+    });
+    
     addAIMessage(`✅ **劇本導入成功！**
 
 📖 **${title}**
@@ -4082,12 +4091,12 @@ function showScriptImportSuccess(title, wordCount) {
 
 ───────────────────────
 劇本已存入資產，你可以：
+• 🚀 Auto-Pilot 一鍵生成全部
 • 🎬 直接生成分鏡
-• 💡 提取高概念（AI分析主題/類型）
-• 👤 提取角色（AI識別人物）`, [
+• 💡 提取高概念`, [
+        { text: '🚀 Auto-Pilot', action: () => runAutoPilot() },
         { text: '🎬 生成第1集分鏡', action: () => runStoryboardGeneration(1) },
-        { text: '💡 提取高概念', action: () => runConceptStep() },
-        { text: '👤 提取角色', action: () => runCharacterAnalysis() }
+        { text: '💡 提取高概念', action: () => runConceptStep() }
     ]);
 }
 
@@ -4233,9 +4242,18 @@ function showAutoPilotOptions() {
 
 // Auto-Pilot 入口（检查是否需要配置）
 function runAutoPilot() {
-    if (!state.novel) {
-        addAIMessage('❌ 請先導入故事');
+    // 检查是否有内容（小说或剧本）
+    const hasContent = state.novel || Object.keys(state.assets?.scripts || {}).length > 0;
+    if (!hasContent) {
+        addAIMessage('❌ 請先導入故事或劇本');
         return;
+    }
+    
+    // 如果没有state.novel但有scripts，从scripts构建novel
+    if (!state.novel && state.assets?.scripts) {
+        const scripts = state.assets.scripts;
+        state.novel = Object.keys(scripts).sort((a,b) => a-b).map(k => scripts[k]).join('\n\n---\n\n');
+        console.log('📋 从scripts构建novel:', state.novel.length, '字');
     }
     
     // 如果已有配置，直接开始；否则先问配置
@@ -4248,9 +4266,17 @@ function runAutoPilot() {
 
 // Auto-Pilot 配置问题
 function askAutoPilotConfig() {
-    if (!state.novel) {
-        addAIMessage('❌ 請先導入故事');
+    // 检查是否有内容
+    const hasContent = state.novel || Object.keys(state.assets?.scripts || {}).length > 0;
+    if (!hasContent) {
+        addAIMessage('❌ 請先導入故事或劇本');
         return;
+    }
+    
+    // 确保state.novel存在
+    if (!state.novel && state.assets?.scripts) {
+        const scripts = state.assets.scripts;
+        state.novel = Object.keys(scripts).sort((a,b) => a-b).map(k => scripts[k]).join('\n\n---\n\n');
     }
     
     // 估算字数
