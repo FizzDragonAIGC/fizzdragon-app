@@ -7232,22 +7232,53 @@ Keys: ${Object.keys(charData || {}).join(', ') || '無'}
             return;
         }
         
-        // 格式化角色数据（兼容嵌套结构）
+        // 格式化角色数据（兼容多种AI输出格式）
         const formattedChars = chars.map(c => {
             // 提取心理层面
-            const psychology = c.psychology || {};
-            const psychBio = [psychology.want, psychology.need, psychology.wound].filter(Boolean).join('；');
+            const psychology = c.psychology || c['動機系統'] || {};
+            const gwlt = c['G.W.L.T.框架'] || c.GWLT || {};
+            const personality = c['性格特徵'] || c.personality || {};
+            const arc = c['角色弧線'] || c.arc || {};
+            
+            // 构建完整bio
+            let bioText = c.bio || c['人物小傳'] || c.biography || c.backstory || c.description || '';
+            if (!bioText && (Object.keys(psychology).length > 0 || Object.keys(gwlt).length > 0)) {
+                const parts = [];
+                if (gwlt.ghost) parts.push(`【過去創傷】${gwlt.ghost}`);
+                if (gwlt.wound) parts.push(`【心理傷口】${gwlt.wound}`);
+                if (gwlt.lie) parts.push(`【錯誤信念】${gwlt.lie}`);
+                if (gwlt.truth) parts.push(`【需要領悟】${gwlt.truth}`);
+                if (psychology.want) parts.push(`【表面慾望】${psychology.want}`);
+                if (psychology.need) parts.push(`【深層需求】${psychology.need}`);
+                if (psychology.conflict) parts.push(`【內在衝突】${psychology.conflict}`);
+                if (personality['正面']) parts.push(`【正面特質】${Array.isArray(personality['正面']) ? personality['正面'].join('、') : personality['正面']}`);
+                if (personality['負面']) parts.push(`【負面特質】${Array.isArray(personality['負面']) ? personality['負面'].join('、') : personality['負面']}`);
+                if (arc.type) parts.push(`【角色弧線】${arc.type}: ${arc['起點'] || ''} → ${arc['終點'] || ''}`);
+                bioText = parts.join('\n');
+            }
             
             // 提取视觉层面
-            const visual = c.visual || {};
-            const visualDesc = [visual.age, visual.gender, visual.height, visual.build, visual.hair, visual.face].filter(Boolean).join('，');
+            const visual = c.visual || c['視覺設計'] || c.visualDesign || {};
+            let appearanceText = c.appearance || c['外貌特徵'] || c.physical || '';
+            if (!appearanceText && Object.keys(visual).length > 0) {
+                const vParts = [];
+                if (visual.age) vParts.push(`${visual.age}歲`);
+                if (visual.gender) vParts.push(visual.gender);
+                if (visual.height) vParts.push(`身高${visual.height}`);
+                if (visual.build) vParts.push(visual.build);
+                if (visual.hair) vParts.push(`髮型：${visual.hair}`);
+                if (visual.face) vParts.push(`臉部：${visual.face}`);
+                if (visual['服裝風格']) vParts.push(`服裝：${visual['服裝風格']}`);
+                if (visual['視覺符號']) vParts.push(`符號：${visual['視覺符號']}`);
+                appearanceText = vParts.join('，');
+            }
             
             return {
                 name: c.name || '未命名',
                 role: c.role || c.type || '角色',
-                bio: c.bio || c.description || c.backstory || psychBio || '',
-                appearance: c.appearance || c.physical || visualDesc || '',
-                prompt: c.prompt || c.ai_prompt || c.image_prompt || ''
+                bio: bioText || '(需補充人物小傳)',
+                appearance: appearanceText || '(需補充外貌描述)',
+                prompt: c.prompt || c.ai_prompt || c.image_prompt || c['AI Prompt'] || ''
             };
         });
         
