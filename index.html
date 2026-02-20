@@ -220,6 +220,26 @@
             background: var(--surface2);
         }
         
+        /* 项目状态指示器 */
+        .proj-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-right: 6px;
+        }
+        .proj-status.proj-idle { background: #555; }
+        .proj-status.proj-partial { background: #FFB020; } /* 黄色 = 进行中 */
+        .proj-status.proj-complete { background: #E31B23; } /* 红色 = 完成 */
+        .proj-status.proj-running { 
+            width: 8px; height: 8px;
+            border: 2px solid #6366F1; 
+            border-top-color: transparent; 
+            background: transparent;
+            animation: proj-spin 0.8s linear infinite; 
+        }
+        @keyframes proj-spin { to { transform: rotate(360deg); } }
+        
         .project-item .icon {
             font-size: 16px;
         }
@@ -2647,6 +2667,12 @@ async function runAutoPilot() {
         return;
     }
     
+    // 标记项目正在运行
+    if (currentProjectId) {
+        runningProjects[currentProjectId] = true;
+        renderProjectList();
+    }
+    
     addAIMessage(`🚀 **Auto-Pilot 啟動！**
 
 正在後台自動執行所有步驟...
@@ -2721,6 +2747,11 @@ async function runAutoPilot() {
         showAutoPilotComplete();
         
     } catch (err) {
+        // 清除运行状态
+        if (currentProjectId) {
+            delete runningProjects[currentProjectId];
+            renderProjectList();
+        }
         console.error('Auto-Pilot error:', err);
         addAIMessage(`❌ Auto-Pilot 遇到問題：${err.message}
 
@@ -2733,6 +2764,11 @@ async function runAutoPilot() {
 
 // Auto-Pilot 完成
 function showAutoPilotComplete() {
+    // 清除运行状态
+    if (currentProjectId) {
+        delete runningProjects[currentProjectId];
+        renderProjectList();
+    }
     saveProject(state.novelTitle, true);
     
     addAIMessage(`🎉 **Auto-Pilot 完成！**
@@ -3165,6 +3201,7 @@ function updateUserUI() {
 
 // ==================== 侧边栏 ====================
 let currentProjectId = null;
+let runningProjects = {}; // 追踪正在运行Auto-Pilot的项目
 
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
@@ -4293,6 +4330,28 @@ function renderProjectListByMode() {
         const stepName = stepNameKeys[p.step] ? t(stepNameKeys[p.step]) : '';
         const icon = p.type === 'ad' ? '📺' : (p.stage === 'write' ? '✍️' : '📄');
         
+        // 计算项目状态
+        const hasConcept = !!assets.concept;
+        const hasChars = (assets.characters?.length || 0) > 0;
+        const hasChapters = chapterCount > 0;
+        const hasScripts = scriptCount > 0;
+        const hasSb = sbCount > 0;
+        const isRunning = runningProjects && runningProjects[p.id];
+        const isComplete = hasConcept && hasChars && hasChapters && hasScripts && hasSb;
+        const isPartial = hasConcept || hasChars || hasChapters;
+        
+        // 状态指示器
+        let statusIndicator = '';
+        if (isRunning) {
+            statusIndicator = '<span class="proj-status proj-running" title="處理中"></span>';
+        } else if (isComplete) {
+            statusIndicator = '<span class="proj-status proj-complete" title="已完成"></span>';
+        } else if (isPartial) {
+            statusIndicator = '<span class="proj-status proj-partial" title="進行中"></span>';
+        } else {
+            statusIndicator = '<span class="proj-status proj-idle" title="待開始"></span>';
+        }
+        
         const displayName = String(p.name || t('unnamed') || '未命名');
         const safeName = displayName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         return `
@@ -4305,6 +4364,7 @@ function renderProjectListByMode() {
                  ondragover="handleDragOver(event)"
                  ondragleave="handleDragLeave(event)"
                  ondrop="handleDrop(event, '${p.id}')">
+                ${statusIndicator}
                 <div class="icon">${icon}</div>
                 <div class="info">
                     <div class="title">${displayName}</div>
