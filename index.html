@@ -4313,7 +4313,7 @@ function updateAssetsPanel() {
     const charCount = a.characters?.length || 0;
     
     // 项目快捷操作工具栏 (已移除)
-    <div class="assets-tabs">
+    html += `<div class="assets-tabs">
         <button class="assets-tab active" onclick="switchAssetsTab('base')" id="tabBase">📋 設定</button>
         <button class="assets-tab" onclick="switchAssetsTab('prod')" id="tabProd">📝 生產 <small>${scriptCount}/${a.chapters?.length || 0}</small></button>
         <button class="assets-tab" onclick="switchAssetsTab('studio')" id="tabStudio">🚀 素材 <small>${charCount}人</small></button>
