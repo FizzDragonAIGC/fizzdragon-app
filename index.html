@@ -4487,18 +4487,18 @@ function updateAssetsPanel() {
                                             <tbody>
                                                 ${Array.isArray(shots) ? shots.map((s, i) => `
                                                     <tr>
-                                                        <td class="sb-id">S${String(i+1).padStart(3,'0')}</td>
-                                                        <td class="sb-cell">${s.scene || s.場景 || '-'}</td>
-                                                        <td class="sb-cell">${s.time || s.時間 || '-'}</td>
-                                                        <td class="sb-cell">${s.lighting || s.光線 || '-'}</td>
-                                                        <td class="sb-cell">${s.mood || s.氛圍 || '-'}</td>
-                                                        <td class="sb-cell">${s.character || s.角色 || '-'}</td>
-                                                        <td class="sb-cell">${s.action || s.動作 || '-'}</td>
-                                                        <td class="sb-dialogue">${s.dialogue || s.台詞 || '-'}</td>
-                                                        <td class="sb-cell">${s.camera || s.機位 || '-'}</td>
-                                                        <td class="sb-cell">${s.movement || s.運鏡 || '-'}</td>
-                                                        <td class="sb-cell">${s.shot_type || s.景別 || '-'}</td>
-                                                        <td class="sb-prompt">${s.Image_Prompt || s.image_prompt || '-'}</td>
+                                                        <td class="sb-id">${s.shot_id || 'S'+String(i+1).padStart(3,'0')}</td>
+                                                        <td class="sb-cell">${s.scene || s.場景 || s.location || s.地點 || '-'}</td>
+                                                        <td class="sb-cell">${s.time || s.時間 || s.time_of_day || '-'}</td>
+                                                        <td class="sb-cell">${s.lighting || s.光線 || s.light || '-'}</td>
+                                                        <td class="sb-cell">${s.mood || s.氛圍 || s.atmosphere || s.emotion || '-'}</td>
+                                                        <td class="sb-cell">${s.character || s.角色 || s.characters || s.actor || '-'}</td>
+                                                        <td class="sb-cell">${s.action || s.動作 || s.description || '-'}</td>
+                                                        <td class="sb-dialogue">${s.dialogue || s.台詞 || s.lines || s.copy || '-'}</td>
+                                                        <td class="sb-cell">${s.camera || s.機位 || s.camera_position || s.angle || '-'}</td>
+                                                        <td class="sb-cell">${s.movement || s.運鏡 || s.camera_movement || s.camera_move || '-'}</td>
+                                                        <td class="sb-cell">${s.shot_type || s.景別 || s.framing || s.shot_size || '-'}</td>
+                                                        <td class="sb-prompt">${s.Image_Prompt || s.image_prompt || s.ai_prompt || '-'}</td>
                                                         <td class="sb-prompt">${s.Video_Prompt || s.video_prompt || '-'}</td>
                                                     </tr>
                                                 `).join('') : ''}
