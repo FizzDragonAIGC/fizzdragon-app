@@ -4531,9 +4531,13 @@ async function runAutoPilotCore() {
     }
     
     // 标记项目正在运行
+    console.log('🚀 Auto-Pilot开始，项目ID:', currentProjectId);
     if (currentProjectId) {
         runningProjects[currentProjectId] = true;
+        console.log('📊 runningProjects:', JSON.stringify(runningProjects));
         renderProjectList();
+    } else {
+        console.warn('⚠️ 没有currentProjectId，无法标记运行状态');
     }
     
     addAIMessage(`🚀 **Auto-Pilot 啟動！**
@@ -4571,11 +4575,16 @@ async function runAutoPilotCore() {
 </style>`);
     
     const updateStep = (id, status, text) => {
+        console.log(`📍 Auto-Pilot步骤: ${id} → ${status}: ${text}`);
         const el = document.getElementById(id);
         if (el) {
             el.className = 'ap-step ' + status;
             const indicatorClass = status === 'running' ? 'ap-running' : status === 'done' ? 'ap-done' : status === 'error' ? 'ap-error' : 'ap-pending';
             el.innerHTML = `<span class="ap-indicator ${indicatorClass}"></span> ${text}`;
+            // 滚动到进度消息
+            scrollToBottom();
+        } else {
+            console.warn(`⚠️ 找不到元素: ${id}`);
         }
     };
     
