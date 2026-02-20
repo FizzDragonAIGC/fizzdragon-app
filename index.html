@@ -5172,8 +5172,8 @@ function viewFullStory() {
                 <h3>📖 ${story.title || '故事全文'}</h3>
                 <button class="story-modal-close" onclick="this.closest('.story-modal').remove()">✕</button>
             </div>
-            <div class="story-modal-body">
-                <pre class="story-full-text">${story.content || '(無內容)'}</pre>
+            <div class="story-modal-body" style="white-space:pre-wrap;line-height:1.8;font-size:14px;">
+                ${(story.content || '(無內容)').replace(/\n/g, '<br>')}
             </div>
             <div class="story-modal-footer">
                 <span>${(story.content?.length || 0).toLocaleString()} 字</span>
@@ -9358,9 +9358,9 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
         
         removeTypingIndicator();
         
-        // 保留换行的预览
-        const previewText = text.substring(0, 300).replace(/\n/g, '\n');
-        const preview = previewText + (text.length > 300 ? '...' : '');
+        // 保留换行的预览 - 确保换行符转为HTML
+        const previewText = text.substring(0, 500);
+        const preview = previewText.replace(/\n/g, '<br>') + (text.length > 500 ? '...' : '');
         
         // 🚀 检查是否启用 Auto-Pilot
         if (state.autoPilotEnabled) {
@@ -9378,7 +9378,7 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
 **字數**: ${text.length.toLocaleString()} 字
 
 **預覽**:
-<div style="background:var(--surface);padding:12px;border-radius:8px;white-space:pre-wrap;font-size:13px;max-height:200px;overflow-y:auto;border-left:3px solid var(--accent);">${escapeHtml(preview)}</div>
+<div style="background:var(--surface);padding:12px;border-radius:8px;font-size:13px;line-height:1.6;max-height:200px;overflow-y:auto;border-left:3px solid var(--accent);">${preview}</div>
 
 ───────────────────────
 請選擇分析方式：`, [
