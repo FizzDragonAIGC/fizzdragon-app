@@ -3723,7 +3723,8 @@ async function handleScriptImport(e) {
                 });
                 
                 const result = await response.json();
-                const parsed = extractJsonFromResponse(result.response || result.content);
+                console.log('📋 script_parser返回:', result);
+                const parsed = extractJsonFromResponse(result.result || result.response || result.content);
                 
                 if (parsed && parsed.episodes) {
                     // AI拆分成功
