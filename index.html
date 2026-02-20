@@ -3757,17 +3757,44 @@ async function finishManualEpisodeInput() {
 ────────────────
 🤖 正在整理故事結構和框架...`);
     
-    addTypingIndicator();
+    // 显示思考状态
+    const steps = [
+        { text: '📖 讀取劇本內容...', done: false, current: true },
+        { text: '💡 提取高概念/主題/類型', done: false },
+        { text: '👤 識別角色/建立人物小傳', done: false },
+        { text: '✅ 整理完成', done: false }
+    ];
+    showAgentStatus('🤖 故事結構分析', '讓我來理解這個故事...', 'concept', steps);
     
     // 自动提取高概念和人物
     try {
+        // 步骤1完成
+        await new Promise(r => setTimeout(r, 300));
+        steps[0].done = true; steps[0].current = false;
+        steps[1].current = true;
+        showAgentStatus('💡 高概念分析', '載入McKee敘事理論...', 'concept', steps);
+        
         await runConceptStepSilent();
+        
+        // 步骤2完成
+        steps[1].done = true; steps[1].current = false;
+        steps[2].current = true;
+        showAgentStatus('👤 角色識別', '分析人物關係和小傳...', 'concept', steps);
+        
         await runCharacterStepSilent();
+        
+        // 步骤3完成
+        steps[2].done = true; steps[2].current = false;
+        steps[3].current = true;
+        steps[3].done = true;
+        showAgentStatus('✅ 完成', '故事結構整理完畢！', 'concept', steps);
+        
     } catch (e) {
         console.error('结构提取失败:', e);
     }
     
-    removeTypingIndicator();
+    // 关闭状态显示
+    hideAgentStatus();
     saveProject(state.novelTitle, true);
     updateAssetsPanel();
     
