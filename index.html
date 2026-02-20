@@ -3514,11 +3514,12 @@ async function runAutoPilotCore() {
 <div id="autoPilotProgress" style="background:var(--surface);padding:16px;border-radius:8px;margin:12px 0;">
     <div class="ap-step" id="ap-concept"><span class="ap-indicator ap-waiting"></span> 1. 高概念分析</div>
     <div class="ap-step" id="ap-interview"><span class="ap-indicator ap-pending"></span> 2. 創意訪談</div>
-    <div class="ap-step" id="ap-character"><span class="ap-indicator ap-pending"></span> 3. 角色設計</div>
-    <div class="ap-step" id="ap-chapters"><span class="ap-indicator ap-pending"></span> 4. 章節規劃</div>
-    <div class="ap-step" id="ap-production"><span class="ap-indicator ap-pending"></span> 5. 服化道設計</div>
-    <div class="ap-step" id="ap-script"><span class="ap-indicator ap-pending"></span> 6. 劇本生成</div>
-    <div class="ap-step" id="ap-storyboard"><span class="ap-indicator ap-pending"></span> 7. 分鏡生成</div>
+    <div class="ap-step" id="ap-artstyle"><span class="ap-indicator ap-pending"></span> 3. 畫風設計</div>
+    <div class="ap-step" id="ap-character"><span class="ap-indicator ap-pending"></span> 4. 角色設計</div>
+    <div class="ap-step" id="ap-chapters"><span class="ap-indicator ap-pending"></span> 5. 章節規劃</div>
+    <div class="ap-step" id="ap-production"><span class="ap-indicator ap-pending"></span> 6. 服化道設計</div>
+    <div class="ap-step" id="ap-script"><span class="ap-indicator ap-pending"></span> 7. 劇本生成</div>
+    <div class="ap-step" id="ap-storyboard"><span class="ap-indicator ap-pending"></span> 8. 分鏡生成</div>
 </div>
 
 <style>
@@ -3557,30 +3558,35 @@ async function runAutoPilotCore() {
         await runInterviewStepSilent();
         updateStep('ap-interview', 'done', '✅ 2. 創意訪談完成');
         
-        // 3. 角色
-        updateStep('ap-character', 'running', '🔄 3. 角色設計中...');
+        // 3. 画风设计
+        updateStep('ap-artstyle', 'running', '🔄 3. 畫風設計中...');
+        await runArtstyleStepSilent();
+        updateStep('ap-artstyle', 'done', '✅ 3. 畫風設計完成');
+        
+        // 4. 角色
+        updateStep('ap-character', 'running', '🔄 4. 角色設計中...');
         await runCharacterStepSilent();
-        updateStep('ap-character', 'done', '✅ 3. 角色設計完成');
+        updateStep('ap-character', 'done', '✅ 4. 角色設計完成');
         
-        // 4. 章节
-        updateStep('ap-chapters', 'running', '🔄 4. 章節規劃中...');
+        // 5. 章节
+        updateStep('ap-chapters', 'running', '🔄 5. 章節規劃中...');
         await runChaptersStepSilent();
-        updateStep('ap-chapters', 'done', '✅ 4. 章節規劃完成');
+        updateStep('ap-chapters', 'done', '✅ 5. 章節規劃完成');
         
-        // 5. 服化道
-        updateStep('ap-production', 'running', '🔄 5. 服化道設計中...');
+        // 6. 服化道
+        updateStep('ap-production', 'running', '🔄 6. 服化道設計中...');
         await runProductionStepSilent();
-        updateStep('ap-production', 'done', '✅ 5. 服化道設計完成');
+        updateStep('ap-production', 'done', '✅ 6. 服化道設計完成');
         
-        // 6. 剧本（第1章）
-        updateStep('ap-script', 'running', '🔄 6. 劇本生成中...');
+        // 7. 剧本（第1章）
+        updateStep('ap-script', 'running', '🔄 7. 劇本生成中...');
         await runScriptStepSilent(1);
-        updateStep('ap-script', 'done', '✅ 6. 劇本生成完成');
+        updateStep('ap-script', 'done', '✅ 7. 劇本生成完成');
         
-        // 7. 分镜（第1章）
-        updateStep('ap-storyboard', 'running', '🔄 7. 分鏡生成中...');
+        // 8. 分镜（第1章）
+        updateStep('ap-storyboard', 'running', '🔄 8. 分鏡生成中...');
         await runStoryboardStepSilent(1);
-        updateStep('ap-storyboard', 'done', '✅ 7. 分鏡生成完成');
+        updateStep('ap-storyboard', 'done', '✅ 8. 分鏡生成完成');
         
         // 完成！
         showAutoPilotComplete();
@@ -3755,8 +3761,23 @@ async function runInterviewStepSilent() {
     updateAssetsPanel();
 }
 
+async function runArtstyleStepSilent() {
+    const result = await callAgent('artstyle', (state.novel || '').substring(0, 3000), { 
+        concept: state.assets.concept,
+        interview: state.assets.interview
+    });
+    const parsed = safeJSONParse(result, 'artstyle');
+    state.assets.artstyle = parsed;
+    saveProject(null, true);
+    updateAssetsPanel();
+}
+
 async function runCharacterStepSilent() {
-    const result = await callAgent('character', (state.novel || '').substring(0, 3000), { concept: state.assets.concept, interview: state.assets.interview });
+    const result = await callAgent('character', (state.novel || '').substring(0, 3000), { 
+        concept: state.assets.concept, 
+        interview: state.assets.interview,
+        artstyle: state.assets.artstyle
+    });
     const parsed = safeJSONParse(result, 'character');
     state.assets.characters = parsed.characters || parsed || [];
     state.step = 2;
