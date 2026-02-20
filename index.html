@@ -6237,6 +6237,28 @@ function loadProject(projectId) {
     // 更新当前项目ID
     currentProjectId = projectId;
     
+    // 构建按钮列表
+    const buttons = [];
+    if (!assets.concept) {
+        buttons.push({ text: '💡 生成高概念', action: () => runConceptStep() });
+    }
+    if (charCount === 0) {
+        buttons.push({ text: '👤 生成角色', action: () => runCharacterStep() });
+    } else {
+        buttons.push({ text: '👤 重新生成角色', action: () => runCharacterStep() });
+    }
+    if (chapterCount === 0) {
+        buttons.push({ text: '📝 生成章節', action: () => runChaptersStep() });
+    }
+    if (chapterCount > 0 && scriptCount < chapterCount) {
+        buttons.push({ text: `✍️ 生成劇本 (${scriptCount}/${chapterCount})`, action: () => runScriptStepForNextChapter() });
+    }
+    if (chapterCount > 0 && sbCount < chapterCount) {
+        buttons.push({ text: `🎬 生成分鏡 (${sbCount}/${chapterCount})`, action: () => runStoryboardStepForNextChapter() });
+    }
+    buttons.push({ text: '🚀 Auto-Pilot 全自動', action: () => runAutoPilot() });
+    buttons.push({ text: '📊 查看項目資產', action: () => toggleAssetsPanel() });
+    
     addAIMessage(`📖 **已載入項目**
 
 **《${p.name}》**
@@ -6250,7 +6272,21 @@ function loadProject(projectId) {
 • 當前階段: ${stepNames[p.step] || '待開始'}
 
 ───────────────────────
-輸入「繼續」繼續流程，或「項目資產」查看詳情`);
+選擇下一步操作：`, buttons);
+}
+
+// 生成下一章剧本
+function runScriptStepForNextChapter() {
+    const scriptCount = Object.keys(state.assets.scripts || {}).length;
+    const nextChapter = scriptCount + 1;
+    runScriptWriting(nextChapter);
+}
+
+// 生成下一章分镜
+function runStoryboardStepForNextChapter() {
+    const sbCount = Object.keys(state.assets.storyboards || {}).length;
+    const nextChapter = sbCount + 1;
+    generateChapterStoryboard(nextChapter);
 }
 
 function continueWriteProject() {
