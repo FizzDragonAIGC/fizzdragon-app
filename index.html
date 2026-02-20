@@ -5625,14 +5625,17 @@ function updateAssetsPanel() {
         </div>
     </div>`;
     
+    // 保持当前tab状态（默认base）
+    const currentTab = state.currentAssetsTab || 'base';
+    
     html += `<div class="assets-tabs">
-        <button class="assets-tab active" onclick="switchAssetsTab('base')" id="tabBase">📋 設定</button>
-        <button class="assets-tab" onclick="switchAssetsTab('prod')" id="tabProd">📝 生產 <small>${scriptCount}/${a.chapters?.length || 0}</small></button>
-        <button class="assets-tab" onclick="switchAssetsTab('studio')" id="tabStudio">🚀 素材 <small>${charCount}人</small></button>
+        <button class="assets-tab ${currentTab === 'base' ? 'active' : ''}" onclick="switchAssetsTab('base')" id="tabBase">📋 設定</button>
+        <button class="assets-tab ${currentTab === 'prod' ? 'active' : ''}" onclick="switchAssetsTab('prod')" id="tabProd">📝 生產 <small>${scriptCount}/${a.chapters?.length || 0}</small></button>
+        <button class="assets-tab ${currentTab === 'studio' ? 'active' : ''}" onclick="switchAssetsTab('studio')" id="tabStudio">🚀 素材 <small>${charCount}人</small></button>
     </div>`;
     
     // ==================== Tab1：基础设定 ====================
-    html += `<div class="assets-tab-content" id="tabContentBase" style="display:block;">`;
+    html += `<div class="assets-tab-content" id="tabContentBase" style="display:${currentTab === 'base' ? 'block' : 'none'};">`;
     
         // 00 故事源
         if (a.story) {
@@ -5796,7 +5799,7 @@ function updateAssetsPanel() {
     html += `</div>`; // 关闭 tabContentBase
     
     // ==================== Tab2：内容生产 ====================
-    html += `<div class="assets-tab-content" id="tabContentProd" style="display:none;">`;
+    html += `<div class="assets-tab-content" id="tabContentProd" style="display:${currentTab === 'prod' ? 'block' : 'none'};">`;
     if (hasProduction) {
         
         // 章节列表（包含剧本和分镜）
@@ -5808,7 +5811,7 @@ function updateAssetsPanel() {
     html += `</div>`; // 关闭 tabContentProd
     
     // ==================== Tab3：FizzStudio 素材庫 ====================
-    html += `<div class="assets-tab-content" id="tabContentStudio" style="display:none;">`;
+    html += `<div class="assets-tab-content" id="tabContentStudio" style="display:${currentTab === 'studio' ? 'block' : 'none'};">`;
     if (hasAnyAssets) {
         const charWithImage = a.characters?.filter(c => c.image_url)?.length || 0;
         const charWithPrompt = a.characters?.filter(c => c.ai_prompt || c.prompt)?.length || 0;
@@ -5996,6 +5999,9 @@ function updateAssetsPanel() {
 
 // Tab切换函数
 function switchAssetsTab(tab) {
+    // 保存当前tab到state
+    state.currentAssetsTab = tab;
+    
     // 隐藏所有tab内容
     document.querySelectorAll('.assets-tab-content').forEach(el => el.style.display = 'none');
     // 移除所有tab的active
@@ -6005,8 +6011,10 @@ function switchAssetsTab(tab) {
     const tabMap = { base: 'tabContentBase', prod: 'tabContentProd', studio: 'tabContentStudio' };
     const btnMap = { base: 'tabBase', prod: 'tabProd', studio: 'tabStudio' };
     
-    document.getElementById(tabMap[tab]).style.display = 'block';
-    document.getElementById(btnMap[tab]).classList.add('active');
+    const contentEl = document.getElementById(tabMap[tab]);
+    const btnEl = document.getElementById(btnMap[tab]);
+    if (contentEl) contentEl.style.display = 'block';
+    if (btnEl) btnEl.classList.add('active');
 }
 
 // 切换区块展开/收起
