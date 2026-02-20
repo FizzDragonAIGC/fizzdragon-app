@@ -1816,6 +1816,28 @@
                 }
             }
         }
+        
+        /* 流式输出实时预览 */
+        .stream-preview {
+            background: rgba(227, 27, 35, 0.1) !important;
+            border-left: 3px solid var(--accent);
+        }
+        .stream-content {
+            font-size: 12px;
+            line-height: 1.6;
+            color: #bbb;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .typing-cursor {
+            animation: blink 0.8s infinite;
+            color: var(--accent);
+            font-weight: bold;
+        }
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
     </style>
 </head>
 <body>
@@ -8110,10 +8132,30 @@ async function callAgent(agentId, content, context = {}) {
 // ==================== 流式调用Agent（解决超时）====================
 async function callAgentStream(agentId, content, context = {}, onChunk = null) {
     const agentName = AGENT_NAMES[agentId] || agentId;
+    const persona = AGENT_PERSONAS[agentId];
+    const avatar = persona?.avatar || '🤖';
+    
     showAgentStatus(agentName, '準備中...');
+    
+    // 创建实时预览区域
+    let streamPreview = document.getElementById('streamPreview');
+    if (!streamPreview) {
+        streamPreview = document.createElement('div');
+        streamPreview.id = 'streamPreview';
+        streamPreview.className = 'message ai stream-preview';
+        streamPreview.innerHTML = `
+            <div class="role">${avatar} ${agentName}</div>
+            <div class="content stream-content" id="streamContent">
+                <span class="typing-cursor">▌</span>
+            </div>
+        `;
+        document.getElementById('chatContainer').appendChild(streamPreview);
+        scrollToBottom();
+    }
     
     return new Promise((resolve, reject) => {
         let fullText = '';
+        const streamContent = document.getElementById('streamContent');
         
         fetch(`${API_BASE}/agent-stream/${agentId}`, {
             method: 'POST',
@@ -8122,6 +8164,7 @@ async function callAgentStream(agentId, content, context = {}, onChunk = null) {
         }).then(response => {
             if (!response.ok) {
                 hideAgentStatus();
+                if (streamPreview) streamPreview.remove();
                 reject(new Error(`API錯誤: ${response.status}`));
                 return;
             }
@@ -8133,6 +8176,8 @@ async function callAgentStream(agentId, content, context = {}, onChunk = null) {
                 reader.read().then(({ done, value }) => {
                     if (done) {
                         hideAgentStatus();
+                        // 移除预览区域
+                        if (streamPreview) streamPreview.remove();
                         resolve(fullText);
                         return;
                     }
@@ -8146,12 +8191,23 @@ async function callAgentStream(agentId, content, context = {}, onChunk = null) {
                             if (data.chunk) {
                                 fullText += data.chunk;
                                 if (onChunk) onChunk(data.chunk, fullText);
+                                
+                                // 实时更新预览内容（显示最后500字符）
+                                if (streamContent) {
+                                    const displayText = fullText.length > 500 
+                                        ? '...' + fullText.slice(-500) 
+                                        : fullText;
+                                    streamContent.innerHTML = `<pre style="white-space:pre-wrap;font-family:inherit;margin:0;">${displayText}</pre><span class="typing-cursor">▌</span>`;
+                                    scrollToBottom();
+                                }
+                                
                                 updateAgentStatus(agentName, `生成中... ${fullText.length}字`);
                             }
                             if (data.done) {
                                 fullText = data.fullText || fullText;
                             }
                             if (data.error) {
+                                if (streamPreview) streamPreview.remove();
                                 reject(new Error(data.error));
                                 return;
                             }
@@ -8163,6 +8219,7 @@ async function callAgentStream(agentId, content, context = {}, onChunk = null) {
                     read();
                 }).catch(err => {
                     hideAgentStatus();
+                    if (streamPreview) streamPreview.remove();
                     reject(err);
                 });
             }
@@ -8170,6 +8227,7 @@ async function callAgentStream(agentId, content, context = {}, onChunk = null) {
             read();
         }).catch(err => {
             hideAgentStatus();
+            if (streamPreview) streamPreview.remove();
             reject(err);
         });
     });
