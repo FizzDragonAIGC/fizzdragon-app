@@ -10198,6 +10198,29 @@ function addAIMessage(text, quickReplies = []) {
     return msg;
 }
 
+// 🔧 独立显示快捷回复按钮
+function showQuickReplies(replies) {
+    if (!replies || replies.length === 0) return;
+    
+    const container = document.getElementById('chatContainer');
+    const div = document.createElement('div');
+    div.className = 'quick-replies';
+    
+    replies.forEach((r, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'quick-reply';
+        btn.textContent = r.text;
+        btn.onclick = () => {
+            div.remove();  // 点击后移除按钮
+            if (r.action) r.action();
+        };
+        div.appendChild(btn);
+    });
+    
+    container.appendChild(div);
+    scrollToBottom(true);
+}
+
 function addTypingIndicator() {
     const container = document.getElementById('chatContainer');
     const msg = document.createElement('div');
