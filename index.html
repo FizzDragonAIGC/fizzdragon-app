@@ -8079,6 +8079,9 @@ async function callAgent(agentId, content, context = {}) {
     // 显示调用状态
     showAgentStatus(agentName, '準備中...');
     
+    // 🧠 启动思考动画
+    startThinkingAnimation(agentId);
+    
     // 🔧 某些agent使用快速模型（章節規劃、訪談等需要快速響應的）
     const fastAgents = ['narrative', 'interview', 'concept'];
     const useReasoner = fastAgents.includes(agentId) ? false : (context.useReasoner !== false);
@@ -8104,6 +8107,9 @@ async function callAgent(agentId, content, context = {}) {
         
         const data = await response.json();
         
+        // 🧠 停止思考动画
+        stopThinkingAnimation();
+        
         // 显示token消耗
         if (data.tokens) {
             updateAgentStatus(agentName, `完成 ✅ (${data.tokens.input + data.tokens.output} tokens)`);
@@ -8119,6 +8125,7 @@ async function callAgent(agentId, content, context = {}) {
         
     } catch (err) {
         clearTimeout(timeoutId);
+        stopThinkingAnimation();  // 🧠 出错也停止动画
         hideAgentStatus();
         
         // 🔧 处理超时错误
@@ -9055,25 +9062,103 @@ function showAgentStatus(agentName, status, agentId = null, steps = null) {
                 width: 16px;
                 text-align: center;
             }
-            .thinking-box {
-                background: transparent;
-                border: none;
-                border-left: 2px solid #333;
-                border-radius: 0;
-                padding: 8px 12px;
-                margin-top: 8px;
-                font-size: 12px;
-                color: #666;
-                max-height: 150px;
-                overflow-y: auto;
-                white-space: pre-wrap;
+            /* 思考过程样式 - DeepSeek风格 */
+            .thinking-message {
+                background: rgba(227, 27, 35, 0.03) !important;
+                border-left: 2px solid #E31B23 !important;
             }
-            .thinking-box::before {
-                content: '💭 思考過程';
-                display: block;
+            .thinking-header {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                cursor: pointer;
+                padding: 4px 0;
+                user-select: none;
+            }
+            .thinking-header:hover {
+                opacity: 0.8;
+            }
+            .thinking-icon {
+                font-size: 16px;
+            }
+            .thinking-icon.spinning {
+                animation: pulse 1.5s ease-in-out infinite;
+            }
+            @keyframes pulse {
+                0%, 100% { opacity: 1; transform: scale(1); }
+                50% { opacity: 0.6; transform: scale(0.95); }
+            }
+            .thinking-title {
                 color: #E31B23;
                 font-weight: 500;
-                margin-bottom: 8px;
+                font-size: 13px;
+            }
+            .thinking-toggle {
+                margin-left: auto;
+                color: #666;
+                transition: transform 0.2s;
+            }
+            .thinking-message.expanded .thinking-toggle {
+                transform: rotate(180deg);
+            }
+            .thinking-content {
+                margin-top: 8px;
+                font-size: 12px;
+                color: #888;
+                line-height: 1.6;
+            }
+            .thinking-preview {
+                white-space: pre-wrap;
+            }
+            .thinking-full {
+                display: none;
+                white-space: pre-wrap;
+                max-height: 300px;
+                overflow-y: auto;
+            }
+            .thinking-message.expanded .thinking-preview {
+                display: none;
+            }
+            .thinking-message.expanded .thinking-full {
+                display: block;
+            }
+            /* 动态思考动画 */
+            .thinking-animation {
+                background: rgba(227, 27, 35, 0.05) !important;
+                border-left: 2px solid #E31B23 !important;
+            }
+            .thinking-header.active .thinking-title::after {
+                content: '...';
+                animation: dots 1.5s steps(4) infinite;
+            }
+            @keyframes dots {
+                0% { content: ''; }
+                25% { content: '.'; }
+                50% { content: '..'; }
+                75% { content: '...'; }
+            }
+            .thinking-steps-anim {
+                margin-top: 8px;
+                padding: 8px 12px;
+                background: rgba(0,0,0,0.2);
+                border-radius: 6px;
+            }
+            .think-step {
+                padding: 4px 0;
+                font-size: 12px;
+                color: #666;
+                opacity: 0;
+                animation: fadeIn 0.3s ease forwards;
+            }
+            .think-step.done {
+                color: #4CAF50;
+            }
+            .think-step.current {
+                color: #E31B23;
+                font-weight: 500;
+            }
+            @keyframes fadeIn {
+                to { opacity: 1; }
             }
         `;
         document.head.appendChild(style);
@@ -9097,18 +9182,115 @@ function hideAgentStatus() {
     if (progressMsg) progressMsg.remove();
 }
 
+// 思考过程展示 - DeepSeek风格可折叠面板
 function showThinkingProcess(thinking) {
     if (!thinking || thinking.length < 10) return;
     
     const container = document.getElementById('chatContainer');
     const thinkingDiv = document.createElement('div');
-    thinkingDiv.className = 'message ai';
+    thinkingDiv.className = 'message ai thinking-message';
+    
+    // 默认折叠，点击展开
+    const isLong = thinking.length > 200;
+    const previewText = isLong ? thinking.substring(0, 200) + '...' : thinking;
+    
     thinkingDiv.innerHTML = `
-        <div class="role">🧠 AI思考過程</div>
-        <div class="thinking-box">${escapeHtml(thinking.substring(0, 500))}${thinking.length > 500 ? '...' : ''}</div>
+        <div class="thinking-header" onclick="this.parentElement.classList.toggle('expanded')">
+            <span class="thinking-icon">💭</span>
+            <span class="thinking-title">思考過程</span>
+            <span class="thinking-toggle">${isLong ? '▼' : ''}</span>
+        </div>
+        <div class="thinking-content">
+            <div class="thinking-preview">${escapeHtml(previewText)}</div>
+            ${isLong ? `<div class="thinking-full">${escapeHtml(thinking)}</div>` : ''}
+        </div>
     `;
     container.appendChild(thinkingDiv);
     scrollToBottom();
+}
+
+// 动态思考动画（调用API时显示）
+let thinkingAnimationInterval = null;
+const THINKING_STEPS = {
+    concept: [
+        '📚 載入McKee《故事》理論...',
+        '🎭 分析三幕結構...',
+        '💡 提取核心戲劇衝突...',
+        '🎬 確定類型與基調...',
+        '✨ 生成高概念...'
+    ],
+    character: [
+        '📖 載入角色設計方法論...',
+        '🧠 分析角色心理動機...',
+        '💔 構建內心衝突...',
+        '👤 設計外貌特徵...',
+        '✨ 完善人物小傳...'
+    ],
+    narrative: [
+        '📚 載入敘事結構理論...',
+        '🎯 分析故事節拍...',
+        '📝 規劃章節結構...',
+        '🔗 設計情節鉤子...',
+        '✨ 生成章節大綱...'
+    ],
+    storyboard: [
+        '🎥 載入分鏡技法...',
+        '📐 計算鏡頭密度...',
+        '🎬 分析場景轉換...',
+        '💡 設計視覺敘事...',
+        '✨ 生成分鏡表...'
+    ],
+    default: [
+        '📚 載入專業知識庫...',
+        '🧠 分析輸入內容...',
+        '💡 應用方法論...',
+        '✨ 生成結果...'
+    ]
+};
+
+function startThinkingAnimation(agentId) {
+    const steps = THINKING_STEPS[agentId] || THINKING_STEPS.default;
+    let stepIndex = 0;
+    
+    // 创建思考动画元素
+    const container = document.getElementById('chatContainer');
+    let thinkingAnim = document.getElementById('thinkingAnimation');
+    if (!thinkingAnim) {
+        thinkingAnim = document.createElement('div');
+        thinkingAnim.id = 'thinkingAnimation';
+        thinkingAnim.className = 'message ai thinking-animation';
+        container.appendChild(thinkingAnim);
+    }
+    
+    // 更新动画内容
+    function updateAnimation() {
+        const currentStep = steps[stepIndex % steps.length];
+        thinkingAnim.innerHTML = `
+            <div class="thinking-header active">
+                <span class="thinking-icon spinning">🧠</span>
+                <span class="thinking-title">正在思考</span>
+            </div>
+            <div class="thinking-steps-anim">
+                ${steps.slice(0, stepIndex + 1).map((s, i) => 
+                    `<div class="think-step ${i === stepIndex ? 'current' : 'done'}">${s}</div>`
+                ).join('')}
+            </div>
+        `;
+        stepIndex++;
+        scrollToBottom();
+    }
+    
+    updateAnimation();
+    thinkingAnimationInterval = setInterval(updateAnimation, 1500);
+}
+
+function stopThinkingAnimation() {
+    if (thinkingAnimationInterval) {
+        clearInterval(thinkingAnimationInterval);
+        thinkingAnimationInterval = null;
+    }
+    const thinkingAnim = document.getElementById('thinkingAnimation');
+    if (thinkingAnim) thinkingAnim.remove();
 }
 
 // ==================== 用户输入 ====================
