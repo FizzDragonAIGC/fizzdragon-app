@@ -3753,13 +3753,13 @@ function updateAssetsPanel() {
                     </div>
                     <div class="canvas-card-body" style="padding:0;">
                         ${a.characters.map((c, i) => `
-                            <div class="character-asset-item" onclick="toggleCharacterDetail(${i})">
-                                <div class="character-asset-header">
+                            <div class="character-asset-item">
+                                <div class="character-asset-header" onclick="toggleCharacterDetail(${i})" style="cursor:pointer;">
                                     <span class="character-asset-name">• <b>${c.name}</b></span>
                                     <span class="character-asset-role">(${c.role || '角色'})</span>
                                     <span class="character-asset-toggle" id="charToggle${i}">▼</span>
                                 </div>
-                                <div class="character-asset-detail" id="charDetail${i}" style="display:none;">
+                                <div class="character-asset-detail" id="charDetail${i}" style="display:none;" onclick="event.stopPropagation()">
                                     ${c.image_url ? `<div class="char-section"><div class="char-image-container"><img src="${c.image_url}" class="char-image" onclick="window.open('${c.image_url}','_blank')"/></div></div>` : ''}
                                     ${c.bio ? `<div class="char-section"><div class="char-section-title">📖 小傳</div><div class="char-section-content">${formatBio(c.bio)}</div></div>` : ''}
                                     ${c.appearance ? `<div class="char-section"><div class="char-section-title">👤 外貌</div><div class="char-section-content">${c.appearance}</div></div>` : ''}
