@@ -735,10 +735,9 @@
             background: rgba(255,255,255,0.05);
         }
         .sb-id { color: var(--accent); font-weight: 600; white-space: nowrap; }
-        .sb-desc { color: var(--text); }
-        .sb-prompt { color: #88c; font-family: monospace; font-size: 8px; }
-        .sb-music { color: #c8a; }
-        .sb-narr { color: #8c8; font-style: italic; }
+        .sb-cell { color: var(--text2); font-size: 8px; }
+        .sb-dialogue { color: #8c8; font-style: italic; max-width: 100px; }
+        .sb-prompt { color: #88c; font-family: monospace; font-size: 7px; max-width: 80px; }
         .fizzstudio-char-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
@@ -4361,17 +4360,24 @@ function updateAssetsPanel() {
                                     <div class="fizzstudio-storyboard-detail" id="sbDetail${ep}" style="display:none;">
                                         <table class="sb-table">
                                             <thead><tr>
-                                                <th>鏡號</th><th>描述</th><th>圖片詞</th><th>視頻詞</th><th>音樂</th><th>旁白</th>
+                                                <th>鏡號</th><th>場景</th><th>時間</th><th>光線</th><th>氛圍</th><th>角色</th><th>動作</th><th>台詞</th><th>機位</th><th>運鏡</th><th>景別</th><th>Image</th><th>Video</th>
                                             </tr></thead>
                                             <tbody>
                                                 ${Array.isArray(shots) ? shots.map((s, i) => `
                                                     <tr>
                                                         <td class="sb-id">S${String(i+1).padStart(3,'0')}</td>
-                                                        <td class="sb-desc">${s.description || s.画面描述 || '-'}</td>
-                                                        <td class="sb-prompt">${s.Image_Prompt || s.image_prompt || s.ai_prompt || '-'}</td>
+                                                        <td class="sb-cell">${s.scene || s.場景 || '-'}</td>
+                                                        <td class="sb-cell">${s.time || s.時間 || '-'}</td>
+                                                        <td class="sb-cell">${s.lighting || s.光線 || '-'}</td>
+                                                        <td class="sb-cell">${s.mood || s.氛圍 || '-'}</td>
+                                                        <td class="sb-cell">${s.character || s.角色 || '-'}</td>
+                                                        <td class="sb-cell">${s.action || s.動作 || '-'}</td>
+                                                        <td class="sb-dialogue">${s.dialogue || s.台詞 || '-'}</td>
+                                                        <td class="sb-cell">${s.camera || s.機位 || '-'}</td>
+                                                        <td class="sb-cell">${s.movement || s.運鏡 || '-'}</td>
+                                                        <td class="sb-cell">${s.shot_type || s.景別 || '-'}</td>
+                                                        <td class="sb-prompt">${s.Image_Prompt || s.image_prompt || '-'}</td>
                                                         <td class="sb-prompt">${s.Video_Prompt || s.video_prompt || '-'}</td>
-                                                        <td class="sb-music">${s.music || s.音乐 || s.Music_Prompt || '-'}</td>
-                                                        <td class="sb-narr">${s.narration || s.旁白 || s.dialogue || '-'}</td>
                                                     </tr>
                                                 `).join('') : ''}
                                             </tbody>
@@ -4608,7 +4614,7 @@ function exportToExcel() {
         return;
     }
     
-    const headers = ['鏡頭ID', '分鏡描述', 'Image_Prompt', 'Video_Prompt', '音樂提示', '旁白'];
+    const headers = ['鏡頭ID', '場景', '時間', '光線', '氛圍', '角色', '動作', '台詞', '機位', '運鏡', '景別', 'Image_Prompt', 'Video_Prompt'];
     let csvContent = '\uFEFF' + headers.join(',') + '\n';
     let totalShots = 0;
     
@@ -4616,13 +4622,21 @@ function exportToExcel() {
         if (Array.isArray(shots)) {
             shots.forEach((shot, i) => {
                 totalShots++;
+                const esc = (v) => `"${(v || '').toString().replace(/"/g, '""')}"`;
                 const row = [
                     `E${String(ep).padStart(2,'0')}_S${String(i+1).padStart(3,'0')}`,
-                    `"${(shot.description || shot.画面描述 || '').replace(/"/g, '""')}"`,
-                    `"${(shot.Image_Prompt || shot.image_prompt || shot.ai_prompt || '').replace(/"/g, '""')}"`,
-                    `"${(shot.Video_Prompt || shot.video_prompt || '').replace(/"/g, '""')}"`,
-                    `"${(shot.music || shot.音乐 || shot.Music_Prompt || '').replace(/"/g, '""')}"`,
-                    `"${(shot.narration || shot.旁白 || shot.dialogue || '').replace(/"/g, '""')}"`
+                    esc(shot.scene || shot.場景),
+                    esc(shot.time || shot.時間),
+                    esc(shot.lighting || shot.光線),
+                    esc(shot.mood || shot.氛圍),
+                    esc(shot.character || shot.角色),
+                    esc(shot.action || shot.動作),
+                    esc(shot.dialogue || shot.台詞),
+                    esc(shot.camera || shot.機位),
+                    esc(shot.movement || shot.運鏡),
+                    esc(shot.shot_type || shot.景別),
+                    esc(shot.Image_Prompt || shot.image_prompt),
+                    esc(shot.Video_Prompt || shot.video_prompt)
                 ];
                 csvContent += row.join(',') + '\n';
             });
@@ -4657,18 +4671,26 @@ function exportChapterStoryboard(epNum) {
         return;
     }
     
-    // CSV格式 - 6列
-    const headers = ['鏡頭ID', '分鏡描述', 'Image_Prompt', 'Video_Prompt', '音樂提示', '旁白'];
+    // CSV格式 - 13列专业分镜
+    const headers = ['鏡頭ID', '場景', '時間', '光線', '氛圍', '角色', '動作', '台詞', '機位', '運鏡', '景別', 'Image_Prompt', 'Video_Prompt'];
     let csvContent = '\uFEFF' + headers.join(',') + '\n';
     
     shots.forEach((shot, i) => {
+        const esc = (v) => `"${(v || '').toString().replace(/"/g, '""')}"`;
         const row = [
             `E${String(epNum).padStart(2,'0')}_S${String(i+1).padStart(3,'0')}`,
-            `"${(shot.description || shot.画面描述 || '').replace(/"/g, '""')}"`,
-            `"${(shot.Image_Prompt || shot.image_prompt || shot.ai_prompt || '').replace(/"/g, '""')}"`,
-            `"${(shot.Video_Prompt || shot.video_prompt || '').replace(/"/g, '""')}"`,
-            `"${(shot.music || shot.音乐 || shot.Music_Prompt || '').replace(/"/g, '""')}"`,
-            `"${(shot.narration || shot.旁白 || shot.dialogue || '').replace(/"/g, '""')}"`
+            esc(shot.scene || shot.場景),
+            esc(shot.time || shot.時間),
+            esc(shot.lighting || shot.光線),
+            esc(shot.mood || shot.氛圍),
+            esc(shot.character || shot.角色),
+            esc(shot.action || shot.動作),
+            esc(shot.dialogue || shot.台詞),
+            esc(shot.camera || shot.機位),
+            esc(shot.movement || shot.運鏡),
+            esc(shot.shot_type || shot.景別),
+            esc(shot.Image_Prompt || shot.image_prompt),
+            esc(shot.Video_Prompt || shot.video_prompt)
         ];
         csvContent += row.join(',') + '\n';
     });
