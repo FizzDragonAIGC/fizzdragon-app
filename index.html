@@ -6827,19 +6827,40 @@ async function runConceptStep() {
     
     // 详细步骤显示
     const steps = [
-        { text: '📖 正在讀取小說全文...', done: false, current: true },
-        { text: '🎯 提取故事核心衝突', done: false },
-        { text: '🎭 分析類型與基調', done: false },
+        { text: '📖 讀取小說全文...', done: false, current: true },
+        { text: '📚 載入 Robert McKee《故事》方法論', done: false },
+        { text: '🎯 提取核心戲劇衝突', done: false },
+        { text: '🎭 分析類型/主題/基調', done: false },
         { text: '💡 生成高概念Logline', done: false }
     ];
     showAgentStatus('💡 高概念分析師', '「讓我來理解這個故事...」', 'concept', steps);
     
     try {
+        // 步骤1: 读取
+        await new Promise(r => setTimeout(r, 500));
         steps[0].done = true; steps[0].current = false;
         steps[1].current = true;
+        showAgentStatus('💡 高概念分析師', '「載入McKee價值轉換理論...」', 'concept', steps);
+        
+        // 步骤2: 载入方法论
+        await new Promise(r => setTimeout(r, 800));
+        steps[1].done = true; steps[1].current = false;
+        steps[2].current = true;
         showAgentStatus('💡 高概念分析師', '「正在提取核心戲劇衝突...」', 'concept', steps);
         
+        // 步骤3: 调用AI
+        await new Promise(r => setTimeout(r, 500));
+        steps[2].done = true; steps[2].current = false;
+        steps[3].current = true;
+        showAgentStatus('💡 高概念分析師', '「DeepSeek分析中...類型/主題/基調」', 'concept', steps);
+        
         const result = await callAgent('concept', state.novel.substring(0, 4000));
+        
+        // 步骤4完成
+        steps[3].done = true; steps[3].current = false;
+        steps[4].current = true;
+        showAgentStatus('💡 高概念分析師', '「整理分析結果...」', 'concept', steps);
+        await new Promise(r => setTimeout(r, 300));
         
         steps.forEach(s => { s.done = true; s.current = false; });
         const conceptData = safeJSONParse(result, 'concept');
