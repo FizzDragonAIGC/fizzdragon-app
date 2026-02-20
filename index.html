@@ -2456,13 +2456,7 @@
             <div class="header-project">
                 <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
                 <div class="header-title" id="headerTitle">FizzDragon AIGC番劇系統</div>
-                <div class="agent-progress-bar" id="agentProgressBar" style="display:none;">
-                    <span class="ap-dot" id="apDot1" title="概念" onclick="triggerAgentWithCheck('concept')">💡</span>
-                    <span class="ap-dot" id="apDot2" title="人物" onclick="triggerAgentWithCheck('character')">👤</span>
-                    <span class="ap-dot" id="apDot3" title="章節" onclick="triggerAgentWithCheck('chapters')">📝</span>
-                    <span class="ap-dot" id="apDot4" title="編劇" onclick="triggerAgentWithCheck('script')">✍️</span>
-                    <span class="ap-dot" id="apDot5" title="分鏡" onclick="triggerAgentWithCheck('storyboard')">🎬</span>
-                </div>
+<!-- 进度条已移除 -->
                 <button class="auto-pilot-toggle" id="autoPilotToggle" onclick="toggleAutoPilotMode()" title="Auto-Pilot 模式">
                     🚀 <span id="autoPilotLabel">OFF</span>
                 </button>
@@ -4206,30 +4200,7 @@ function triggerAgentWithCheck(agentType) {
 
 // 更新顶部智能体进度条
 function updateAgentProgressBar(assets) {
-    const bar = document.getElementById('agentProgressBar');
-    if (!bar) return;
-    
-    const a = assets || state.assets || {};
-    const hasAnyContent = a.concept || (a.characters?.length > 0) || (a.chapters?.length > 0);
-    
-    // 有内容时显示进度条
-    bar.style.display = hasAnyContent || state.novel ? 'flex' : 'none';
-    
-    // 更新各智能体状态
-    const dots = [
-        { id: 'apDot1', done: !!a.concept },
-        { id: 'apDot2', done: (a.characters?.length || 0) > 0 },
-        { id: 'apDot3', done: (a.chapters?.length || 0) > 0 },
-        { id: 'apDot4', done: Object.keys(a.scripts || {}).length > 0 },
-        { id: 'apDot5', done: Object.keys(a.storyboards || {}).length > 0 }
-    ];
-    
-    dots.forEach(d => {
-        const el = document.getElementById(d.id);
-        if (el) {
-            el.classList.toggle('done', d.done);
-        }
-    });
+    // 进度条已移除，保留空函数避免报错
 }
 
 function updateAssetsPanel() {
