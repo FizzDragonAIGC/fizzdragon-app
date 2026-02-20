@@ -3231,7 +3231,7 @@ ${projectCount > 0 ? `📂 你有 **${projectCount}** 個已保存的項目\n` :
     
     addAIMessage(welcomeTexts[currentLang] || welcomeTexts['zh-TW'], [
         { text: '📄 導入小說', action: () => document.getElementById('fileInput').click() },
-        { text: '📝 導入劇本', action: () => importScript() },
+        { text: '📝 導入劇本', action: () => showScriptImportOptions() },
         { text: '📦 我有劇本/人物', action: () => showFastTrack() },
         { text: '✍️ 我要寫故事', action: () => startWriteStory() },
         { text: '🤖 AI幫我寫', action: () => startAIStoryWriting() },
@@ -3619,6 +3619,144 @@ async function generateNextFastTrackChapter(chapterNum) {
             { text: '🔄 重試', action: () => generateNextFastTrackChapter(chapterNum) }
         ]);
     }
+}
+
+// ==================== 导入剧本选项 ====================
+function showScriptImportOptions() {
+    addAIMessage(`📝 **導入劇本 - 選擇方式**
+
+**方式1：手動分集**
+一集一集複製貼上，我幫你存入項目資產
+完成後說「結束」即可
+
+**方式2：AI智能分集**
+上傳整個劇本檔案
+AI自動識別場景並合併為集數`, [
+        { text: '📋 手動分集', action: () => startManualEpisodeInput() },
+        { text: '🤖 AI智能分集', action: () => importScript() }
+    ]);
+}
+
+// 手动分集模式
+function startManualEpisodeInput() {
+    // 初始化状态
+    state.manualEpisodes = [];
+    state.mode = 'manual_episode';
+    state.currentEpisodeNum = 1;
+    
+    // 创建新项目
+    if (!currentProjectId) {
+        currentProjectId = 'proj_' + Date.now();
+        state.assets = { scripts: {}, chapters: [], characters: [], storyboards: {} };
+    }
+    
+    addAIMessage(`📋 **手動分集模式**
+
+請貼上**第 1 集**的劇本內容：
+
+💡 提示：
+• 每次貼上一集的完整內容
+• 貼完後我會確認並請你貼下一集
+• 說「結束」或「完成」表示全部貼完
+• 說「刪除上一集」可以移除最後一集`);
+}
+
+// 处理手动分集输入
+function handleManualEpisodeInput(text) {
+    const lowerText = text.toLowerCase().trim();
+    
+    // 检查是否结束
+    if (lowerText === '结束' || lowerText === '完成' || lowerText === '結束' || lowerText === '完成' || lowerText === 'done' || lowerText === 'end') {
+        finishManualEpisodeInput();
+        return true;
+    }
+    
+    // 检查是否删除上一集
+    if (lowerText.includes('删除') || lowerText.includes('刪除') || lowerText.includes('移除')) {
+        if (state.manualEpisodes.length > 0) {
+            const removed = state.manualEpisodes.pop();
+            state.currentEpisodeNum--;
+            delete state.assets.scripts[state.currentEpisodeNum];
+            state.assets.chapters.pop();
+            addAIMessage(`🗑️ 已移除第 ${state.currentEpisodeNum} 集
+
+目前共有 **${state.manualEpisodes.length}** 集
+
+請繼續貼上第 ${state.currentEpisodeNum} 集，或說「結束」完成導入。`);
+        } else {
+            addAIMessage('❌ 還沒有任何集數可刪除');
+        }
+        return true;
+    }
+    
+    // 检查内容长度
+    if (text.length < 50) {
+        addAIMessage(`⚠️ 內容太短（${text.length}字），請貼上完整的一集劇本內容。
+
+如果要結束導入，請說「結束」。`);
+        return true;
+    }
+    
+    // 保存这一集
+    const epNum = state.currentEpisodeNum;
+    state.manualEpisodes.push(text);
+    state.assets.scripts[epNum] = text;
+    state.assets.chapters.push({
+        number: epNum,
+        title: `第${epNum}集`,
+        duration: Math.round(text.length / 150),
+        summary: text.substring(0, 100) + '...'
+    });
+    
+    state.currentEpisodeNum++;
+    saveProject(state.novelTitle || `手動導入劇本`, true);
+    
+    addAIMessage(`✅ **第 ${epNum} 集已存入！**
+
+📊 ${text.length.toLocaleString()} 字
+⏱️ 預估 ${Math.round(text.length / 150)} 分鐘
+
+────────────────
+目前共有 **${state.manualEpisodes.length}** 集
+
+請貼上**第 ${state.currentEpisodeNum} 集**的內容
+或說「結束」完成導入`);
+    
+    return true;
+}
+
+// 完成手动分集
+function finishManualEpisodeInput() {
+    const totalEps = state.manualEpisodes.length;
+    
+    if (totalEps === 0) {
+        addAIMessage('❌ 還沒有任何集數，請先貼上劇本內容');
+        return;
+    }
+    
+    const totalWords = state.manualEpisodes.reduce((sum, ep) => sum + ep.length, 0);
+    const totalDuration = Math.round(totalWords / 150);
+    
+    state.mode = 'script';
+    state.novelTitle = state.novelTitle || `手動導入劇本 (${totalEps}集)`;
+    
+    saveProject(state.novelTitle, true);
+    updateAssetsPanel();
+    
+    addAIMessage(`✅ **劇本導入完成！**
+
+📖 **${state.novelTitle}**
+📑 共 **${totalEps}** 集
+📊 總計 ${totalWords.toLocaleString()} 字
+⏱️ 預估 ${totalDuration} 分鐘
+
+────────────────
+劇本已存入資產，你可以：`, [
+        { text: '🎬 生成第1集分鏡', action: () => runStoryboardGeneration(1) },
+        { text: '🚀 Auto-Pilot生成全部', action: () => runAutoPilot() },
+        { text: '💡 提取高概念', action: () => runConceptStep() },
+        { text: '👤 提取角色', action: () => runCharacterAnalysis() }
+    ]);
 }
 
 // ==================== 导入剧本模式 ====================
@@ -13223,6 +13361,12 @@ function handleUserInput(text) {
     // ==================== 快速通道人物輸入 ====================
     if (state.mode === 'fasttrack_char') {
         handleFastTrackCharInput(text);
+        return;
+    }
+    
+    // ==================== 手動分集模式 ====================
+    if (state.mode === 'manual_episode') {
+        handleManualEpisodeInput(text);
         return;
     }
     
