@@ -9594,7 +9594,7 @@ function addAIMessage(text, quickReplies = []) {
     
     msg.innerHTML = html;
     container.appendChild(msg);
-    scrollToBottom();
+    scrollToBottom(true);  // 强制滚动
     return msg;
 }
 
@@ -9605,7 +9605,7 @@ function addTypingIndicator() {
     msg.id = 'typingIndicator';
     msg.innerHTML = `<div class="role">🎬 AIGC番劇助手</div><div class="typing"><span></span><span></span><span></span></div>`;
     container.appendChild(msg);
-    scrollToBottom();
+    scrollToBottom(true);  // 强制滚动
 }
 
 function removeTypingIndicator() {
@@ -10349,8 +10349,15 @@ document.addEventListener('DOMContentLoaded', () => {
 function handleQuickReply(index) {
     if (window._quickReplies && window._quickReplies[index]) {
         const reply = window._quickReplies[index];
+        
+        // 重置滚动锁定，允许自动滚动
+        userScrolledUp = false;
+        scrollLockUntil = 0;
+        
         if (reply.action) {
             reply.action();
+            // 强制滚动到底部
+            setTimeout(() => scrollToBottom(true), 200);
         } else if (reply.text) {
             document.getElementById('userInput').value = reply.text;
             sendMessage();
