@@ -8772,23 +8772,167 @@ function setWriteShots(shots) {
     state.production.shotsPerMin = shots;
     addUserMessage(`${shots} 鏡頭/分鐘`);
     
+    // 🆕 进入风格选择步骤
+    showNarrativeStyleSelection();
+    writeState.productionStep = 3;
+}
+
+// 🆕 写作风格选择
+const NARRATIVE_STYLES = [
+    { id: 'hollywood_classic', name: '🇺🇸 好萊塢三幕式', desc: '結構工整、英雄之旅、大團圓' },
+    { id: 'korean_drama', name: '🇰🇷 韓劇情感', desc: '推拉節奏、虐心治癒、命運糾葛' },
+    { id: 'chinese_classic', name: '🇨🇳 中式敘事', desc: '起承轉合、意境留白、含蓄內斂' },
+    { id: 'shounen', name: '🇯🇵 熱血少年', desc: '友情努力勝利、升級打怪、燃點爆發' },
+    { id: 'suspense', name: '🔍 懸疑推理', desc: '伏筆密集、層層反轉、真相震撼' },
+    { id: 'cyberpunk', name: '🌃 賽博朋克', desc: '高科技低生活、霓虹雨夜、身份認同' },
+    { id: 'revenge', name: '⚔️ 復仇爽劇', desc: '打臉爽感、步步為營、大仇得報' },
+    { id: 'hongkong_action', name: '🎬 港片黃金', desc: '江湖義氣、兄弟情、槍戰美學' },
+    { id: 'bollywood', name: '🇮🇳 寶萊塢', desc: '華麗歌舞、情感外放、色彩飽和' },
+    { id: 'iyashikei', name: '🍃 日式治癒', desc: '慢節奏、溫暖細節、小確幸' }
+];
+
+function showNarrativeStyleSelection() {
+    const styleButtons = NARRATIVE_STYLES.map(s => ({
+        text: s.name,
+        action: () => selectNarrativeStyle(s.id, s.name)
+    }));
+    
+    // 添加自定义和AI帮选选项
+    styleButtons.push({ text: '🤖 AI幫我選', action: () => autoSelectNarrativeStyle() });
+    styleButtons.push({ text: '✍️ 自己描述', action: () => customNarrativeStyle() });
+    
+    addAIMessage(`🎨 **選擇敘事風格**
+
+風格會影響故事的節奏、結構和語言風格。
+可單選，也可選2個融合。
+
+${NARRATIVE_STYLES.map(s => `**${s.name}**\n${s.desc}`).join('\n\n')}`, styleButtons);
+}
+
+function selectNarrativeStyle(styleId, styleName) {
+    // 检查是否已选择一个风格（融合模式）
+    if (state.narrativeStyle && state.narrativeStyle.primary && !state.narrativeStyle.secondary) {
+        // 选择第二个风格
+        state.narrativeStyle.secondary = styleId;
+        addUserMessage(`融合：${state.narrativeStyle.primaryName} + ${styleName}`);
+        showFinalConfirmation();
+    } else {
+        // 选择第一个风格
+        state.narrativeStyle = { primary: styleId, primaryName: styleName };
+        addUserMessage(styleName);
+        
+        // 询问是否要融合第二个风格
+        addAIMessage(`✅ 已選擇：**${styleName}**
+
+是否融合第二種風格？（可選）`, [
+            { text: '✅ 就這個，開始創作', action: () => showFinalConfirmation() },
+            { text: '➕ 再選一個融合', action: () => showSecondStyleSelection() }
+        ]);
+    }
+}
+
+function showSecondStyleSelection() {
+    const primaryId = state.narrativeStyle?.primary;
+    const availableStyles = NARRATIVE_STYLES.filter(s => s.id !== primaryId);
+    
+    const styleButtons = availableStyles.map(s => ({
+        text: s.name,
+        action: () => selectNarrativeStyle(s.id, s.name)
+    }));
+    
+    addAIMessage(`➕ **選擇融合風格**
+
+已選：${state.narrativeStyle.primaryName}
+再選一個風格融合：`, styleButtons);
+}
+
+async function autoSelectNarrativeStyle() {
+    addUserMessage('🤖 AI幫我選');
+    addAIMessage('🤖 正在分析你的故事想法...');
+    
+    try {
+        const idea = writeState.idea?.premise || '';
+        const interview = JSON.stringify(writeState.interview || {});
+        
+        const prompt = `根據以下故事想法，推薦最適合的敘事風格：
+
+故事想法：${idea}
+創作訪談：${interview}
+
+可選風格：
+${NARRATIVE_STYLES.map(s => `- ${s.id}: ${s.name} - ${s.desc}`).join('\n')}
+
+請選擇1-2個最適合的風格，輸出JSON：
+{"primary": "風格id", "secondary": "可選第二風格id或null", "reason": "選擇原因"}`;
+
+        const result = await callAgent('concept', prompt);
+        const parsed = safeJSONParse(result, 'autoStyle');
+        
+        state.narrativeStyle = {
+            primary: parsed.primary || 'hollywood_classic',
+            primaryName: NARRATIVE_STYLES.find(s => s.id === parsed.primary)?.name || '好萊塢三幕式',
+            secondary: parsed.secondary,
+            secondaryName: parsed.secondary ? NARRATIVE_STYLES.find(s => s.id === parsed.secondary)?.name : null,
+            autoSelected: true,
+            reason: parsed.reason
+        };
+        
+        const styleDisplay = state.narrativeStyle.secondary 
+            ? `${state.narrativeStyle.primaryName} + ${state.narrativeStyle.secondaryName}`
+            : state.narrativeStyle.primaryName;
+        
+        addAIMessage(`🤖 AI推薦風格：**${styleDisplay}**
+
+📝 原因：${parsed.reason || '根據故事類型和氛圍自動匹配'}`, [
+            { text: '✅ 接受推薦', action: () => showFinalConfirmation() },
+            { text: '🔄 我自己選', action: () => showNarrativeStyleSelection() }
+        ]);
+        
+    } catch (err) {
+        console.error('Auto style selection failed:', err);
+        // fallback到默认
+        state.narrativeStyle = { primary: 'hollywood_classic', primaryName: '🇺🇸 好萊塢三幕式' };
+        showFinalConfirmation();
+    }
+}
+
+function customNarrativeStyle() {
+    addUserMessage('✍️ 自己描述');
+    addAIMessage(`✍️ 請描述你想要的寫作風格：
+
+例如：
+- "像諾蘭一樣非線性敘事，帶點黑色幽默"
+- "日本動漫風格但更黑暗"
+- "王家衛那種慢節奏和情緒化"
+
+直接打字描述：`);
+    
+    state.waitingForCustomStyle = true;
+}
+
+function showFinalConfirmation() {
     const totalMin = state.production.episodes * state.production.durationMin;
     const totalShots = totalMin * state.production.shotsPerMin;
     
-    addAIMessage(`📊 **製作規格確認**
+    const styleDisplay = state.narrativeStyle?.secondary 
+        ? `${state.narrativeStyle.primaryName} + ${state.narrativeStyle.secondaryName}`
+        : (state.narrativeStyle?.primaryName || state.narrativeStyle?.custom || '好萊塢三幕式');
+    
+    addAIMessage(`📊 **創作規格確認**
 
 • 集數: ${state.production.episodes} 集
 • 每集時長: ${state.production.durationMin} 分鐘
 • 鏡頭密度: ${state.production.shotsPerMin} 個/分鐘
 • **總時長**: ${totalMin} 分鐘
 • **預計分鏡**: ${totalShots.toLocaleString()} 個
+• **敘事風格**: ${styleDisplay}
 
 確認後開始創作！`, [
-        { text: '✅ 確認，開始創作', action: () => startWriteCreation() },
+        { text: '🚀 確認，開始創作', action: () => startWriteCreation() },
         { text: '🔄 重新設定', action: () => showWriteProductionSettings() }
     ]);
     
-    writeState.productionStep = 3;
+    writeState.productionStep = 4;
 }
 
 async function startWriteCreation() {
@@ -8827,6 +8971,24 @@ async function generateStoryFromInterview() {
             .map(([k, v]) => `${k}: ${v}`)
             .join('\n');
         
+        // 🆕 获取选择的风格
+        const styleInfo = state.narrativeStyle || {};
+        const primaryStyle = styleInfo.primary || 'hollywood_classic';
+        const secondaryStyle = styleInfo.secondary;
+        const customStyle = styleInfo.custom;
+        
+        let styleInstruction = '';
+        if (customStyle) {
+            styleInstruction = `按照用戶描述的風格寫作：${customStyle}`;
+        } else {
+            const styleDesc = NARRATIVE_STYLES.find(s => s.id === primaryStyle)?.desc || '';
+            styleInstruction = `使用「${styleInfo.primaryName || '好萊塢三幕式'}」風格：${styleDesc}`;
+            if (secondaryStyle) {
+                const secondDesc = NARRATIVE_STYLES.find(s => s.id === secondaryStyle)?.desc || '';
+                styleInstruction += `\n融合「${styleInfo.secondaryName}」風格：${secondDesc}`;
+            }
+        }
+        
         const prompt = `你是一位專業的故事創作者。根據用戶的創作訪談，創作一個完整的短篇故事。
 
 用戶想法：${writeState.idea?.premise || ''}
@@ -8837,13 +8999,17 @@ ${interviewSummary}
 
 製作規格：${state.production.episodes}集 × ${state.production.durationMin}分鐘/集
 
-要求：
+🎨 **敘事風格要求**：
+${styleInstruction}
+
+寫作要求：
 1. 故事長度：5000-10000字（根據集數調整）
 2. 包含清晰的開頭、發展、高潮、結局
 3. 人物形象鮮明，關係清楚
-4. 對話生動自然
+4. 對話生動自然，符合選定風格
 5. 情感真實感人
 6. 結構適合改編成${state.production.episodes}集番劇
+7. **嚴格遵守選定的敘事風格特點**
 
 直接輸出故事正文，不要輸出任何解釋。`;
 
@@ -14386,6 +14552,21 @@ function handleUserInput(text) {
         } else {
             addAIMessage('❌ 請輸入1-30之間的數字');
         }
+        return;
+    }
+    
+    // ==================== 自定義風格輸入 ====================
+    if (state.waitingForCustomStyle) {
+        state.waitingForCustomStyle = false;
+        state.narrativeStyle = { custom: text, primaryName: `自定義：${text.substring(0, 20)}...` };
+        addAIMessage(`✅ 收到你的風格描述：
+
+> "${text}"
+
+將按照這個風格來創作！`, [
+            { text: '✅ 確認，開始創作', action: () => showFinalConfirmation() },
+            { text: '🔄 重新描述', action: () => customNarrativeStyle() }
+        ]);
         return;
     }
     
