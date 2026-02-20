@@ -4455,18 +4455,23 @@ function updateAssetsPanel() {
                     ` : '<div style="font-size:10px;color:var(--text2);padding:4px;">尚未設計角色</div>'}
                 </div>
                 
-                <!-- 服化道 -->
-                ${(costumeCount > 0 || setCount > 0) ? `
+                <!-- 服化道 - 始终显示 -->
                 <div class="fizzstudio-item">
                     <div class="fizzstudio-item-header">
                         <span>👗 服化道</span>
                         <span class="fizzstudio-count">${costumeCount} 服裝 / ${setCount} 場景</span>
                     </div>
-                    <div class="fizzstudio-actions">
-                        <button onclick="copyAllProductionPrompts()" class="fizzstudio-btn">📋 複製全部Prompt</button>
-                    </div>
+                    ${(costumeCount > 0 || setCount > 0) ? `
+                        <div class="fizzstudio-actions">
+                            <button onclick="copyAllProductionPrompts()" class="fizzstudio-btn">📋 複製全部Prompt</button>
+                        </div>
+                    ` : `
+                        <div style="font-size:10px;color:var(--text2);padding:4px 6px;">
+                            尚未設計
+                            <button class="fizzstudio-mini-btn" onclick="triggerAgentWithCheck('production')" style="margin-left:6px;">🎨 生成</button>
+                        </div>
+                    `}
                 </div>
-                ` : ''}
                 
             </div>
         </div>`;
