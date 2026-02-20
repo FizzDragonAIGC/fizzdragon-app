@@ -5892,7 +5892,7 @@ function updateAssetsPanel() {
                             ${a.characters.map((c, i) => `
                                 <div class="production-card" onclick="showCharacterDetail(${i})" style="background:var(--card);border-radius:6px;padding:8px;cursor:pointer;border:1px solid var(--border);">
                                     <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-                                        ${c.image_url ? `<img src="${c.image_url}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;"/>` : `<div style="width:32px;height:32px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;">👤</div>`}
+                                        ${c.image_url ? `<img src="${c.image_url}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;"/>` : `<div style="width:32px;height:32px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:18px;">${getCharacterEmoji(c)}</div>`}
                                         <div>
                                             <div style="font-size:11px;font-weight:bold;color:var(--text);">${c.name}</div>
                                             <div style="font-size:9px;color:var(--text2);">${c.role || '角色'}</div>
@@ -6534,6 +6534,40 @@ async function generateAllCharacterImages() {
     saveProject(null, true);
     
     addAIMessage(`🎉 **批量生成完成！**\n\n✅ 成功: ${success}\n❌ 失敗: ${failed}\n\n圖片已保存到項目資產中。`);
+}
+
+// 🎭 根据角色特征选择emoji头像
+function getCharacterEmoji(c) {
+    const name = (c.name || '').toLowerCase();
+    const role = (c.role || '').toLowerCase();
+    const bio = (c.bio || c.appearance || '').toLowerCase();
+    const all = name + role + bio;
+    
+    // 按角色类型
+    if (role.includes('主角') || role.includes('protagonist')) return '🌟';
+    if (role.includes('反派') || role.includes('villain') || role.includes('antagonist')) return '😈';
+    if (role.includes('导师') || role.includes('mentor') || role.includes('師')) return '🧙';
+    
+    // 按关键词匹配
+    if (all.includes('老') || all.includes('婆') || all.includes('爷') || all.includes('翁')) return '👴';
+    if (all.includes('女巫') || all.includes('巫') || all.includes('witch')) return '🧙‍♀️';
+    if (all.includes('贵妇') || all.includes('贵族') || all.includes('夫人') || all.includes('lady')) return '👸';
+    if (all.includes('少年') || all.includes('男孩') || all.includes('小子') || all.includes('boy')) return '👦';
+    if (all.includes('少女') || all.includes('女孩') || all.includes('girl')) return '👧';
+    if (all.includes('猴') || all.includes('monkey')) return '🐵';
+    if (all.includes('商人') || all.includes('merchant') || all.includes('trader')) return '🧔';
+    if (all.includes('士兵') || all.includes('soldier') || all.includes('warrior') || all.includes('侠')) return '⚔️';
+    if (all.includes('医') || all.includes('doctor') || all.includes('healer')) return '👨‍⚕️';
+    if (all.includes('艺') || all.includes('artist') || all.includes('dancer') || all.includes('歌')) return '🎭';
+    if (all.includes('盗') || all.includes('thief') || all.includes('贼')) return '🦹';
+    if (all.includes('胡') || all.includes('beard') || all.includes('鬍')) return '🧔';
+    
+    // 默认按性别猜测
+    if (all.includes('女') || all.includes('她') || all.includes('妇') || all.includes('姑') || all.includes('娘')) return '👩';
+    if (all.includes('男') || all.includes('他') || all.includes('汉') || all.includes('哥')) return '👨';
+    
+    // 兜底
+    return '🎭';
 }
 
 // 显示角色详情（点击FizzStudio缩略图）
