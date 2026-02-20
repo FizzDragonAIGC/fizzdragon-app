@@ -3357,7 +3357,7 @@ ${projectCount > 0 ? `📂 你有 **${projectCount}** 個已保存的項目\n` :
     addAIMessage(welcomeTexts[currentLang] || welcomeTexts['zh-TW'], [
         { text: '📄 導入小說', action: () => document.getElementById('fileInput').click() },
         { text: '📦 我有劇本/人物', action: () => showFastTrack() },
-        { text: '✍️ 我要寫故事', action: () => startWriteStory() },
+        { text: '✍️ 自己寫故事', action: () => openStoryEditor('manual') },
         { text: '🤖 AI幫我寫', action: () => startAIStoryWriting() },
         { text: '🚀 Auto-Pilot', action: () => showAutoPilotOptions() }
     ]);
