@@ -9543,6 +9543,10 @@ async function runConceptStep() {
         steps[3].current = true;
         showAgentStatus('💡 高概念分析師', '「FizzDragon分析中...類型/主題/基調」', 'concept', steps);
         
+        // 🔧 调试：确保使用正确的项目内容
+        console.log('💡 runConceptStep - 前100字:', state.novel?.substring(0, 100));
+        console.log('💡 runConceptStep - 当前项目:', state.novelTitle, currentProjectId);
+        
         const result = await callAgent('concept', state.novel.substring(0, 4000));
         
         // 步骤4完成
@@ -10712,6 +10716,10 @@ async function runChaptersStep() {
         
         // 🔧 修复Bug#3: 防止null.substring()错误
         const novelText = state.novel || writeState.idea?.premise || writeState.outline?.synopsis || '';
+        
+        // 🔧 调试：确保使用正确的项目内容
+        console.log('📝 runChaptersStep - novelText前100字:', novelText.substring(0, 100));
+        console.log('📝 runChaptersStep - 当前项目:', state.novelTitle, currentProjectId);
         
         updateProgress(30);
         const result = await callAgent('narrative', novelText.substring(0, 5000), context);
