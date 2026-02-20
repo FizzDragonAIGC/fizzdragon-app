@@ -7585,12 +7585,17 @@ async function syncProjectsFromBackend(retries = 2) {
             const backendProjects = await response.json();
             const localProjects = JSON.parse(localStorage.getItem(getProjectsKey()) || '{}');
             
-            // 合并：后端优先（按timestamp判断）
+            // 合并：后端优先（按timestamp判断），但保留本地聊天记录
             let merged = { ...localProjects };
             let syncCount = 0;
             
             for (const [id, proj] of Object.entries(backendProjects)) {
-                if (!merged[id] || new Date(proj.timestamp) > new Date(merged[id].timestamp || 0)) {
+                const localProj = merged[id];
+                if (!localProj || new Date(proj.timestamp) > new Date(localProj.timestamp || 0)) {
+                    // 🔧 保留本地聊天记录（如果后端没有）
+                    if (localProj?.chatHistory && !proj.chatHistory) {
+                        proj.chatHistory = localProj.chatHistory;
+                    }
                     merged[id] = proj;
                     syncCount++;
                 }
