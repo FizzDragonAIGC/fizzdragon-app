@@ -4290,11 +4290,22 @@ async function runExpandAdapter(episodes, minutes) {
         // Step 1: 先用format_adapter切分为大纲
         addAIMessage(`📝 **第1步：生成${episodes}集大綱...**`);
         
-        const outlineResponse = await callAgent('format_adapter', state.originalScript, {
+        // 扩写模式第一步：用narrative agent生成扩写大纲
+        const outlineResponse = await callAgent('narrative', state.originalScript.substring(0, 10000), {
             target_episodes: episodes,
             episode_duration: minutes,
-            mode: 'outline_only',
-            instruction: `將劇本切分為${episodes}集大綱（每集${minutes}分鐘），只需要標題和內容摘要，不需要完整內容。`
+            mode: 'expand_outline',
+            instruction: `【擴寫模式】請為這個${Math.round(wordCount/300)}分鐘的劇本生成${episodes}集的擴寫大綱。
+
+原劇本約${wordCount}字，目標擴寫為${episodes}集×${minutes}分鐘=${episodes * minutes}分鐘。
+
+每集大綱需要：
+1. 標題
+2. 核心情節（基於原劇本哪部分）
+3. 需要擴寫的內容（新增哪些場景/對話/細節）
+4. 預計字數：${wordsPerEp}字
+
+請輸出JSON格式的chapters數組。`
         });
         
         const outlineResult = safeJSONParse(outlineResponse.result || outlineResponse);
