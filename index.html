@@ -6180,16 +6180,48 @@ async function runStoryboardStepSilent(chapterNum) {
     // 获取选中的画风prompt
     const artstylePrompt = state.assets.artstyle?.final_suggestion?.full_prompt || 
                            state.assets.artstyle?.recommendations?.[0]?.prompt_keywords || '';
+
     const result = await callAgent('storyboard', script, {
         concept: state.assets.concept,
         characters: state.assets.characters,
         production: state.production,
         artstyle: artstylePrompt
     });
+
+    // 🔧 调试：保留原始返回（避免0镜头时无证据）
+    state.lastStoryboardRaw = (typeof result === 'string') ? result : JSON.stringify(result);
+    console.log(`🎬 storyboard raw (ep ${chapterNum}) head:`, state.lastStoryboardRaw.substring(0, 300));
+
     const parsed = safeJSONParse(result, 'storyboard');
+    
+    // 兼容多种返回格式：shots / storyboard / data.storyboard / 直接数组
+    let shots = parsed.shots || parsed.storyboard || parsed.data?.storyboard || (Array.isArray(parsed) ? parsed : []);
+
+    // 🔧 兜底：从原始文本里强行提取 storyboard 数组
+    if ((!shots || shots.length === 0) && typeof state.lastStoryboardRaw === 'string') {
+        const m = state.lastStoryboardRaw.match(/"storyboard"\s*:\s*(\[[\s\S]*?\])\s*[\}\n]/);
+        if (m) {
+            try {
+                shots = JSON.parse(m[1]);
+            } catch (e) {}
+        }
+    }
+
+    // 如果仍然是空，不要覆盖已有分镜，给出可复制的调试信息
+    if (!Array.isArray(shots) || shots.length === 0) {
+        console.error('❌ storyboard解析为空', { chapterNum, parsed });
+        addAIMessage(`⚠️ 分鏡生成返回了空結果（0鏡頭）。\n\n這通常是因為AI回傳格式不符合JSON schema 或被截斷。\n\n請點下方按鈕複製調試信息給我。`, [
+            { text: '📋 複製分鏡原始返回', action: () => {
+                navigator.clipboard?.writeText(state.lastStoryboardRaw || '').then(() => showToast('已複製')).catch(() => showToast('複製失敗'));
+            } }
+        ]);
+        return;
+    }
+
     state.assets.storyboards = state.assets.storyboards || {};
-    // 兼容多种返回格式：shots / storyboard / 直接数组
-    state.assets.storyboards[chapterNum] = parsed.shots || parsed.storyboard || (Array.isArray(parsed) ? parsed : []);
+    state.assets.storyboards[chapterNum] = shots;
+    saveProject(null, true);
+    updateAssetsPanel();
 }
 
 // ==================== 重寫章節系統 ====================
