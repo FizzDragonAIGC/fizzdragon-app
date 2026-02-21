@@ -12078,8 +12078,15 @@ function renameProject(projectId, currentName) {
             
             // 更新标题如果是当前项目
             if (projectId === currentProjectId) {
-                document.getElementById('headerTitle').textContent = newName.trim();
-                state.title = newName.trim();
+                const finalName = newName.trim();
+                document.getElementById('headerTitle').textContent = finalName;
+                // 🔧 同步到关键字段，避免后续自动保存/流程用旧title覆盖显示
+                state.novelTitle = finalName;
+                state.originalScriptTitle = finalName;
+                writeState.outline = writeState.outline || {};
+                if (writeState.outline) writeState.outline.title = finalName;
+                // 立即静默保存一次，固化名称
+                saveProject(finalName, true);
             }
         }
     }
