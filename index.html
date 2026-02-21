@@ -4406,6 +4406,28 @@ async function runExpandAdapter(episodes, minutes) {
         }
         
         removeTypingIndicator();
+
+        // ⚠️ 如果大綱集數不足（多半是網路中斷/切換造成），不要直接進入第2步，先讓用戶恢復網路再繼續
+        if (outlines.length < episodes) {
+            state.assets = state.assets || {};
+            state.assets.chapters = outlines;
+            saveProject(null, true);
+            updateAssetsPanel();
+
+            addAIMessage(`⚠️ **大綱生成未完成**
+
+目標：${episodes} 集
+目前：${outlines.length} 集
+
+可能原因：網路斷線/切換（你剛剛有看到 ERR_INTERNET_DISCONNECTED / ERR_NETWORK_CHANGED）。
+
+請先把網路穩定住，然後點「繼續生成剩餘大綱」。`, [
+                { text: '📝 繼續生成剩餘大綱', action: () => runExpandAdapter(episodes, minutes) },
+                { text: '↩️ 返回', action: () => showExpandOptions(Math.round(wordCount / 300)) }
+            ]);
+            return;
+        }
+
         addAIMessage(`✅ 大綱完成：${outlines.length}集
 
 📝 **第2步：逐集擴寫中...**
@@ -16423,7 +16445,12 @@ async function checkQueueStatus() {
             return queue;
         }
     } catch (e) {
-        console.log('Queue check failed:', e);
+        // 網路斷線/切換很常見：不要狂刷console讓用戶困惑
+        if (String(e).includes('ERR_INTERNET_DISCONNECTED') || String(e).includes('Failed to fetch')) {
+            // 靜默
+        } else {
+            console.log('Queue check failed:', e);
+        }
     }
     return null;
 }
