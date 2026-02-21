@@ -3460,6 +3460,7 @@ function showFastTrack() {
 **📝 上傳劇本**
 • 🤖 AI智能分集（上傳檔案，AI自動拆分）
 • 📋 手動分集（一集一集複製貼上）
+• ✂️ 格式重組（影視→短劇，保留內容只改集數）
 
 **👤 輸入人物**
 • 問答方式錄入人物小傳
@@ -3468,6 +3469,7 @@ function showFastTrack() {
 • 先輸入人物，再上傳劇本`, [
         { text: '🤖 AI智能分集', action: () => importScript() },
         { text: '📋 手動分集', action: () => startManualEpisodeInput() },
+        { text: '✂️ 格式重組', action: () => startFormatAdapter() },
         { text: '👤 輸入人物', action: () => inputCharactersFastTrack() },
         { text: '📝+👤 都有', action: () => inputCharactersFastTrack(true) },
         { text: '↩️ 返回', action: () => showStartOptions() }
@@ -4021,6 +4023,222 @@ async function finishManualEpisodeInput() {
         { text: '🎬 生成第1集分鏡', action: () => runStoryboardGeneration(1) },
         { text: '👀 查看資產', action: () => switchAssetsTab('settings') }
     ]);
+}
+
+// ==================== 格式重組模式（影視→短劇）====================
+async function startFormatAdapter() {
+    addAIMessage(`✂️ **格式重組模式**
+
+這個模式適用於：已有完整的影視劇本，需要改成短劇格式。
+**保留原內容，只做切分和衔接優化。**
+
+第一步：上傳你的原劇本`, [
+        { text: '📤 選擇檔案', action: () => uploadScriptForAdapter() },
+        { text: '↩️ 返回', action: () => showFastTrack() }
+    ]);
+}
+
+function uploadScriptForAdapter() {
+    let scriptInput = document.getElementById('adapterScriptInput');
+    if (!scriptInput) {
+        scriptInput = document.createElement('input');
+        scriptInput.type = 'file';
+        scriptInput.id = 'adapterScriptInput';
+        scriptInput.accept = '.txt,.docx,.pdf';
+        scriptInput.style.display = 'none';
+        scriptInput.addEventListener('change', handleAdapterScriptUpload);
+        document.body.appendChild(scriptInput);
+    }
+    scriptInput.click();
+}
+
+async function handleAdapterScriptUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = '';
+    
+    addUserMessage(`📝 上傳: ${file.name}`);
+    addTypingIndicator();
+    
+    try {
+        let text = '';
+        const ext = file.name.split('.').pop().toLowerCase();
+        
+        if (ext === 'txt') {
+            text = await file.text();
+        } else if (ext === 'docx') {
+            const arrayBuffer = await file.arrayBuffer();
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            text = result.value;
+        } else if (ext === 'pdf') {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                text += content.items.map(item => item.str).join(' ') + '\n';
+            }
+        }
+        
+        removeTypingIndicator();
+        
+        // 保存原剧本
+        state.adapterMode = true;
+        state.originalScript = text;
+        state.originalScriptTitle = file.name.replace(/\.[^/.]+$/, '');
+        
+        const wordCount = text.length;
+        const estimatedMinutes = Math.round(wordCount / 300);
+        
+        addAIMessage(`✅ 已收到原劇本！
+
+📊 **劇本分析**
+• 標題：${state.originalScriptTitle}
+• 字數：${wordCount.toLocaleString()} 字
+• 預估時長：${estimatedMinutes} 分鐘
+
+📝 **請告訴我目標格式**
+例如：「30集，每集3分鐘」或「50集2分鐘」`, [
+        { text: '30集×3分鐘', action: () => setAdapterTarget(30, 3) },
+        { text: '50集×2分鐘', action: () => setAdapterTarget(50, 2) },
+        { text: '20集×5分鐘', action: () => setAdapterTarget(20, 5) },
+        { text: '自定義...', action: () => askCustomAdapterTarget() }
+    ]);
+        
+    } catch (err) {
+        removeTypingIndicator();
+        console.error('格式重組上傳失敗:', err);
+        addAIMessage(`❌ 上傳失敗: ${err.message}`, [
+            { text: '🔄 重試', action: () => uploadScriptForAdapter() }
+        ]);
+    }
+}
+
+function askCustomAdapterTarget() {
+    addAIMessage(`📝 請輸入目標格式
+
+格式：集數 + 每集分鐘
+例如：「30集3分鐘」「25集4分鐘」
+
+直接在下方輸入框打字即可 👇`);
+    state.waitingForAdapterTarget = true;
+}
+
+async function setAdapterTarget(episodes, minutes) {
+    addUserMessage(`${episodes}集 × ${minutes}分鐘`);
+    
+    const wordCount = state.originalScript?.length || 0;
+    const targetWordsPerEp = minutes * 300;
+    const totalTargetWords = episodes * targetWordsPerEp;
+    
+    // 检查是否合理
+    if (totalTargetWords > wordCount * 1.2) {
+        addAIMessage(`⚠️ 目標總字數(${totalTargetWords.toLocaleString()})超過原劇本(${wordCount.toLocaleString()})
+        
+建議調整：
+• 減少集數
+• 增加每集時長`, [
+            { text: '繼續使用', action: () => runFormatAdapter(episodes, minutes) },
+            { text: '重新設定', action: () => askCustomAdapterTarget() }
+        ]);
+        return;
+    }
+    
+    await runFormatAdapter(episodes, minutes);
+}
+
+async function runFormatAdapter(episodes, minutes) {
+    addTypingIndicator();
+    
+    try {
+        const response = await callAPI('format_adapter', {
+            novel: state.originalScript,
+            target_episodes: episodes,
+            episode_duration: minutes,
+            instruction: `請將這個${state.originalScript.length}字的劇本重組為${episodes}集，每集${minutes}分鐘（約${minutes * 300}字）。
+找到最佳斷點，保留原內容，只做切分和頭尾衔接優化。`
+        });
+        
+        removeTypingIndicator();
+        
+        // 解析结果
+        const result = safeJSONParse(response.result || response.response || response);
+        
+        if (result && result.episodes) {
+            // 保存重组结果
+            state.assets.chapters = result.episodes.map((ep, i) => ({
+                num: i + 1,
+                title: ep.title || `第${i+1}集`,
+                start: ep.start_position,
+                end: ep.end_position,
+                wordCount: ep.word_count,
+                breakReason: ep.break_reason,
+                outroHook: ep.outro_hook
+            }));
+            
+            // 提取每集内容
+            state.assets.scripts = {};
+            const scriptText = state.originalScript;
+            result.episodes.forEach((ep, i) => {
+                // 尝试按位置提取原文
+                const start = parseInt(ep.start_position?.replace(/[^0-9]/g, '') || 0);
+                const end = parseInt(ep.end_position?.replace(/[^0-9]/g, '') || start + (minutes * 300));
+                let content = scriptText.substring(start, end);
+                
+                // 添加結尾鉤子
+                if (ep.outro_hook) {
+                    content += `\n\n【懸念】${ep.outro_hook}`;
+                }
+                
+                state.assets.scripts[i + 1] = content;
+            });
+            
+            state.step = 5; // 进入剧本步骤
+            saveProject(null, true);
+            updateAssetsPanel();
+            
+            addAIMessage(`✅ **格式重組完成！**
+
+📊 **重組結果**
+• 原劇本：${state.originalScript.length.toLocaleString()} 字
+• 新格式：${episodes}集 × ${minutes}分鐘
+• 平均每集：${Math.round(state.originalScript.length / episodes)} 字
+
+📋 **章節預覽**
+${result.episodes.slice(0, 5).map((ep, i) => 
+    `${i+1}. **${ep.title || '第'+(i+1)+'集'}** (${ep.word_count}字) - ${ep.break_reason || ''}`
+).join('\n')}
+${episodes > 5 ? `\n...還有 ${episodes - 5} 集` : ''}
+
+下一步：生成分鏡表`, [
+                { text: '🎬 生成全部分鏡', action: () => runStoryboardForAllChapters() },
+                { text: '🎬 生成第1集分鏡', action: () => runStoryboardStepSilent(1) },
+                { text: '📝 查看章節詳情', action: () => showChaptersDetail() }
+            ]);
+            
+        } else {
+            throw new Error('AI返回格式錯誤');
+        }
+        
+    } catch (err) {
+        removeTypingIndicator();
+        console.error('格式重組失敗:', err);
+        addAIMessage(`❌ 重組失敗: ${err.message}`, [
+            { text: '🔄 重試', action: () => runFormatAdapter(episodes, minutes) }
+        ]);
+    }
+}
+
+function showChaptersDetail() {
+    const chapters = state.assets.chapters || [];
+    let detail = chapters.map((ch, i) => 
+        `**第${ch.num}集: ${ch.title}**
+• 字數: ${ch.wordCount || '?'}
+• 斷點: ${ch.breakReason || '-'}
+• 鉤子: ${ch.outroHook || '-'}`
+    ).join('\n\n');
+    
+    addAIMessage(`📋 **全部章節詳情**\n\n${detail}`);
 }
 
 // ==================== 导入剧本模式 ====================
@@ -10560,6 +10778,84 @@ function runStoryboardStepForNextChapter() {
     runStoryboardGeneration(nextChapter);
 }
 
+// 生成所有章节分镜（批量）
+async function runStoryboardForAllChapters() {
+    const chapters = state.assets.chapters || [];
+    if (chapters.length === 0) {
+        addAIMessage('❌ 還沒有章節，請先完成章節規劃');
+        return;
+    }
+    
+    const total = chapters.length;
+    addAIMessage(`🎬 **批量生成分鏡**
+
+將為 ${total} 集生成分鏡表，預計需要 ${Math.ceil(total * 0.5)} 分鐘。
+
+⏳ 開始處理...`);
+    
+    let completed = 0;
+    let failed = [];
+    
+    for (let i = 1; i <= total; i++) {
+        try {
+            addTypingIndicator();
+            await runStoryboardStepSilent(i);
+            removeTypingIndicator();
+            completed++;
+            
+            // 每5集更新一次进度
+            if (i % 5 === 0 || i === total) {
+                addAIMessage(`⏳ 進度: ${completed}/${total} 集 (${Math.round(completed/total*100)}%)`);
+            }
+        } catch (err) {
+            removeTypingIndicator();
+            failed.push(i);
+            console.error(`分鏡第${i}集失敗:`, err);
+        }
+    }
+    
+    // 完成报告
+    if (failed.length === 0) {
+        addAIMessage(`✅ **全部分鏡生成完成！**
+
+📊 統計
+• 總集數: ${total}
+• 成功: ${completed}
+• 失敗: 0
+
+👉 可在右側「生產」面板查看分鏡表`, [
+            { text: '📊 導出Excel', action: () => exportStoryboardExcel() },
+            { text: '📋 查看詳情', action: () => switchAssetsTab('production') }
+        ]);
+    } else {
+        addAIMessage(`⚠️ **部分分鏡生成失敗**
+
+• 成功: ${completed}集
+• 失敗: ${failed.length}集 (${failed.join(', ')})
+
+可以重試失敗的集數：`, [
+            { text: '🔄 重試失敗集數', action: () => retryFailedStoryboards(failed) },
+            { text: '📊 先導出已完成', action: () => exportStoryboardExcel() }
+        ]);
+    }
+}
+
+async function retryFailedStoryboards(failedEpisodes) {
+    addAIMessage(`🔄 重試 ${failedEpisodes.length} 集分鏡...`);
+    
+    for (const ep of failedEpisodes) {
+        try {
+            addTypingIndicator();
+            await runStoryboardStepSilent(ep);
+            removeTypingIndicator();
+            addAIMessage(`✅ 第${ep}集重試成功`);
+        } catch (err) {
+            removeTypingIndicator();
+            addAIMessage(`❌ 第${ep}集重試失敗: ${err.message}`);
+        }
+    }
+}
+
 function continueWriteProject() {
     const chs = writeState.outline?.chapters || [];
     const completed = writeState.chapters?.length || 0;
@@ -15198,6 +15494,25 @@ function handleUserInput(text) {
             { text: '✅ 確認，開始創作', action: () => showFinalConfirmation() },
             { text: '🔄 重新描述', action: () => customNarrativeStyle() }
         ]);
+        return;
+    }
+    
+    // ==================== 格式重組目標輸入 ====================
+    if (state.waitingForAdapterTarget) {
+        state.waitingForAdapterTarget = false;
+        // 解析 "30集3分鐘" 或 "30 3" 或 "30集 3分鐘"
+        const nums = text.match(/\d+/g);
+        if (nums && nums.length >= 2) {
+            const episodes = parseInt(nums[0]);
+            const minutes = parseInt(nums[1]);
+            if (episodes >= 1 && episodes <= 200 && minutes >= 1 && minutes <= 30) {
+                setAdapterTarget(episodes, minutes);
+            } else {
+                addAIMessage('❌ 請輸入有效範圍：集數1-200，每集1-30分鐘');
+            }
+        } else {
+            addAIMessage('❌ 格式錯誤，請輸入如「30集3分鐘」');
+        }
         return;
     }
     
