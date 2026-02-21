@@ -11788,16 +11788,106 @@ function continueImportProject() {
 
 function manageProjects() {
     const projects = getProjects();
-    const list = Object.values(projects);
-    
+    const list = Object.values(projects)
+        .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+
+    // 只展示前20个，避免按钮太多
+    const preview = list.slice(0, 20)
+        .map((p, i) => `${i + 1}. ${p.name} (${new Date(p.timestamp || Date.now()).toLocaleDateString()})`)
+        .join('\n');
+
     addAIMessage(`🗑️ **管理項目**
 
-選擇要刪除的項目：`, list.map(p => ({
+你可以單個刪除，也可以批量刪除。
+
+**最近項目（前${Math.min(20, list.length)}個）**
+${preview}
+
+選擇操作：`, [
+        { text: '🧹 批量刪除（輸入序號）', action: () => askBatchDeleteProjects(list) },
+        { text: '🗑️ 單個刪除（按鈕）', action: () => showSingleDeleteButtons(list) },
+        { text: '🔙 返回列表', action: () => showProjectList() }
+    ]);
+}
+
+function showSingleDeleteButtons(list) {
+    addAIMessage(`🗑️ **單個刪除**
+
+選擇要刪除的項目：`, list.slice(0, 20).map(p => ({
         text: `❌ 刪除 ${p.name}`,
         action: () => deleteProject(p.id)
     })).concat([
-        { text: '🔙 返回列表', action: () => showProjectList() }
+        { text: '↩️ 返回管理', action: () => manageProjects() }
     ]));
+}
+
+function askBatchDeleteProjects(list) {
+    state.waitingForBatchDelete = true;
+    state.batchDeleteList = (list || []).slice(0, 50); // 最多50个，避免误操作
+
+    addAIMessage(`🧹 **批量刪除項目**
+
+請輸入要刪除的序號（用逗號分隔）：
+例如：1,3,5
+
+⚠️ 這個操作無法撤銷。
+
+輸入 0 取消。`);
+}
+
+function handleBatchDeleteInput(text) {
+    const raw = (text || '').trim();
+    if (raw === '0' || raw.toLowerCase() === 'cancel') {
+        state.waitingForBatchDelete = false;
+        state.batchDeleteList = null;
+        addAIMessage('✅ 已取消批量刪除。', [ { text: '↩️ 返回管理', action: () => manageProjects() } ]);
+        return;
+    }
+
+    const nums = raw.split(/[,，\s]+/).map(x => parseInt(x)).filter(n => !isNaN(n) && n > 0);
+    const list = state.batchDeleteList || [];
+    const ids = [...new Set(nums)]
+        .map(n => list[n - 1]?.id)
+        .filter(Boolean);
+
+    if (ids.length === 0) {
+        addAIMessage('❌ 沒有識別到有效序號，請重新輸入，例如：1,3,5（或輸入0取消）');
+        return;
+    }
+
+    const projects = getProjects();
+    const names = ids.map(id => projects[id]?.name).filter(Boolean);
+
+    if (!confirm(`確定要批量刪除 ${ids.length} 個項目嗎？\n\n${names.slice(0, 10).join('\n')}${names.length > 10 ? '\n...' : ''}\n\n此操作無法撤銷！`)) {
+        addAIMessage('✅ 已取消批量刪除。', [ { text: '↩️ 返回管理', action: () => manageProjects() } ]);
+        state.waitingForBatchDelete = false;
+        state.batchDeleteList = null;
+        return;
+    }
+
+    ids.forEach(id => {
+        if (projects[id]) delete projects[id];
+    });
+    localStorage.setItem(getProjectsKey(), JSON.stringify(projects));
+
+    // 如果当前项目被删，清空
+    if (ids.includes(currentProjectId)) {
+        currentProjectId = null;
+        Object.assign(state, {
+            novel: '',
+            novelTitle: '',
+            step: 0,
+            mode: '',
+            assets: { concept: null, characters: [], chapters: [], costumes: null, scripts: {}, storyboards: {} }
+        });
+        document.getElementById('headerTitle').textContent = 'FizzDragon AIGC番劇系統';
+    }
+
+    state.waitingForBatchDelete = false;
+    state.batchDeleteList = null;
+
+    renderProjectList();
+    addAIMessage(`✅ 已批量刪除 ${ids.length} 個項目。`, [ { text: '↩️ 返回管理', action: () => manageProjects() } ]);
 }
 
 function renameProject(projectId, currentName) {
@@ -16487,6 +16577,12 @@ function handleUserInput(text) {
         rewriteTarget: !!state.rewriteTarget
     });
     
+    // ==================== 批量刪除輸入 ====================
+    if (state.waitingForBatchDelete) {
+        handleBatchDeleteInput(text);
+        return;
+    }
+
     // ==================== 重寫章節反饋 ====================
     if (state.rewriteTarget) {
         handleRewriteFeedback(text);
