@@ -6735,7 +6735,28 @@ function safeJSONParse(text, context = 'unknown') {
         console.warn(`safeJSONParse [${context}]: 首次解析失败，尝试修复...`);
     }
     
-    // 修复1: 提取JSON对象/数组
+    // 修复1: 更稳的括号范围提取（处理前后夹杂文本、thinking、日志）
+    try {
+        const firstObj = cleaned.indexOf('{');
+        const firstArr = cleaned.indexOf('[');
+        let start = -1;
+        let end = -1;
+        if (firstObj !== -1 && (firstArr === -1 || firstObj < firstArr)) {
+            start = firstObj;
+            end = cleaned.lastIndexOf('}');
+        } else if (firstArr !== -1) {
+            start = firstArr;
+            end = cleaned.lastIndexOf(']');
+        }
+        if (start !== -1 && end !== -1 && end > start) {
+            const sliced = cleaned.substring(start, end + 1);
+            return JSON.parse(sliced);
+        }
+    } catch (e) {
+        // ignore
+    }
+
+    // 修复2: 正则提取JSON对象/数组（兜底）
     const jsonMatch = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
     if (jsonMatch) {
         try {
