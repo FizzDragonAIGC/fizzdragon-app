@@ -14363,12 +14363,30 @@ ${novelText.substring(0, 5000)}`;
         const result = await callAgent('narrative', promptWithEpisodes, context);
         updateProgress(100);
         
+        // 🔧 调试：打印原始响应
+        console.log('📖 narrative响应(前500字):', typeof result, result?.substring?.(0, 500) || result);
+        
         state.chapters = safeJSONParse(result, 'chapters');
+        
+        // 🔧 调试：打印解析结果
+        console.log('📖 解析后的chapters:', state.chapters);
+        
         state.step = 3;  // 标记章节规划完成
         
         removeProgressCard();
         
-        const eps = state.chapters.chapters || state.chapters.episodes || [];
+        // 🔧 增强解析：尝试多种字段名
+        let eps = state.chapters.chapters || state.chapters.episodes || state.chapters.outline || [];
+        
+        // 如果还是空，尝试直接当数组处理
+        if (eps.length === 0 && Array.isArray(state.chapters)) {
+            eps = state.chapters;
+        }
+        
+        // 🔧 如果解析失败，显示原始响应供调试
+        if (eps.length === 0) {
+            console.error('❌ 章节解析失败，原始响应:', result);
+        }
         const targetEps = state.production?.episodes || 10;
         
         // 🔧 保存到assets（不覆盖已有角色）
