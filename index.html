@@ -4296,7 +4296,7 @@ async function runExpandAdapter(episodes, minutes) {
         addAIMessage(`📝 **第1步：生成${episodes}集大綱...**`);
         
         // 扩写模式第一步：分批生成大纲（每批最多20集）
-        const BATCH_SIZE = 20;
+        const BATCH_SIZE = 10; // 🔧 更小批次，降低超时概率
         let allOutlines = [];
         const totalBatches = Math.ceil(episodes / BATCH_SIZE);
         
@@ -4311,8 +4311,11 @@ async function runExpandAdapter(episodes, minutes) {
             const batchCount = endEp - startEp + 1;
             
             addAIMessage(`📝 生成大綱 ${startEp}-${endEp}集 (${batch + 1}/${totalBatches})...`);
+
+            // 🔧 轻微节流，避免Render/DeepSeek瞬时压力
+            await new Promise(r => setTimeout(r, 300));
             
-            const batchResponse = await callAgent('narrative', state.originalScript.substring(0, 8000), {
+            const batchResponse = await callAgent('narrative', state.originalScript.substring(0, 3000), {
                 target_episodes: batchCount,
                 episode_duration: minutes,
                 start_episode: startEp,
