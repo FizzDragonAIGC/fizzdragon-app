@@ -6937,7 +6937,22 @@ function updateAgentProgressBar(assets) {
 function updateAssetsPanel() {
     const a = state.assets || {};
     const p = state.production || {};
-    
+
+    // 🔧 规范化数据结构（防止 characters/filter 报错）
+    if (!Array.isArray(a.characters)) {
+        if (Array.isArray(a.characters?.characters)) a.characters = a.characters.characters;
+        else if (Array.isArray(a.characters?.data)) a.characters = a.characters.data;
+        else a.characters = [];
+    }
+    if (!Array.isArray(a.chapters)) {
+        if (Array.isArray(a.chapters?.chapters)) a.chapters = a.chapters.chapters;
+        else if (Array.isArray(a.chapters?.episodes)) a.chapters = a.chapters.episodes;
+        else a.chapters = [];
+    }
+    if (typeof a.storyboards !== 'object' || a.storyboards === null) {
+        a.storyboards = {};
+    }
+
     // 🔧 更新顶部智能体进度条
     updateAgentProgressBar(a);
     
@@ -9724,7 +9739,8 @@ async function init() {
     
     // 🔗 检测URL参数，自动加载项目
     const urlProjectId = getProjectIdFromURL();
-    if (urlProjectId && projects[urlProjectId]) {
+    const localProjects = getProjects();
+    if (urlProjectId && localProjects[urlProjectId]) {
         console.log('🔗 从URL加载项目:', urlProjectId);
         loadProject(urlProjectId);
     } else {
@@ -15661,23 +15677,119 @@ function exportStoryboards() {
     // 合并所有分镜
     let allShots = [];
     for (const [num, shots] of Object.entries(sbs)) {
+        if (!Array.isArray(shots)) continue;
         shots.forEach((shot, i) => {
             allShots.push({
-                episode: num,
+                episode: parseInt(num),
+                scene_no: parseInt(num),        // Scene No. = 第几集（兼容Think Chen习惯）
+                shot_no: i + 1,                 // Shot No. = 本集第几个镜头
                 shot_id: `E${String(num).padStart(3,'0')}_S${String(i+1).padStart(3,'0')}`,
                 ...shot
             });
         });
     }
+
+    if (allShots.length === 0) {
+        addAIMessage(`❌ 分鏡數據為空（0鏡頭），無法導出。\n\n請先成功生成至少1個鏡頭再導出。`);
+        return;
+    }
     
     // 导出CSV（专业格式）
-    const headers = ['shot_id', '集數', '畫面描述', '場景', '時間', '光線', '氛圍', '角色', '動作', '表情', '服裝', '台詞', '機位', '運鏡', '景別', '敘事功能', 'Image_Prompt', 'Video_Prompt'];
+    // 需求调整：shot_id 拆成 Scene No. + Shot No.
+    // 机位(中文)改为“畫面描述”（避免与景别/镜头类型混淆）
+    const headers = ['Scene No.', 'Shot No.', 'Scene', '時間', '光線', '氛圍', '角色', '動作', '台詞', '運鏡', '景別', '畫面描述', 'Image_Prompt', 'Video_Prompt'];
     
     let csv = headers.join(',') + '\n';
     allShots.forEach(shot => {
         const row = [
-            shot.shot_id || '',
-            shot.episode || '',
+            shot.scene_no || '',
+            shot.shot_no || '',
+            `"${(shot.scene || shot.location || shot.場景 || '').replace(/"/g, '""')}"`,
+            shot.time || shot.時間 || '',
+            shot.lighting || shot.光線 || shot.light || '',
+            shot.mood || shot.atmosphere || shot.氛圍 || shot.emotion || '',
+            `"${(shot.character || shot.characters || shot.角色 || shot.actor || '').replace(/"/g, '""')}"`,
+            `"${(shot.action || shot.動作 || '').replace(/"/g, '""')}"`,
+            `"${(shot.dialogue || shot.台詞 || shot.lines || shot.copy || '').replace(/"/g, '""')}"`,
+            shot.movement || shot.camera_movement || shot.camera_move || shot.運鏡 || '',
+            shot.shot_type || shot.shot_size || shot.framing || shot.景別 || '',
+            `"${(shot.description || shot.frame || shot.camera || shot.camera_position || shot.機位 || '').replace(/"/g, '""')}"`,
+            `"${(shot.Image_Prompt || shot.image_prompt || shot.ai_prompt || '').replace(/"/g, '""')}"`,
+            `"${(shot.Video_Prompt || shot.video_prompt || '').replace(/"/g, '""')}"`
+        ];
+        csv += row.join(',') + '\n';
+    });
+
+    // 生成Excel格式（XML-based .xls）
+    let excelContent = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+<Styles>
+<Style ss:ID="header">
+<Font ss:Bold="1" ss:Color="#FFFFFF"/>
+<Interior ss:Color="#E31B23" ss:Pattern="Solid"/>
+<Alignment ss:Horizontal="Center"/>
+</Style>
+<Style ss:ID="cell">
+<Alignment ss:Vertical="Top" ss:WrapText="1"/>
+</Style>
+</Styles>
+<Worksheet ss:Name="分鏡表">
+<Table>
+<Row>`;
+
+    // 表头
+    headers.forEach(h => {
+        excelContent += `<Cell ss:StyleID="header"><Data ss:Type="String">${h}</Data></Cell>`;
+    });
+    excelContent += `</Row>`;
+
+    // 数据行
+    allShots.forEach(shot => {
+        excelContent += `<Row>`;
+        const values = [
+            shot.scene_no,
+            shot.shot_no,
+            shot.scene || shot.location || '',
+            shot.time || '',
+            shot.lighting || '',
+            shot.mood || shot.atmosphere || '',
+            shot.characters || shot.character || '',
+            shot.action || '',
+            shot.dialogue || '',
+            shot.movement || shot.camera_movement || '',
+            shot.shot_type || shot.shot_size || '',
+            shot.description || shot.frame || shot.camera || shot.camera_position || '',
+            shot.image_prompt || shot.ai_prompt || '',
+            shot.video_prompt || ''
+        ];
+        values.forEach(v => {
+            excelContent += `<Cell ss:StyleID="cell"><Data ss:Type="String">${escapeHtml(String(v ?? ''))}</Data></Cell>`;
+        });
+        excelContent += `</Row>`;
+    });
+
+    excelContent += `</Table></Worksheet></Workbook>`;
+
+    // 导出为 .xls 格式
+    const blob = new Blob([excelContent], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${state.novelTitle}_分鏡表.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    addAIMessage(`✅ 分鏡表已導出為 Excel！
+
+📊 **${state.novelTitle}_分鏡表.xls**
+• 總鏡頭: ${allShots.length} 個
+• ${headers.length}列字段
+• 可用 Microsoft Excel 打開編輯`);
+}
+
+function downloadFile(filename, content, type) {
             `"${(shot.description || shot.action || shot.scene || '').replace(/"/g, '""')}"`,
             `"${(shot.scene || shot.location || shot.場景 || '').replace(/"/g, '""')}"`,
             shot.time || shot.時間 || '',
