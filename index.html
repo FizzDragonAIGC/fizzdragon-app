@@ -4373,38 +4373,24 @@ async function runExpandAdapter(episodes, minutes) {
             const avgLen = Math.round(wordCount / outlines.length);
             const originalContent = state.originalScript.substring(i * avgLen, (i + 1) * avgLen);
             
-            // 调用screenwriter扩写
-            const expandResult = await callAgent('screenwriter', `原內容（${originalContent.length}字）：
+            // 调用screenwriter扩写（使用screenplay_expand skill）
+            const expandResult = await callAgent('screenwriter', `【擴寫任務】第${epNum}集：${outline.title || ''}
+
+## 原劇本內容（${originalContent.length}字）：
 ${originalContent.substring(0, 2000)}
 
-請擴寫為${wordsPerEp}字的完整劇本。
+## 大綱摘要：
+${outline.summary || ''}
 
-## 📝 必須使用標準劇本格式：
-
-【場景一：地點 - 時間】
-（環境描寫）
-
-角色名：
-    台詞內容
-
-（動作描寫）
-
-角色名：
-    台詞內容
-
-【場景二：下一個場景】
-...
-
-## 要求：
-1. 每個場景都有【場景標題】
-2. 角色名字單獨一行，後面加冒號
-3. 台詞要縮進（4個空格）
-4. 動作和環境描寫用（）括起來
-5. 場景之間空一行
-6. 增加對話細節、場景描寫、角色動作表情`, {
+## 擴寫要求：
+- 目標字數：${wordsPerEp}字（必須達到！）
+- 擴寫比例：約${(wordsPerEp / (originalContent.length || 300)).toFixed(1)}倍
+- 保持原意，增加對話、場景、情感細節
+- 使用標準劇本格式：【場景】+ 角色名 + 台詞縮進`, {
                 episode: epNum,
                 title: outline.title || `第${epNum}集`,
                 targetWords: wordsPerEp,
+                mode: 'expand',  // 🔧 标记扩写模式
                 originalSummary: outline.summary || outline.content
             });
             
