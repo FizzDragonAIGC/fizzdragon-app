@@ -5395,9 +5395,95 @@ async function runProductionStepSilent() {
     state.assets.costumes = parsed.costumes || [];
     state.assets.sets = parsed.sets || [];
     state.assets.props = parsed.props || [];
+    
+    // 自动补全缺失的AI Prompt
+    ensureProductionPrompts();
+    
     state.step = 4;
     saveProject(null, true);
     updateAssetsPanel();
+}
+
+// 自动为缺少ai_prompt的服化道元素生成英文Prompt
+function ensureProductionPrompts() {
+    // 处理服装
+    (state.assets.costumes || []).forEach(c => {
+        if (!c.ai_prompt && !c.prompt) {
+            c.ai_prompt = generatePromptFromChinese(c, 'costume');
+        }
+    });
+    
+    // 处理场景
+    (state.assets.sets || []).forEach(s => {
+        if (!s.ai_prompt && !s.prompt) {
+            s.ai_prompt = generatePromptFromChinese(s, 'set');
+        }
+    });
+    
+    // 处理道具
+    (state.assets.props || []).forEach(p => {
+        if (!p.ai_prompt && !p.prompt) {
+            p.ai_prompt = generatePromptFromChinese(p, 'prop');
+        }
+    });
+}
+
+// 根据中文描述生成基本的英文Prompt
+function generatePromptFromChinese(item, type) {
+    const name = item.name || item.character || item.location || '未命名';
+    const desc = item.description || item.atmosphere || item.usage || '';
+    const time = item.time || '';
+    
+    // 关键词翻译映射
+    const keywords = {
+        '昏暗': 'dim lighting',
+        '明亮': 'bright lighting',
+        '神秘': 'mysterious atmosphere',
+        '温馨': 'warm cozy',
+        '阴森': 'eerie dark',
+        '古老': 'ancient',
+        '现代': 'modern',
+        '传统': 'traditional',
+        '西域': 'Western Regions Silk Road',
+        '茅草': 'thatched roof',
+        '草棚': 'thatched hut',
+        '木质': 'wooden',
+        '石头': 'stone',
+        '白天': 'daytime',
+        '夜晚': 'night',
+        '黄昏': 'dusk golden hour',
+        '黎明': 'dawn',
+        '燃香': 'burning incense',
+        '烟雾': 'smoky hazy',
+        '破旧': 'worn weathered',
+        '华丽': 'ornate luxurious',
+        '简陋': 'humble simple',
+        '宽敞': 'spacious',
+        '狭窄': 'narrow confined',
+        '琉璃': 'glazed glass',
+        '瓷器': 'porcelain',
+        '布帘': 'fabric curtain',
+        '柜子': 'wooden cabinet',
+        '长凳': 'wooden bench'
+    };
+    
+    // 提取匹配的英文关键词
+    let englishKeywords = [];
+    Object.keys(keywords).forEach(zh => {
+        if (desc.includes(zh) || name.includes(zh)) {
+            englishKeywords.push(keywords[zh]);
+        }
+    });
+    
+    if (type === 'set') {
+        return `Cinematic wide shot of ${name}, ${englishKeywords.slice(0, 4).join(', ') || 'atmospheric interior'}, ${time ? time + ' lighting' : 'dramatic lighting'}, film set design, hyper detailed environment, 8K, --ar 16:9`;
+    } else if (type === 'costume') {
+        return `Fashion photography of ${name}, ${englishKeywords.slice(0, 3).join(', ') || 'detailed costume'}, full body shot, studio lighting, fabric texture, cinematic, 8K, --ar 2:3`;
+    } else if (type === 'prop') {
+        return `Product photography of ${name}, ${englishKeywords.slice(0, 3).join(', ') || 'detailed prop'}, studio lighting, close-up shot, high detail, 8K`;
+    }
+    
+    return `Cinematic shot of ${name}, ${englishKeywords.join(', ') || 'detailed'}, professional photography, 8K`;
 }
 
 async function runScriptStepSilent(chapterNum) {
@@ -6637,8 +6723,9 @@ function updateAssetsPanel() {
                             </div>
                         ` : ''}
                         ${(costumeCount > 0 || setCount > 0 || propCount > 0) ? `
-                            <div class="fizzstudio-actions" style="padding:8px;border-top:1px solid var(--border);">
-                                <button onclick="copyAllProductionPrompts()" class="fizzstudio-btn">📋 複製全部Prompt</button>
+                            <div class="fizzstudio-actions" style="padding:8px;border-top:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;">
+                                <button onclick="copyAllProductionPrompts()" class="fizzstudio-btn">📋 複製全部</button>
+                                <button onclick="fillMissingProductionPrompts()" class="fizzstudio-btn">🔧 補充缺失Prompt</button>
                             </div>
                         ` : `
                             <div style="font-size:10px;color:var(--text2);padding:8px;text-align:center;">
@@ -7147,6 +7234,46 @@ function copyAllProductionPrompts() {
         addAIMessage(`✅ 已複製 ${prompts.length} 個服化道Prompt！（${costumes.length}服裝 + ${sets.length}場景 + ${props.length}道具）`);
     } else {
         addAIMessage('❌ 沒有服化道Prompt可複製');
+    }
+}
+
+// 🔧 补充缺失的服化道Prompt
+function fillMissingProductionPrompts() {
+    let filled = 0;
+    
+    // 处理服装
+    (state.assets.costumes || []).forEach(c => {
+        if (!c.ai_prompt && !c.prompt) {
+            c.ai_prompt = generatePromptFromChinese(c, 'costume');
+            filled++;
+        }
+    });
+    
+    // 处理场景
+    (state.assets.sets || []).forEach(s => {
+        if (!s.ai_prompt && !s.prompt) {
+            s.ai_prompt = generatePromptFromChinese(s, 'set');
+            filled++;
+        }
+    });
+    
+    // 处理道具
+    (state.assets.props || []).forEach(p => {
+        if (!p.ai_prompt && !p.prompt) {
+            p.ai_prompt = generatePromptFromChinese(p, 'prop');
+            filled++;
+        }
+    });
+    
+    if (filled > 0) {
+        saveProject(null, true);
+        updateAssetsPanel();
+        addAIMessage(`✅ 已為 ${filled} 個元素補充AI Prompt！
+
+💡 這些Prompt是根據中文描述自動生成的基礎版本。
+如需更精確的Prompt，可以手動編輯。`);
+    } else {
+        addAIMessage('✅ 所有服化道都已有AI Prompt，無需補充');
     }
 }
 
