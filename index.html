@@ -4355,6 +4355,12 @@ async function runExpandAdapter(episodes, minutes) {
             
             allOutlines = allOutlines.concat(batchOutlines);
             console.log(`📝 批次${batch + 1}完成: ${batchOutlines.length}集`);
+
+            // ✅ 增量写入右侧资产面板：每生成一批就更新一次
+            state.assets = state.assets || {};
+            state.assets.chapters = allOutlines;
+            saveProject(null, true);
+            updateAssetsPanel();
         }
         
         // 统一变量名
