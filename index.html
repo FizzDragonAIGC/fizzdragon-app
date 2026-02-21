@@ -4151,17 +4151,24 @@ async function runFormatAdapter(episodes, minutes) {
     addTypingIndicator();
     
     const scriptLength = state.originalScript?.length || 0;
-    const BATCH_LIMIT = 40000; // 4万字分批
+    const INPUT_BATCH_LIMIT = 40000; // 输入4万字分批
+    const OUTPUT_BATCH_LIMIT = 25;   // 输出每批最多25集
+    
+    // 🔧 判断是否需要分批：输入太长 OR 输出集数太多
+    const needsBatch = scriptLength > INPUT_BATCH_LIMIT || episodes > OUTPUT_BATCH_LIMIT;
     
     try {
         let response;
         
-        if (scriptLength > BATCH_LIMIT) {
-            // 🔧 长剧本分批处理
-            addAIMessage(`📦 劇本較長(${(scriptLength/10000).toFixed(1)}萬字)，正在分批處理...`);
+        if (needsBatch) {
+            // 🔧 分批处理（输入/输出任一超限）
+            const reason = scriptLength > INPUT_BATCH_LIMIT 
+                ? `劇本較長(${(scriptLength/10000).toFixed(1)}萬字)` 
+                : `集數較多(${episodes}集)`;
+            addAIMessage(`📦 ${reason}，正在分批處理...`);
             response = await runFormatAdapterBatch(episodes, minutes);
         } else {
-            // 正常处理
+            // 正常处理（小规模）
             response = await callAgent('format_adapter', state.originalScript, {
                 target_episodes: episodes,
                 episode_duration: minutes,
@@ -4290,61 +4297,81 @@ function showAdjustBreakpoints() {
     state.waitingForBreakpointAdjust = true;
 }
 
-// 🔧 长剧本分批处理（超过4万字）
+// 🔧 大规模分批处理（输入>4万字 或 输出>25集）
 async function runFormatAdapterBatch(totalEpisodes, minutes) {
     const script = state.originalScript;
     const totalLength = script.length;
-    const BATCH_SIZE = 30000; // 每批3万字
     const wordsPerEpisode = minutes * 300;
     
-    // 计算需要几批
-    const batchCount = Math.ceil(totalLength / BATCH_SIZE);
+    // 🔧 智能计算批次：同时考虑输入和输出限制
+    const INPUT_LIMIT = 30000;  // 每批最多3万字输入
+    const OUTPUT_LIMIT = 20;    // 每批最多20集输出
+    
+    // 根据内容长度计算每批处理的字数
+    const inputBatches = Math.ceil(totalLength / INPUT_LIMIT);
+    // 根据目标集数计算每批处理的集数
+    const outputBatches = Math.ceil(totalEpisodes / OUTPUT_LIMIT);
+    // 取较大值作为实际批次数
+    const batchCount = Math.max(inputBatches, outputBatches);
+    
+    const charsPerBatch = Math.ceil(totalLength / batchCount);
     const episodesPerBatch = Math.ceil(totalEpisodes / batchCount);
     
+    addAIMessage(`📊 分批策略：${batchCount}批，每批約${Math.round(charsPerBatch/1000)}K字/${episodesPerBatch}集`);
+    
     let allEpisodes = [];
-    let currentPosition = 0;
     
     for (let i = 0; i < batchCount; i++) {
-        const batchStart = i * BATCH_SIZE;
-        const batchEnd = Math.min((i + 1) * BATCH_SIZE, totalLength);
+        const batchStart = i * charsPerBatch;
+        const batchEnd = Math.min((i + 1) * charsPerBatch, totalLength);
         const batchContent = script.substring(batchStart, batchEnd);
         const batchEpisodeCount = (i === batchCount - 1) 
-            ? (totalEpisodes - allEpisodes.length)
+            ? Math.max(1, totalEpisodes - allEpisodes.length)
             : episodesPerBatch;
         
-        addAIMessage(`⏳ 處理第 ${i+1}/${batchCount} 批 (${batchStart}-${batchEnd}字, ${batchEpisodeCount}集)...`);
+        addAIMessage(`⏳ 第 ${i+1}/${batchCount} 批：字${batchStart.toLocaleString()}-${batchEnd.toLocaleString()}，生成${batchEpisodeCount}集...`);
         
         try {
             const response = await callAgent('format_adapter', batchContent, {
                 target_episodes: batchEpisodeCount,
                 episode_duration: minutes,
-                batch_info: `這是第${i+1}/${batchCount}批，字數範圍${batchStart}-${batchEnd}`,
-                instruction: `請將這段${batchContent.length}字的內容重組為${batchEpisodeCount}集，每集${minutes}分鐘。
-這是完整劇本的第${i+1}部分，請找到最佳斷點。`
+                batch_info: { current: i+1, total: batchCount, charRange: `${batchStart}-${batchEnd}` },
+                instruction: `這是完整劇本的第${i+1}/${batchCount}部分(字數${batchStart}-${batchEnd})。
+請將這段${batchContent.length}字內容重組為${batchEpisodeCount}集，每集${minutes}分鐘(約${wordsPerEpisode}字)。
+找到最佳斷點(懸念/轉折/場景切換)，每集結尾加鉤子。`
             });
             
             const result = safeJSONParse(response);
             if (result && result.episodes) {
-                // 调整位置偏移
+                // 调整集号和位置偏移
                 result.episodes.forEach((ep, j) => {
                     ep.episode = allEpisodes.length + j + 1;
-                    // 调整位置标记
                     const startNum = parseInt(ep.start_position?.replace(/[^0-9]/g, '') || 0);
                     const endNum = parseInt(ep.end_position?.replace(/[^0-9]/g, '') || startNum + wordsPerEpisode);
                     ep.start_position = `第${batchStart + startNum}字`;
-                    ep.end_position = `第${batchStart + endNum}字`;
+                    ep.end_position = `第${Math.min(batchStart + endNum, totalLength)}字`;
+                    ep.word_count = ep.word_count || (endNum - startNum);
                 });
                 allEpisodes = allEpisodes.concat(result.episodes);
+                addAIMessage(`✅ 第${i+1}批完成，已生成${allEpisodes.length}/${totalEpisodes}集`);
             }
         } catch (err) {
             console.error(`第${i+1}批處理失敗:`, err);
-            addAIMessage(`⚠️ 第${i+1}批處理失敗，繼續下一批...`);
+            addAIMessage(`⚠️ 第${i+1}批失敗(${err.message})，繼續...`);
+        }
+        
+        // 批次间隔，避免API限流
+        if (i < batchCount - 1) {
+            await new Promise(r => setTimeout(r, 1000));
         }
     }
+    
+    addAIMessage(`🎉 分批處理完成！共生成 ${allEpisodes.length} 集`);
     
     return JSON.stringify({
         original_words: totalLength,
         target_episodes: totalEpisodes,
+        actual_episodes: allEpisodes.length,
         episode_duration: `${minutes}分鐘`,
         episodes: allEpisodes,
         batch_processed: true,
