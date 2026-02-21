@@ -16030,6 +16030,52 @@ function handleUserInput(text) {
         return;
     }
     
+    // ==================== 格式重组命令解析 ====================
+    // 匹配：重组/切分/短剧格式 + 每集X分钟 + X集
+    const formatAdapterMatch = text.match(/(?:重[组組]|切分|短[剧劇]格式|变短[剧劇]|變短[劇剧]).*?(?:每集)?(\d+)\s*分[钟鐘].*?(\d+)[-到~]?(\d+)?\s*集/i) ||
+                               text.match(/(\d+)[-到~]?(\d+)?\s*集.*?(?:每集)?(\d+)\s*分[钟鐘]/i);
+    if (formatAdapterMatch && state.adapterMode && state.originalScript) {
+        let episodes, minutes;
+        if (formatAdapterMatch[3]) {
+            // 格式：X分钟...Y-Z集
+            minutes = parseInt(formatAdapterMatch[1]);
+            episodes = parseInt(formatAdapterMatch[3]) || parseInt(formatAdapterMatch[2]);
+        } else {
+            // 格式：X集...Y分钟
+            episodes = parseInt(formatAdapterMatch[1]) || parseInt(formatAdapterMatch[2]);
+            minutes = parseInt(formatAdapterMatch[3]) || parseInt(formatAdapterMatch[1]);
+        }
+        
+        // 智能解析
+        if (!minutes || minutes > 30) minutes = 3;
+        if (!episodes || episodes < 1) episodes = 80;
+        
+        addAIMessage(`✅ 收到格式重組指令！
+        
+📊 **解析結果**
+• 每集時長：${minutes}分鐘
+• 目標集數：${episodes}集
+
+開始處理...`);
+        setAdapterTarget(episodes, minutes);
+        return;
+    }
+    
+    // 简单匹配：每集X分钟 / X集
+    if (state.adapterMode && state.originalScript) {
+        const simpleMatch = text.match(/(\d+)\s*分[钟鐘]/);
+        const episodeMatch = text.match(/(\d+)\s*集/);
+        if (simpleMatch || episodeMatch) {
+            const minutes = simpleMatch ? parseInt(simpleMatch[1]) : 3;
+            const episodes = episodeMatch ? parseInt(episodeMatch[1]) : 80;
+            if (minutes <= 30 && episodes >= 1) {
+                addAIMessage(`✅ 解析：${episodes}集 × ${minutes}分鐘，開始處理...`);
+                setAdapterTarget(episodes, minutes);
+                return;
+            }
+        }
+    }
+    
     // 生成剧本（指定集数）
     const scriptMatch = text.match(/(?:生成|寫|写)[第]?(\d+)[集章]?(?:的)?[剧劇]本/);
     if (scriptMatch) {
