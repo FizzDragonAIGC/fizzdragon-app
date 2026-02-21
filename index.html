@@ -4151,8 +4151,7 @@ async function runFormatAdapter(episodes, minutes) {
     addTypingIndicator();
     
     try {
-        const response = await callAPI('format_adapter', {
-            novel: state.originalScript,
+        const response = await callAgent('format_adapter', state.originalScript, {
             target_episodes: episodes,
             episode_duration: minutes,
             instruction: `請將這個${state.originalScript.length}字的劇本重組為${episodes}集，每集${minutes}分鐘（約${minutes * 300}字）。
@@ -4285,14 +4284,14 @@ async function handleBreakpointAdjust(userInput) {
     
     try {
         // 调用AI分析用户的调整需求
-        const response = await callAPI('format_adapter', {
-            novel: state.originalScript,
+        const chaptersInfo = state.assets.chapters.map(c => `第${c.num}集: ${c.title} (${c.wordCount}字) - 斷點:${c.breakReason}`).join('\n');
+        const response = await callAgent('format_adapter', state.originalScript, {
             current_chapters: state.assets.chapters,
             adjustment_request: userInput,
             instruction: `用戶想調整斷點：「${userInput}」
             
 目前的章節結構：
-${state.assets.chapters.map(c => `第${c.num}集: ${c.title} (${c.wordCount}字) - 斷點:${c.breakReason}`).join('\n')}
+${chaptersInfo}
 
 請根據用戶需求調整，返回更新後的章節結構。`
         });
