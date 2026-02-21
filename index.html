@@ -4300,19 +4300,30 @@ async function runExpandAdapter(episodes, minutes) {
         if (!isActiveRun(runToken)) return;
         addAIMessage(`📝 **第1步：生成${episodes}集大綱...**`);
         
-        // 扩写模式第一步：分批生成大纲（每批最多20集）
-        const BATCH_SIZE = 10; // 🔧 更小批次，降低超时概率
-        let allOutlines = [];
-        const totalBatches = Math.ceil(episodes / BATCH_SIZE);
-        
+        // 扩写模式第一步：分批生成大纲（每批10集）+ 支持断点续跑
+        const BATCH_SIZE = 10; // 更小批次，降低超时概率
+
+        // ✅ 续跑：如果项目资产里已经有章节，就从下一集继续
+        const existing = Array.isArray(state.assets?.chapters) ? state.assets.chapters : [];
+        const existingLen = existing.length;
+        let allOutlines = existing.slice();
+
+        const resumeStart = Math.max(1, existingLen + 1);
+        const remaining = Math.max(0, episodes - existingLen);
+        const totalBatches = Math.ceil(remaining / BATCH_SIZE);
+
+        if (existingLen > 0) {
+            addAIMessage(`♻️ 檢測到已有大綱：${existingLen}/${episodes} 集，將從第${resumeStart}集續跑...`);
+        }
+
         for (let batch = 0; batch < totalBatches; batch++) {
             if (!isActiveRun(runToken)) {
                 removeTypingIndicator();
                 return;
             }
 
-            const startEp = batch * BATCH_SIZE + 1;
-            const endEp = Math.min((batch + 1) * BATCH_SIZE, episodes);
+            const startEp = resumeStart + batch * BATCH_SIZE;
+            const endEp = Math.min(startEp + BATCH_SIZE - 1, episodes);
             const batchCount = endEp - startEp + 1;
             
             addAIMessage(`📝 生成大綱 ${startEp}-${endEp}集 (${batch + 1}/${totalBatches})...`);
