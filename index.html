@@ -4098,6 +4098,8 @@ async function handleAdapterScriptUpload(e) {
         
         // 保存原剧本
         state.adapterMode = true;
+        state.mode = 'adapter';  // 🔧 设置模式，防止跳回欢迎语
+        state.step = 1;          // 🔧 设置步骤
         state.originalScript = text;
         state.originalScriptTitle = file.name.replace(/\.[^/.]+$/, '');
         
@@ -16442,8 +16444,8 @@ function handleUserInput(text) {
         return;
     }
     
-    // 初始状态 - 用户直接发送文字
-    if (state.step === 0 && !state.mode) {
+    // 初始状态 - 用户直接发送文字（排除adapter模式）
+    if (state.step === 0 && !state.mode && !state.adapterMode) {
         // 检测是否像是故事内容（超过100字）
         if (text.length > 100) {
             addAIMessage(`📖 收到你的內容（${text.length}字）！
