@@ -4198,30 +4198,51 @@ async function runFormatAdapter(episodes, minutes) {
         // 解析结果
         const result = safeJSONParse(response.result || response.response || response);
         
-        if (result && result.episodes) {
-            // 保存重组结果
-            state.assets.chapters = result.episodes.map((ep, i) => ({
-                num: i + 1,
-                title: ep.title || `第${i+1}集`,
-                start: ep.start_position,
-                end: ep.end_position,
-                wordCount: ep.word_count,
-                breakReason: ep.break_reason,
-                outroHook: ep.outro_hook
-            }));
+        // 🔧 兼容多种响应格式：episodes 或 chapters
+        const episodes = result.episodes || result.chapters || [];
+        
+        if (episodes.length > 0) {
+            // 保存重组结果（兼容多种字段名）
+            state.assets.chapters = episodes.map((ep, i) => {
+                // 解析 original_range 如 "原剧本第1-850字" 或 "第1-850字"
+                let start = 0, end = 0;
+                if (ep.original_range) {
+                    const rangeMatch = ep.original_range.match(/(\d+)[-~到](\d+)/);
+                    if (rangeMatch) {
+                        start = parseInt(rangeMatch[1]);
+                        end = parseInt(rangeMatch[2]);
+                    }
+                }
+                return {
+                    num: ep.episode || ep.number || i + 1,
+                    title: ep.title || `第${i+1}集`,
+                    start: ep.start_position || start,
+                    end: ep.end_position || end,
+                    wordCount: ep.word_count || ep.wordCount || (end - start),
+                    breakReason: ep.break_reason || ep.breakReason || '',
+                    outroHook: ep.outro_hook || ep.outroHook || ''
+                };
+            });
             
             // 提取每集内容
             state.assets.scripts = {};
             const scriptText = state.originalScript;
-            result.episodes.forEach((ep, i) => {
-                // 尝试按位置提取原文
-                const start = parseInt(ep.start_position?.replace(/[^0-9]/g, '') || 0);
-                const end = parseInt(ep.end_position?.replace(/[^0-9]/g, '') || start + (minutes * 300));
-                let content = scriptText.substring(start, end);
+            const chaps = state.assets.chapters;  // 使用解析后的统一格式
+            chaps.forEach((ch, i) => {
+                // 使用解析后的start/end
+                let content = scriptText.substring(ch.start, ch.end);
+                
+                // 如果位置解析失败，按平均字数切割
+                if (!content || content.length < 50) {
+                    const avgLen = Math.round(scriptText.length / chaps.length);
+                    const fallbackStart = i * avgLen;
+                    const fallbackEnd = Math.min((i + 1) * avgLen, scriptText.length);
+                    content = scriptText.substring(fallbackStart, fallbackEnd);
+                }
                 
                 // 添加結尾鉤子
-                if (ep.outro_hook) {
-                    content += `\n\n【懸念】${ep.outro_hook}`;
+                if (ch.outroHook) {
+                    content += `\n\n【懸念】${ch.outroHook}`;
                 }
                 
                 state.assets.scripts[i + 1] = content;
@@ -4231,18 +4252,19 @@ async function runFormatAdapter(episodes, minutes) {
             saveProject(null, true);
             updateAssetsPanel();
             
+            const epCount = chaps.length;
             addAIMessage(`✅ **格式重組完成！**
 
 📊 **重組結果**
 • 原劇本：${state.originalScript.length.toLocaleString()} 字
-• 新格式：${episodes}集 × ${minutes}分鐘
-• 平均每集：${Math.round(state.originalScript.length / episodes)} 字
+• 新格式：${epCount}集 × ${minutes}分鐘
+• 平均每集：${Math.round(state.originalScript.length / epCount)} 字
 
 📋 **章節預覽**
-${result.episodes.slice(0, 5).map((ep, i) => 
-    `${i+1}. **${ep.title || '第'+(i+1)+'集'}** (${ep.word_count}字) - ${ep.break_reason || ''}`
+${chaps.slice(0, 5).map((ch, i) => 
+    `${i+1}. **${ch.title}** (${ch.wordCount}字) - ${ch.breakReason || ''}`
 ).join('\n')}
-${episodes > 5 ? `\n...還有 ${episodes - 5} 集` : ''}
+${epCount > 5 ? `\n...還有 ${epCount - 5} 集` : ''}
 
 下一步：生成分鏡表`, [
                 { text: '🎬 生成全部分鏡', action: () => runStoryboardForAllChapters() },
