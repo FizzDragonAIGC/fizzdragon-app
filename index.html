@@ -4209,16 +4209,20 @@ async function setAdapterTarget(episodes, minutes) {
     const targetWordsPerEp = minutes * 300;
     const totalTargetWords = episodes * targetWordsPerEp;
     
-    // 切分模式：检查是否超过原文
+    // 切分模式：检查是否超过原文，自动建议扩写
     if (totalTargetWords > wordCount * 1.2) {
+        const expandRatio = (totalTargetWords / wordCount).toFixed(1);
         addAIMessage(`⚠️ 目標總字數(${totalTargetWords.toLocaleString()})超過原劇本(${wordCount.toLocaleString()})
 
-切分模式不會增加內容，建議：
-• 減少集數
-• 或選擇「擴寫改編」模式`, [
-            { text: '繼續切分', action: () => runFormatAdapter(episodes, minutes) },
-            { text: '✍️ 改用擴寫模式', action: () => setAdapterTargetExpand(episodes, minutes) },
-            { text: '重新設定', action: () => askCustomAdapterTarget() }
+📊 需要擴寫 **${expandRatio}倍** 才能達到目標
+
+建議使用「擴寫改編」模式，AI會：
+1. 先切分為${episodes}集大綱
+2. 每集擴寫至${minutes * 300}字
+3. 增加對話、場景、細節描寫`, [
+            { text: '✍️ 開始擴寫（推薦）', action: () => runExpandAdapter(episodes, minutes) },
+            { text: '📋 強制切分（內容會重複）', action: () => runFormatAdapter(episodes, minutes) },
+            { text: '↩️ 重新設定', action: () => askCustomAdapterTarget() }
         ]);
         return;
     }
