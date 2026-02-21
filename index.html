@@ -3531,6 +3531,7 @@ async function handleFastTrackScript(e) {
         // 创建新项目
         currentProjectId = 'proj_' + Date.now();
         updateURLForProject(currentProjectId);  // 🔗 更新URL
+        text = cleanScriptText(text);  // 🧹 清洗水印/页眉页脚
         state.novel = text;
         state.novelTitle = file.name.replace(/\.[^.]+$/, '');
         state.mode = 'fasttrack';
@@ -4095,6 +4096,9 @@ async function handleAdapterScriptUpload(e) {
         }
         
         removeTypingIndicator();
+        
+        // 🧹 清洗剧本文本（去除水印、页眉页脚）
+        text = cleanScriptText(text);
         
         // 保存原剧本
         state.adapterMode = true;
@@ -6284,6 +6288,27 @@ function cleanScriptMarkdown(text) {
 }
 
 // ==================== JSON解析（带自动修复）====================
+// 🧹 清洗剧本文本：去除PDF水印、页眉页脚、格式化问题
+function cleanScriptText(text) {
+    if (!text) return text;
+    
+    return text
+        // 去除常见水印
+        .replace(/[*＊].*?内部资料.*?[*＊！!]/gi, '')
+        .replace(/严禁外传[！!]?/gi, '')
+        .replace(/内部定稿/gi, '')
+        .replace(/剧组内部资料/gi, '')
+        // 去除页眉页脚（如：动画电影《曹操》 - 剧本 20200710 – 内部定稿 - （成品） 8 / 102）
+        .replace(/动画电影《.*?》\s*[-–—]\s*剧本\s*\d+\s*[-–—][^】\n]*\d+\s*\/\s*\d+/gi, '')
+        .replace(/\d+\s*\/\s*\d+$/gm, '')  // 单独的页码
+        .replace(/[-–—]\s*\(成品\)\s*[-–—]?/gi, '')
+        // 去除多余空行
+        .replace(/\n{3,}/g, '\n\n')
+        // 去除行首行尾空格
+        .split('\n').map(line => line.trim()).join('\n')
+        .trim();
+}
+
 function safeJSONParse(text, context = 'unknown') {
     // 如果已经是对象，直接返回
     if (typeof text === 'object' && text !== null) {
