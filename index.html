@@ -13970,7 +13970,10 @@ ${totalChapters > 0
         return;
     }
     
-    const targetShots = Math.ceil(chapter.duration * state.production.shotsPerMin);
+    // 🔧 防止NaN：添加默认值
+    const chapterDuration = chapter.duration || state.production?.durationMin || 3;
+    const shotsPerMin = state.production?.shotsPerMin || 10;
+    const targetShots = Math.ceil(chapterDuration * shotsPerMin) || 30;
     
     addTypingIndicator();
     
