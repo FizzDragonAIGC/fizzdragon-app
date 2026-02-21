@@ -1969,6 +1969,27 @@
             max-width: 100%;
         }
         
+        /* 🎬 剧本格式化样式 */
+        .script-scene {
+            font-weight: bold;
+            color: #E31B23;
+            margin: 16px 0 8px 0;
+            border-left: 3px solid #E31B23;
+            padding-left: 8px;
+        }
+        .script-char {
+            font-weight: bold;
+            color: #333;
+        }
+        .script-line {
+            margin-left: 2em;
+            color: #444;
+        }
+        .script-action {
+            color: #666;
+            font-style: italic;
+        }
+        
         .quick-reply {
             padding: 6px 12px;
             background: rgba(232, 48, 48, 0.08);
@@ -4308,11 +4329,31 @@ async function runExpandAdapter(episodes, minutes) {
             const expandResult = await callAgent('screenwriter', `原內容（${originalContent.length}字）：
 ${originalContent.substring(0, 2000)}
 
-請擴寫為${wordsPerEp}字的完整劇本。保持風格一致，增加：
-- 更多對話細節
-- 場景描寫
-- 角色動作和表情
-- 氛圍渲染`, {
+請擴寫為${wordsPerEp}字的完整劇本。
+
+## 📝 必須使用標準劇本格式：
+
+【場景一：地點 - 時間】
+（環境描寫）
+
+角色名：
+    台詞內容
+
+（動作描寫）
+
+角色名：
+    台詞內容
+
+【場景二：下一個場景】
+...
+
+## 要求：
+1. 每個場景都有【場景標題】
+2. 角色名字單獨一行，後面加冒號
+3. 台詞要縮進（4個空格）
+4. 動作和環境描寫用（）括起來
+5. 場景之間空一行
+6. 增加對話細節、場景描寫、角色動作表情`, {
                 episode: epNum,
                 title: outline.title || `第${epNum}集`,
                 targetWords: wordsPerEp,
@@ -12067,6 +12108,26 @@ function updateProgress(progress) {
 function removeProgressCard() {
     const el = document.getElementById('progressCard');
     if (el) el.remove();
+}
+
+// 🎬 格式化剧本文本（美化显示）
+function formatScript(text) {
+    if (!text) return '';
+    
+    return text
+        // 场景标题加粗+换行
+        .replace(/【(場景[^】]+)】/g, '\n\n<div class="script-scene">【$1】</div>\n')
+        .replace(/【(场景[^】]+)】/g, '\n\n<div class="script-scene">【$1】</div>\n')
+        // 角色名加粗
+        .replace(/^([^\s（(：:]+)[：:]\s*$/gm, '<span class="script-char">$1：</span>')
+        .replace(/^([^\s（(：:]{2,6})[：:]\s*$/gm, '<span class="script-char">$1：</span>')
+        // 台词缩进（角色名后的内容）
+        .replace(/^(\s{4,}|\t+)(.+)$/gm, '<div class="script-line">$2</div>')
+        // 动作描写（括号内）
+        .replace(/[（(]([^）)]+)[）)]/g, '<span class="script-action">（$1）</span>')
+        // 多余空行处理
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
 }
 
 function formatMessage(text) {
