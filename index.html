@@ -11351,7 +11351,14 @@ function getProjects() {
 
 function saveProject(name = null, silent = false) {
     const projects = getProjects();
-    const projectName = name || state.novelTitle || writeState.outline?.title || `項目_${Date.now()}`;
+
+    // ✅ 项目命名规则：
+    // 1) 如果显式传入name → 用name
+    // 2) 如果已有currentProjectId且项目已存在 → 保持原项目名（避免自动保存时“改回項目_時間戳”）
+    // 3) 否则尝试 state.novelTitle / writeState.outline.title
+    // 4) 最后才用 項目_時間戳
+    const existingName = currentProjectId && projects[currentProjectId]?.name ? projects[currentProjectId].name : null;
+    const projectName = name || existingName || state.novelTitle || writeState.outline?.title || `項目_${Date.now()}`;
     
     // 使用现有项目ID或创建新的
     const projectId = currentProjectId || projectName.replace(/\s+/g, '_').toLowerCase() + '_' + Date.now();
