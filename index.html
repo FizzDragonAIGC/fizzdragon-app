@@ -15632,27 +15632,58 @@ ${totalChapters > 0
         steps.forEach(s => { s.done = true; s.current = false; });
         showAgentStatus('🎬 分鏡導演', '「整理分鏡數據，馬上完成...」', 'storyboard', steps);
         
+        // 🔧 保存原始返回，方便调试0镜头/解析失败
+        state.lastStoryboardRaw = (typeof result === 'string') ? result : JSON.stringify(result);
+
         const sbData = safeJSONParse(result, 'storyboard');
-        const shots = sbData.shots || sbData.storyboard || [];
-        
-        // 存入项目资产
-        state.assets.storyboards[chapterNum] = shots;
-        
+        let shots = sbData.shots || sbData.storyboard || sbData.data?.storyboard || (Array.isArray(sbData) ? sbData : []);
+
+        // 兜底：从原始文本里强行提取 storyboard 数组
+        if ((!shots || shots.length === 0) && typeof state.lastStoryboardRaw === 'string') {
+            const m = state.lastStoryboardRaw.match(/"storyboard"\s*:\s*(\[[\s\S]*?\])\s*[\}\n]/);
+            if (m) {
+                try { shots = JSON.parse(m[1]); } catch (e) {}
+            }
+        }
+
         removeTypingIndicator();
         hideAgentStatus();
-        
+
         // 🔄 清除生成状态
         delete generatingStoryboards[chapterNum];
-        
+
         const totalChapters = state.assets.chapters.length;
         const isLastChapter = chapterNum >= totalChapters;
-        
+
+        // ❌ 0镜头：不要当成功、不要写入资产、不要自动继续
+        if (!Array.isArray(shots) || shots.length === 0) {
+            addAIMessage(`❌ **第${chapterNum}集分鏡生成失敗（0鏡頭）**
+
+常見原因：
+- AI回傳JSON被截斷
+- 回傳格式不符合schema
+- 網路抖動導致回包不完整
+
+請點下方按鈕複製原始回包給我（我才能精準修復）：`, [
+                { text: '📋 複製分鏡原始返回', action: () => {
+                    navigator.clipboard?.writeText(state.lastStoryboardRaw || '').then(() => showToast('已複製')).catch(() => showToast('複製失敗'));
+                } },
+                { text: '🔄 重試本集', action: () => runStoryboardGeneration(chapterNum) }
+            ]);
+            return;
+        }
+
+        // ✅ 存入项目资产
+        state.assets.storyboards[chapterNum] = shots;
+
+        const completion = targetShots > 0 ? Math.round(shots.length / targetShots * 100) : 0;
+
         addAIMessage(`🎬 **第${chapterNum}集分鏡完成！**
 
 📊 **分鏡統計**:
 • 目標鏡頭: ${targetShots} 個
 • 實際生成: ${shots.length} 個
-• 完成率: ${Math.round(shots.length / targetShots * 100)}%
+• 完成率: ${completion}%
 
 ${shots.slice(0, 3).map((s, i) => `**鏡頭${i+1}**: ${s.scene || s.description || ''}`).join('\n')}
 ${shots.length > 3 ? `\n... 共 ${shots.length} 個鏡頭` : ''}
@@ -15661,10 +15692,10 @@ ${shots.length > 3 ? `\n... 共 ${shots.length} 個鏡頭` : ''}
 ✅ 已存入項目資產 (${chapterNum}/${totalChapters})
 
 ${isLastChapter ? '🎉 全部分鏡完成！' : `繼續生成第${chapterNum + 1}集...`}`);
-        
+
         saveProject();
         updateAssetsPanel();
-        
+
         if (!isLastChapter) {
             // 自动继续下一集
             setTimeout(() => runStoryboardGeneration(chapterNum + 1), 1500);
