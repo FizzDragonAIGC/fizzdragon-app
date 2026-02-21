@@ -4284,13 +4284,15 @@ async function setAdapterTargetExpand(episodes, minutes) {
 
 // ✍️ 扩写改编执行
 async function runExpandAdapter(episodes, minutes) {
+    const runToken = newRunToken();
     addTypingIndicator();
     
     const wordCount = state.originalScript?.length || 0;
     const wordsPerEp = minutes * 300;
     
     try {
-        // Step 1: 先用format_adapter切分为大纲
+        // Step 1: 生成大纲
+        if (!isActiveRun(runToken)) return;
         addAIMessage(`📝 **第1步：生成${episodes}集大綱...**`);
         
         // 扩写模式第一步：分批生成大纲（每批最多20集）
@@ -4299,6 +4301,11 @@ async function runExpandAdapter(episodes, minutes) {
         const totalBatches = Math.ceil(episodes / BATCH_SIZE);
         
         for (let batch = 0; batch < totalBatches; batch++) {
+            if (!isActiveRun(runToken)) {
+                removeTypingIndicator();
+                return;
+            }
+
             const startEp = batch * BATCH_SIZE + 1;
             const endEp = Math.min((batch + 1) * BATCH_SIZE, episodes);
             const batchCount = endEp - startEp + 1;
@@ -4357,10 +4364,12 @@ async function runExpandAdapter(episodes, minutes) {
             console.log(`📝 批次${batch + 1}完成: ${batchOutlines.length}集`);
 
             // ✅ 增量写入右侧资产面板：每生成一批就更新一次
-            state.assets = state.assets || {};
-            state.assets.chapters = allOutlines;
-            saveProject(null, true);
-            updateAssetsPanel();
+            if (isActiveRun(runToken)) {
+                state.assets = state.assets || {};
+                state.assets.chapters = allOutlines;
+                saveProject(null, true);
+                updateAssetsPanel();
+            }
         }
         
         // 统一变量名
@@ -6695,6 +6704,19 @@ const STEPS = [
 const MEMBERSHIP = {
     free: { name: '內測版', maxProjects: 999, icon: '🎉' }
 };
+
+// 🔧 调试开关：是否显示模型思考过程（默认关闭，避免干扰用户）
+window.SHOW_THINKING = window.SHOW_THINKING === true;
+
+// 🔧 运行令牌：避免并发/旧请求结果串台
+window._RUN_TOKEN = window._RUN_TOKEN || 0;
+function newRunToken() {
+    window._RUN_TOKEN += 1;
+    return window._RUN_TOKEN;
+}
+function isActiveRun(token) {
+    return token === window._RUN_TOKEN;
+}
 
 let currentUser = {
     id: localStorage.getItem('user_id') || 'guest_' + Date.now(),
@@ -15224,8 +15246,8 @@ async function callAgent(agentId, content, context = {}, retryCount = 0) {
             updateAgentStatus(agentName, `完成 ✅ (${data.tokens.input + data.tokens.output} tokens)`);
         }
         
-        // 如果有思考过程（reasoner），显示出来
-        if (data.reasoning || data.thinking) {
+        // 如果有思考过程（reasoner），默认不显示（避免干扰/串台错觉）
+        if ((data.reasoning || data.thinking) && window.SHOW_THINKING) {
             showThinkingProcess(data.reasoning || data.thinking);
         }
         
