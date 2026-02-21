@@ -4308,11 +4308,25 @@ async function runExpandAdapter(episodes, minutes) {
 請輸出JSON格式的chapters數組。`
         });
         
-        const outlineResult = safeJSONParse(outlineResponse.result || outlineResponse);
-        const outlines = outlineResult.episodes || outlineResult.chapters || [];
+        // 🔧 调试：打印响应
+        console.log('📝 扩写大纲响应:', outlineResponse);
         
+        const outlineResult = safeJSONParse(outlineResponse.result || outlineResponse);
+        console.log('📝 解析后:', outlineResult);
+        
+        // 🔧 兼容多种格式
+        let outlines = outlineResult.episodes || outlineResult.chapters || [];
+        
+        // 如果还是空，尝试从result里再解析一次
+        if (outlines.length === 0 && typeof outlineResponse === 'string') {
+            const retry = safeJSONParse(outlineResponse);
+            outlines = retry.episodes || retry.chapters || [];
+        }
+        
+        // 如果解析失败，显示详细错误
         if (outlines.length === 0) {
-            throw new Error('大綱生成失敗');
+            console.error('❌ 大纲解析失败，原始响应:', outlineResponse);
+            throw new Error(`大綱生成失敗。請查看控制台日誌。`);
         }
         
         removeTypingIndicator();
