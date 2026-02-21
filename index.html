@@ -11890,7 +11890,14 @@ function deleteProject(projectId) {
     // 如果删除的是当前项目，清空当前项目
     if (projectId === currentProjectId) {
         currentProjectId = null;
-        state = { novel: '', title: '', step: 0, assets: {} };
+        // 🔧 用Object.assign重置，不能重新赋值const
+        Object.assign(state, { 
+            novel: '', 
+            novelTitle: '', 
+            step: 0, 
+            mode: '',
+            assets: { concept: null, characters: [], chapters: [], costumes: null, scripts: {}, storyboards: {} }
+        });
         document.getElementById('headerTitle').textContent = 'FizzDragon AIGC番劇系統';
         // 只在删除当前项目时显示提示
         addAIMessage(`🗑️ 已刪除項目「${name}」`);
