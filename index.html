@@ -5478,6 +5478,15 @@ function manualInputChapters() {
 }
 
 async function runChaptersStepSilent() {
+    // 🔧 格式重组模式：章节已由format_adapter生成，跳过narrative
+    if (state.adapterMode && state.assets.chapters?.length > 0) {
+        console.log('✅ 格式重組模式：使用已生成的章節，跳過narrative');
+        state.step = 3;
+        saveProject(null, true);
+        updateAssetsPanel();
+        return;
+    }
+    
     // 🔧 安全获取文本内容
     const novelText = state.novel || 
                       state.assets?.story?.content || 
