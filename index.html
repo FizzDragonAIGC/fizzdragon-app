@@ -9111,7 +9111,39 @@ async function generateStoryFromInterview() {
             }
         }
         
-        const prompt = `你是一位專業的故事創作者。根據用戶的創作訪談，創作一個完整的短篇故事。
+        // 计算目标字数
+        const totalMinutes = state.production.episodes * state.production.durationMin;
+        const estimatedWords = state.production.estimatedWords || totalMinutes * 300;
+        
+        // 根据字数决定生成策略
+        let wordInstruction = '';
+        let targetWords = 0;
+        if (estimatedWords <= 15000) {
+            // 短篇：直接生成完整故事
+            targetWords = Math.max(5000, estimatedWords);
+            wordInstruction = `故事長度：${(targetWords/1000).toFixed(0)}000-${(targetWords*1.5/1000).toFixed(0)}000字`;
+        } else if (estimatedWords <= 50000) {
+            // 中篇：生成详细大纲+开头
+            targetWords = 15000;
+            wordInstruction = `這是一個預計 ${(estimatedWords/10000).toFixed(1)}萬字 的中篇故事。
+請先寫出：
+- 完整的故事大綱（包含每集主要情節）
+- 詳細的前3集內容（約10000字）
+總輸出約15000字，後續會分章節補充完整`;
+        } else {
+            // 长篇：生成框架大纲
+            targetWords = 10000;
+            wordInstruction = `這是一個預計 ${(estimatedWords/10000).toFixed(1)}萬字 的長篇故事（${state.production.episodes}集×${state.production.durationMin}分鐘）。
+請寫出：
+- 完整的世界觀設定
+- 詳細的人物關係圖
+- 分幕故事大綱（起承轉合）
+- 每集標題和200字概要
+- 前2集完整內容作為示範
+總輸出約10000字，這是創作藍圖，後續分章節生成完整劇本`;
+        }
+        
+        const prompt = `你是一位專業的故事創作者。根據用戶的創作訪談，創作故事。
 
 用戶想法：${writeState.idea?.premise || ''}
 類型偏好：${writeState.idea?.genre || ''}
@@ -9120,18 +9152,22 @@ async function generateStoryFromInterview() {
 ${interviewSummary}
 
 製作規格：${state.production.episodes}集 × ${state.production.durationMin}分鐘/集
+預計總字數：~${(estimatedWords/10000).toFixed(1)}萬字
 
 🎨 **敘事風格要求**：
 ${styleInstruction}
 
-寫作要求：
-1. 故事長度：5000-10000字（根據集數調整）
-2. 包含清晰的開頭、發展、高潮、結局
-3. 人物形象鮮明，關係清楚
-4. 對話生動自然，符合選定風格
-5. 情感真實感人
-6. 結構適合改編成${state.production.episodes}集番劇
-7. **嚴格遵守選定的敘事風格特點**
+📝 **寫作要求**：
+${wordInstruction}
+
+其他要求：
+1. 包含清晰的開頭、發展、高潮、結局
+2. 人物形象鮮明，關係清楚
+3. 對話生動自然，符合選定風格
+4. 情感真實感人
+5. 結構適合改編成${state.production.episodes}集番劇
+6. **嚴格遵守選定的敘事風格特點**
+7. **不要寫「下一集預告」**
 
 直接輸出故事正文，不要輸出任何解釋。`;
 
@@ -12474,6 +12510,18 @@ function finalizeShotDensity(num) {
     productionStep = 3;
     state.step = 3;  // 章节规划阶段
     
+    // 计算字数估算 (1分钟 ≈ 300字剧本)
+    const totalMinutes = state.production.episodes * state.production.durationMin;
+    const estimatedWords = totalMinutes * 300;
+    state.production.estimatedWords = estimatedWords;
+    
+    // 字数等级描述
+    let wordLevel = '';
+    if (estimatedWords < 10000) wordLevel = '📗 短篇 (<1萬字)';
+    else if (estimatedWords < 50000) wordLevel = '📘 中篇 (1-5萬字)';
+    else if (estimatedWords < 100000) wordLevel = '📙 長篇 (5-10萬字)';
+    else wordLevel = '📕 超長篇 (10萬字+)';
+    
     // 根据密度给出节奏描述
     let paceDesc = '';
     if (num <= 10) paceDesc = '🐢 慢節奏 - 適合文藝片、對話戲';
@@ -12486,8 +12534,10 @@ function finalizeShotDensity(num) {
 • 集數: ${state.production.episodes} 集
 • 每集時長: ${state.production.durationMin} 分鐘
 • 鏡頭密度: ${state.production.shotsPerMin} 個/分鐘
-• 總時長: ${state.production.episodes * state.production.durationMin} 分鐘
+• 總時長: ${totalMinutes} 分鐘
 • 預計分鏡: **${state.production.totalShots}** 個
+
+📝 **劇本字數估算**: ~**${(estimatedWords/10000).toFixed(1)}萬字** ${wordLevel}
 
 ${paceDesc}
 
