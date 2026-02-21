@@ -3530,6 +3530,7 @@ async function handleFastTrackScript(e) {
         
         // 创建新项目
         currentProjectId = 'proj_' + Date.now();
+        updateURLForProject(currentProjectId);  // 🔗 更新URL
         state.novel = text;
         state.novelTitle = file.name.replace(/\.[^.]+$/, '');
         state.mode = 'fasttrack';
@@ -3861,6 +3862,7 @@ function startManualEpisodeInput() {
     // 创建新项目
     if (!currentProjectId) {
         currentProjectId = 'proj_' + Date.now();
+        updateURLForProject(currentProjectId);  // 🔗 更新URL
         state.assets = { scripts: {}, chapters: [], characters: [], storyboards: {} };
     }
     
@@ -9374,8 +9376,15 @@ async function init() {
     // 🔧 立即显示本地项目（不等云端）
     renderProjectList();
     
-    // 🔧 先显示欢迎语，不等API检测
-    showStartOptions();
+    // 🔗 检测URL参数，自动加载项目
+    const urlProjectId = getProjectIdFromURL();
+    if (urlProjectId && projects[urlProjectId]) {
+        console.log('🔗 从URL加载项目:', urlProjectId);
+        loadProject(urlProjectId);
+    } else {
+        // 🔧 先显示欢迎语，不等API检测
+        showStartOptions();
+    }
     
     // 后台检测API（不阻塞）
     detectAPI().catch(err => console.warn('API检测失败:', err));
@@ -9383,7 +9392,36 @@ async function init() {
     // ☁️ 后台同步云端（完成后自动更新列表）
     syncProjectsFromBackend().catch(err => console.warn('云端恢复失败:', err));
     
+    // 🔗 监听URL变化（浏览器前进/后退）
+    window.addEventListener('hashchange', handleHashChange);
+    
     console.log('🚀 init() 完成');
+}
+
+// 🔗 从URL获取项目ID
+function getProjectIdFromURL() {
+    const hash = window.location.hash;
+    if (hash.startsWith('#p=')) {
+        return hash.substring(3);
+    }
+    return null;
+}
+
+// 🔗 更新URL（不刷新页面）
+function updateURLForProject(projectId) {
+    if (projectId) {
+        window.history.replaceState(null, '', `#p=${projectId}`);
+    } else {
+        window.history.replaceState(null, '', window.location.pathname);
+    }
+}
+
+// 🔗 处理URL hash变化
+function handleHashChange() {
+    const urlProjectId = getProjectIdFromURL();
+    if (urlProjectId && urlProjectId !== currentProjectId && projects[urlProjectId]) {
+        loadProject(urlProjectId);
+    }
 }
 
 function showStartOptions() {
@@ -11101,6 +11139,9 @@ function loadProject(projectId) {
     
     // 更新当前项目ID
     currentProjectId = projectId;
+    
+    // 🔗 更新URL，支持分享/刷新
+    updateURLForProject(projectId);
     
     // 智能体状态HTML - 与红色按钮对齐样式
     const agentHtml = `
