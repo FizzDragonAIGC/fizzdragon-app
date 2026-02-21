@@ -4543,7 +4543,7 @@ ${outline.summary || ''}
     }
 }
 
-async function runFormatAdapter(episodes, minutes) {
+async function runFormatAdapter(targetEpisodes, minutes) {
     addTypingIndicator();
     
     const scriptLength = state.originalScript?.length || 0;
@@ -4551,7 +4551,7 @@ async function runFormatAdapter(episodes, minutes) {
     const OUTPUT_BATCH_LIMIT = 25;   // 输出每批最多25集
     
     // 🔧 判断是否需要分批：输入太长 OR 输出集数太多
-    const needsBatch = scriptLength > INPUT_BATCH_LIMIT || episodes > OUTPUT_BATCH_LIMIT;
+    const needsBatch = scriptLength > INPUT_BATCH_LIMIT || targetEpisodes > OUTPUT_BATCH_LIMIT;
     
     try {
         let response;
@@ -4560,15 +4560,15 @@ async function runFormatAdapter(episodes, minutes) {
             // 🔧 分批处理（输入/输出任一超限）
             const reason = scriptLength > INPUT_BATCH_LIMIT 
                 ? `劇本較長(${(scriptLength/10000).toFixed(1)}萬字)` 
-                : `集數較多(${episodes}集)`;
+                : `集數較多(${targetEpisodes}集)`;
             addAIMessage(`📦 ${reason}，正在分批處理...`);
-            response = await runFormatAdapterBatch(episodes, minutes);
+            response = await runFormatAdapterBatch(targetEpisodes, minutes);
         } else {
             // 正常处理（小规模）
             response = await callAgent('format_adapter', state.originalScript, {
-                target_episodes: episodes,
+                target_episodes: targetEpisodes,
                 episode_duration: minutes,
-                instruction: `請將這個${scriptLength}字的劇本重組為${episodes}集，每集${minutes}分鐘（約${minutes * 300}字）。
+                instruction: `請將這個${scriptLength}字的劇本重組為${targetEpisodes}集，每集${minutes}分鐘（約${minutes * 300}字）。
 找到最佳斷點，保留原內容，只做切分和頭尾衔接優化。`
             });
         }
@@ -4579,11 +4579,11 @@ async function runFormatAdapter(episodes, minutes) {
         const result = safeJSONParse(response.result || response.response || response);
         
         // 🔧 兼容多种响应格式：episodes 或 chapters
-        const episodes = result.episodes || result.chapters || [];
+        const parsedEpisodes = result.episodes || result.chapters || [];
         
-        if (episodes.length > 0) {
+        if (parsedEpisodes.length > 0) {
             // 保存重组结果（兼容多种字段名）
-            state.assets.chapters = episodes.map((ep, i) => {
+            state.assets.chapters = parsedEpisodes.map((ep, i) => {
                 // 解析 original_range 如 "原剧本第1-850字" 或 "第1-850字"
                 let start = 0, end = 0;
                 if (ep.original_range) {
@@ -4660,7 +4660,7 @@ ${epCount > 5 ? `\n...還有 ${epCount - 5} 集` : ''}
         removeTypingIndicator();
         console.error('格式重組失敗:', err);
         addAIMessage(`❌ 重組失敗: ${err.message}`, [
-            { text: '🔄 重試', action: () => runFormatAdapter(episodes, minutes) }
+            { text: '🔄 重試', action: () => runFormatAdapter(targetEpisodes, minutes) }
         ]);
     }
 }
