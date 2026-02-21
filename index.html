@@ -4321,6 +4321,7 @@ async function runExpandAdapter(episodes, minutes) {
             await new Promise(r => setTimeout(r, 300));
             
             const batchResponse = await callAgent('narrative', state.originalScript.substring(0, 3000), {
+                _runToken: runToken,
                 target_episodes: batchCount,
                 episode_duration: minutes,
                 start_episode: startEp,
@@ -4439,6 +4440,7 @@ ${outline.summary || ''}
 - 擴寫比例：約${(wordsPerEp / (originalContent.length || 300)).toFixed(1)}倍
 - 保持原意，增加對話、場景、情感細節
 - 使用標準劇本格式：【場景】+ 角色名 + 台詞縮進`, {
+                _runToken: runToken,
                 episode: epNum,
                 title: outline.title || `第${epNum}集`,
                 targetWords: wordsPerEp,
@@ -6713,8 +6715,9 @@ const MEMBERSHIP = {
     free: { name: '內測版', maxProjects: 999, icon: '🎉' }
 };
 
-// 🔧 调试开关：是否显示模型思考过程（默认关闭，避免干扰用户）
-window.SHOW_THINKING = window.SHOW_THINKING === true;
+// 🔧 调试开关：是否显示模型思考过程（默认开启，增强互动感）
+// 用户可在控制台设置：window.SHOW_THINKING = false 来关闭
+window.SHOW_THINKING = (window.SHOW_THINKING !== false);
 
 // 🔧 运行令牌：避免并发/旧请求结果串台
 window._RUN_TOKEN = window._RUN_TOKEN || 0;
@@ -15191,6 +15194,8 @@ const AGENT_NAMES = {
 // ==================== API调用（带状态显示 + 自动重试）====================
 async function callAgent(agentId, content, context = {}, retryCount = 0) {
     const MAX_RETRIES = 3;
+    // 🔧 绑定运行令牌：用于过滤“旧请求/并发请求”的思考过程与提示
+    const runToken = (context && context._runToken) ? context._runToken : window._RUN_TOKEN;
     const agentName = AGENT_NAMES[agentId] || agentId;
     
     // 显示调用状态
@@ -15254,8 +15259,8 @@ async function callAgent(agentId, content, context = {}, retryCount = 0) {
             updateAgentStatus(agentName, `完成 ✅ (${data.tokens.input + data.tokens.output} tokens)`);
         }
         
-        // 如果有思考过程（reasoner），默认不显示（避免干扰/串台错觉）
-        if ((data.reasoning || data.thinking) && window.SHOW_THINKING) {
+        // 🧠 如果有思考过程：显示（但必须属于当前运行令牌，避免串台瞎编）
+        if ((data.reasoning || data.thinking) && window.SHOW_THINKING && isActiveRun(runToken)) {
             showThinkingProcess(data.reasoning || data.thinking);
         }
         
