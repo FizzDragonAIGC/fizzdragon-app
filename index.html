@@ -4044,7 +4044,7 @@ function uploadScriptForAdapter() {
         scriptInput = document.createElement('input');
         scriptInput.type = 'file';
         scriptInput.id = 'adapterScriptInput';
-        scriptInput.accept = '.txt,.docx,.pdf';
+        scriptInput.accept = '.txt,.docx,.pdf,.xlsx,.xls,.csv';
         scriptInput.style.display = 'none';
         scriptInput.addEventListener('change', handleAdapterScriptUpload);
         document.body.appendChild(scriptInput);
@@ -4078,6 +4078,18 @@ async function handleAdapterScriptUpload(e) {
                 const content = await page.getTextContent();
                 text += content.items.map(item => item.str).join(' ') + '\n';
             }
+        } else if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
+            const arrayBuffer = await file.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            // 转为文本，每行用换行分隔
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            text = rows.map(row => row.join('\t')).join('\n');
+        } else {
+            removeTypingIndicator();
+            addAIMessage(`⚠️ 不支持的格式：.${ext}\n\n✅ 支持：.txt .docx .pdf .xlsx .xls .csv`);
+            return;
         }
         
         removeTypingIndicator();
