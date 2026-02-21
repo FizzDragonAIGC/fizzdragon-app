@@ -13207,6 +13207,17 @@ async function runProductionDesign() {
 async function runScriptWriting(chapterNum) {
     if (!checkNovelExists()) return;
     
+    // 🔧 调试：打印当前项目关键信息，帮助追踪数据污染
+    console.log('🔍 runScriptWriting 数据检查:', {
+        projectId: currentProjectId,
+        novelTitle: state.novelTitle,
+        novelPreview: state.novel?.substring(0, 50),
+        conceptGenre: state.assets?.concept?.genre,
+        conceptLogline: state.assets?.concept?.logline?.substring(0, 30),
+        charactersFirst: state.assets?.characters?.[0]?.name,
+        chapterTitle: state.assets?.chapters?.[chapterNum - 1]?.title
+    });
+    
     // 标记处理中
     if (currentProjectId) {
         activeProjects[currentProjectId] = true;
