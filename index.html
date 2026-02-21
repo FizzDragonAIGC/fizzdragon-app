@@ -14341,16 +14341,20 @@ async function runChaptersStep() {
         updateProgress(30);
         
         // 🔧 在prompt中明确要求集数
-        // 🔧 传递每集时长，控制内容量
+        // 🔧 传递每集时长+镜头密度，控制内容量
         const durationMin = state.production?.durationMin || 3;
+        const shotsPerMin = state.production?.shotsPerMin || 15;
         const wordsPerEp = durationMin * 300;  // 1分钟≈300字
+        const shotsPerEp = durationMin * shotsPerMin;  // 每集镜头数
         
         const promptWithEpisodes = `【重要製作規格】
 • 總集數：${targetEpisodes} 集
 • 每集時長：${durationMin} 分鐘
-• 每集字數：約 ${wordsPerEp} 字（嚴格控制！）
+• 鏡頭密度：${shotsPerMin} 鏡/分鐘
+• 每集鏡頭：約 ${shotsPerEp} 個
+• 每集字數：約 ${wordsPerEp} 字
 
-請按照以上規格規劃章節。每集內容要精簡，符合${durationMin}分鐘的時長限制。
+⚠️ 嚴格按照以上規格規劃！每集${durationMin}分鐘=${shotsPerEp}鏡頭，內容要精簡。
 
 故事素材：
 ${novelText.substring(0, 5000)}`;
@@ -14432,13 +14436,17 @@ async function continueChapterGeneration(startEp, targetEps) {
         
         const novelText = state.novel || JSON.stringify(state.assets?.concept || {});
         const durationMin = state.production?.durationMin || 3;
+        const shotsPerMin = state.production?.shotsPerMin || 15;
         const wordsPerEp = durationMin * 300;
+        const shotsPerEp = durationMin * shotsPerMin;
         
         const prompt = `【續寫章節】請生成第${startEp}集到第${endEp}集的章節規劃。
 
 【製作規格】
 • 每集時長：${durationMin} 分鐘
-• 每集字數：約 ${wordsPerEp} 字（嚴格控制！）
+• 鏡頭密度：${shotsPerMin} 鏡/分鐘
+• 每集鏡頭：約 ${shotsPerEp} 個
+• 每集字數：約 ${wordsPerEp} 字
 
 前情提要（已有章節）：
 ${existingSummary}
@@ -14446,7 +14454,7 @@ ${existingSummary}
 故事素材：
 ${novelText.substring(0, 3000)}
 
-請繼續規劃第${startEp}-${endEp}集，保持故事連貫性，每集內容精簡符合${durationMin}分鐘時長。`;
+請繼續規劃第${startEp}-${endEp}集，每集${durationMin}分鐘=${shotsPerEp}鏡頭，內容精簡。`;
         
         updateProgress(50);
         const result = await callAgent('narrative', prompt, context);
