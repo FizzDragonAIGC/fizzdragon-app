@@ -15035,9 +15035,17 @@ hr { border: none; border-top: 1px dashed #999; margin: 30px 0; }
 `;
     
     for (const [num, script] of Object.entries(scripts)) {
-        const chapter = state.assets.chapters[num - 1];
+        const chapter = state.assets.chapters?.[num - 1];
         wordContent += `<h2>第${num}集 ${chapter?.title || ''}</h2>\n`;
-        wordContent += `<div style="white-space: pre-wrap;">${escapeHtml(script)}</div>\n`;
+        
+        // 🔧 格式化剧本内容：换行符转<br>，识别场景/对话
+        let formattedScript = escapeHtml(script || '')
+            .replace(/\n\n/g, '</p><p>')  // 双换行 = 新段落
+            .replace(/\n/g, '<br>\n')      // 单换行 = <br>
+            .replace(/【([^】]+)】/g, '<div class="scene">【$1】</div>')  // 场景标记
+            .replace(/（([^）]+)）/g, '<span style="color:#888;">（$1）</span>');  // 动作描述
+        
+        wordContent += `<div style="line-height: 2;"><p>${formattedScript}</p></div>\n`;
         wordContent += `<hr>\n`;
     }
     
