@@ -4097,12 +4097,12 @@ async function handleAdapterScriptUpload(e) {
 • 字數：${wordCount.toLocaleString()} 字
 • 預估時長：${estimatedMinutes} 分鐘
 
-📝 **請告訴我目標格式**
-例如：「30集，每集3分鐘」或「50集2分鐘」`, [
-        { text: '30集×3分鐘', action: () => setAdapterTarget(30, 3) },
-        { text: '50集×2分鐘', action: () => setAdapterTarget(50, 2) },
-        { text: '20集×5分鐘', action: () => setAdapterTarget(20, 5) },
-        { text: '自定義...', action: () => askCustomAdapterTarget() }
+⬇️ **請選擇目標格式（點擊下方按鈕）** ⬇️`, [
+        { text: '80集×3分鐘 (短劇)', action: () => setAdapterTarget(80, 3) },
+        { text: '100集×3分鐘 (長篇)', action: () => setAdapterTarget(100, 3) },
+        { text: '50集×2分鐘 (快節奏)', action: () => setAdapterTarget(50, 2) },
+        { text: '30集×5分鐘 (精品)', action: () => setAdapterTarget(30, 5) },
+        { text: '📝 自定義集數/時長', action: () => askCustomAdapterTarget() }
     ]);
         
     } catch (err) {
@@ -6483,6 +6483,21 @@ function triggerAgentWithCheck(agentType) {
             break;
             
         case 'chapters':
+            // 🔧 格式重组模式：显示专用界面
+            if (state.adapterMode) {
+                addAIMessage(`✂️ **格式重組 - 設定目標**
+
+📝 當前劇本：${state.originalScriptTitle || '未命名'} (${(state.originalScript?.length || 0).toLocaleString()}字)
+
+請選擇目標格式：`, [
+                    { text: '80集×3分鐘', action: () => setAdapterTarget(80, 3) },
+                    { text: '100集×3分鐘', action: () => setAdapterTarget(100, 3) },
+                    { text: '50集×2分鐘', action: () => setAdapterTarget(50, 2) },
+                    { text: '自定義...', action: () => askCustomAdapterTarget() }
+                ]);
+                break;
+            }
+            
             // 提供上传或AI生成两种选择
             addAIMessage(`📝 **章節規劃**
 
