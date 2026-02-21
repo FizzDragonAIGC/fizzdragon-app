@@ -5212,6 +5212,230 @@ async function runStoryboardStepSilent(chapterNum) {
     state.assets.storyboards = state.assets.storyboards || {};
     // 兼容多种返回格式：shots / storyboard / 直接数组
     state.assets.storyboards[chapterNum] = parsed.shots || parsed.storyboard || (Array.isArray(parsed) ? parsed : []);
+}
+
+// ==================== 重寫章節系統 ====================
+
+// 请求重写某一章
+function requestRewriteChapter(chapterNum) {
+    const totalChapters = state.assets.chapters?.length || state.production?.episodes || 10;
+    const hasLaterChapters = chapterNum < totalChapters;
+    const laterChapterCount = totalChapters - chapterNum;
+    
+    addAIMessage(`🔄 **重寫第 ${chapterNum} 集劇本**
+
+請描述你的修改意見，例如：
+• 「不夠精彩，需要更多衝突」
+• 「對話太長，節奏太慢」
+• 「角色動機不清晰」
+• 「需要加入某個情節」
+
+${hasLaterChapters ? `⚠️ **注意**：重寫第${chapterNum}集可能影響後面 ${laterChapterCount} 集的連貫性。` : ''}
+
+請輸入修改意見：`);
+    
+    // 标记等待重写反馈
+    state.rewriteTarget = {
+        chapterNum,
+        totalChapters,
+        hasLaterChapters,
+        laterChapterCount
+    };
+}
+
+// 处理重写反馈
+async function handleRewriteFeedback(feedback) {
+    const target = state.rewriteTarget;
+    if (!target) return false;
+    
+    const { chapterNum, hasLaterChapters, laterChapterCount } = target;
+    
+    addUserMessage(feedback);
+    
+    if (hasLaterChapters) {
+        // 显示级联影响选项
+        addAIMessage(`📋 **選擇重寫範圍**
+
+您要重寫第 ${chapterNum} 集，後面還有 ${laterChapterCount} 集。
+
+請選擇：`, [
+            { text: `📝 只改第${chapterNum}集`, action: () => rewriteChapter(chapterNum, feedback, 'single') },
+            { text: `🔄 第${chapterNum}集+調整後續`, action: () => rewriteChapter(chapterNum, feedback, 'cascade') },
+            { text: `♻️ 從第${chapterNum}集開始全部重寫`, action: () => rewriteChapter(chapterNum, feedback, 'all') },
+            { text: '❌ 取消', action: () => { state.rewriteTarget = null; addAIMessage('已取消重寫。'); } }
+        ]);
+    } else {
+        // 最后一集，直接重写
+        await rewriteChapter(chapterNum, feedback, 'single');
+    }
+    
+    return true;
+}
+
+// 执行重写
+async function rewriteChapter(chapterNum, feedback, mode) {
+    state.rewriteTarget = null;
+    
+    const chapter = state.assets.chapters?.[chapterNum - 1];
+    const oldScript = state.assets.scripts?.[chapterNum] || '';
+    
+    addAIMessage(`🔄 **正在重寫第 ${chapterNum} 集...**\n\n模式：${
+        mode === 'single' ? '📝 單章修改' : 
+        mode === 'cascade' ? '🔄 級聯調整' : 
+        '♻️ 全部重寫'
+    }`);
+    
+    addTypingIndicator();
+    
+    try {
+        // 构建重写prompt
+        const prompt = `你是專業編劇。請根據用戶反饋重寫第${chapterNum}集劇本。
+
+【原劇本】
+${oldScript.substring(0, 3000)}
+
+【用戶反饋】
+${feedback}
+
+【章節信息】
+標題：${chapter?.title || ''}
+概要：${chapter?.summary || ''}
+
+【重寫要求】
+1. 針對用戶反饋進行改進
+2. 保持故事主線和角色性格不變
+3. 字數與原劇本相近
+4. 不要寫「下一集預告」
+
+直接輸出重寫後的劇本：`;
+        
+        const result = await callAgent('screenwriter', prompt);
+        
+        removeTypingIndicator();
+        
+        // 保存重写结果
+        state.assets.scripts[chapterNum] = result;
+        
+        // 清除对应的分镜（需要重新生成）
+        if (state.assets.storyboards?.[chapterNum]) {
+            delete state.assets.storyboards[chapterNum];
+        }
+        
+        saveProject(null, true);
+        updateAssetsPanel();
+        
+        if (mode === 'cascade' || mode === 'all') {
+            // 级联重写后续章节
+            const startChapter = chapterNum + 1;
+            const endChapter = state.assets.chapters?.length || state.production?.episodes || 10;
+            
+            addAIMessage(`✅ 第 ${chapterNum} 集重寫完成！
+
+${mode === 'all' ? '♻️ 正在重寫後續章節...' : '🔄 正在調整後續章節連貫性...'}`, [
+                { text: `▶️ 開始處理第${startChapter}-${endChapter}集`, action: () => cascadeRewrite(startChapter, endChapter, mode) }
+            ]);
+        } else {
+            addAIMessage(`✅ **第 ${chapterNum} 集重寫完成！**
+
+${result.substring(0, 300)}...
+
+⚠️ 分鏡已清除，需要重新生成。`, [
+                { text: '🎬 重新生成分鏡', action: () => runStoryboardStepSilent(chapterNum).then(() => addAIMessage('✅ 分鏡已重新生成！')) },
+                { text: '📝 查看完整劇本', action: () => showFullScript(chapterNum) }
+            ]);
+        }
+        
+    } catch (err) {
+        removeTypingIndicator();
+        addAIMessage(`❌ 重寫失敗: ${err.message}`, [
+            { text: '🔄 重試', action: () => rewriteChapter(chapterNum, feedback, mode) }
+        ]);
+    }
+}
+
+// 级联重写后续章节
+async function cascadeRewrite(startChapter, endChapter, mode) {
+    addTypingIndicator();
+    
+    for (let i = startChapter; i <= endChapter; i++) {
+        try {
+            // 获取前一章的内容作为上下文
+            const prevScript = state.assets.scripts?.[i - 1] || '';
+            const chapter = state.assets.chapters?.[i - 1];
+            
+            const prompt = mode === 'all' 
+                ? `你是專業編劇。請撰寫第${i}集劇本。
+
+【前一集結尾】
+${prevScript.slice(-1000)}
+
+【本集信息】
+標題：${chapter?.title || ''}
+概要：${chapter?.summary || ''}
+
+直接輸出劇本：`
+                : `你是專業編劇。前面的章節有修改，請調整第${i}集以保持連貫。
+
+【前一集結尾（已修改）】
+${prevScript.slice(-1000)}
+
+【當前劇本】
+${(state.assets.scripts?.[i] || '').substring(0, 2000)}
+
+【本集信息】
+標題：${chapter?.title || ''}
+
+請根據前一集的修改，調整本集開頭以保持連貫（其餘部分儘量保留）：`;
+            
+            const result = await callAgent('screenwriter', prompt);
+            state.assets.scripts[i] = result;
+            
+            // 清除分镜
+            if (state.assets.storyboards?.[i]) {
+                delete state.assets.storyboards[i];
+            }
+            
+            saveProject(null, true);
+            
+        } catch (err) {
+            console.error(`重写第${i}集失败:`, err);
+        }
+    }
+    
+    removeTypingIndicator();
+    updateAssetsPanel();
+    
+    addAIMessage(`✅ **批量重寫完成！**
+
+已處理第 ${startChapter} - ${endChapter} 集
+⚠️ 這些集的分鏡需要重新生成`, [
+        { text: '🎬 批量生成分鏡', action: () => batchRegenerateStoryboards(startChapter, endChapter) }
+    ]);
+}
+
+// 批量重新生成分镜
+async function batchRegenerateStoryboards(startChapter, endChapter) {
+    addAIMessage(`🎬 正在批量生成分鏡...`);
+    addTypingIndicator();
+    
+    for (let i = startChapter; i <= endChapter; i++) {
+        try {
+            await runStoryboardStepSilent(i);
+        } catch (err) {
+            console.error(`生成第${i}集分镜失败:`, err);
+        }
+    }
+    
+    removeTypingIndicator();
+    updateAssetsPanel();
+    addAIMessage(`✅ 分鏡生成完成！第${startChapter}-${endChapter}集已更新。`);
+}
+
+// 显示完整剧本
+function showFullScript(chapterNum) {
+    const script = state.assets.scripts?.[chapterNum] || '暫無劇本';
+    addAIMessage(`📝 **第 ${chapterNum} 集完整劇本**\n\n${script}`);
+}
     state.step = 6;
     saveProject(null, true);
     updateAssetsPanel();
@@ -14919,8 +15143,15 @@ function handleUserInput(text) {
         textLen: text.length,
         appMode: appMode,
         adStep: adState.step,
-        pendingRevision: !!window.pendingRevision
+        pendingRevision: !!window.pendingRevision,
+        rewriteTarget: !!state.rewriteTarget
     });
+    
+    // ==================== 重寫章節反饋 ====================
+    if (state.rewriteTarget) {
+        handleRewriteFeedback(text);
+        return;
+    }
     
     // ==================== Auto-Pilot 配置輸入 ====================
     if (state.waitingForEpisodeInput) {
