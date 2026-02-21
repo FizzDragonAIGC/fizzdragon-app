@@ -5434,8 +5434,9 @@ function generatePromptFromChinese(item, type) {
     const desc = item.description || item.atmosphere || item.usage || '';
     const time = item.time || '';
     
-    // 关键词翻译映射
+    // 关键词翻译映射（包含角色、服装、场景）
     const keywords = {
+        // 场景相关
         '昏暗': 'dim lighting',
         '明亮': 'bright lighting',
         '神秘': 'mysterious atmosphere',
@@ -5444,7 +5445,7 @@ function generatePromptFromChinese(item, type) {
         '古老': 'ancient',
         '现代': 'modern',
         '传统': 'traditional',
-        '西域': 'Western Regions Silk Road',
+        '西域': 'Western Regions Silk Road style',
         '茅草': 'thatched roof',
         '草棚': 'thatched hut',
         '木质': 'wooden',
@@ -5464,7 +5465,26 @@ function generatePromptFromChinese(item, type) {
         '瓷器': 'porcelain',
         '布帘': 'fabric curtain',
         '柜子': 'wooden cabinet',
-        '长凳': 'wooden bench'
+        '长凳': 'wooden bench',
+        // 角色/服装相关
+        '贵妇': 'noble lady elegant dress',
+        '女巫': 'mystical witch robes',
+        '巫师': 'wizard robes',
+        '少年': 'young boy traditional clothes',
+        '少女': 'young girl traditional dress',
+        '老妇': 'elderly woman traditional attire',
+        '胡人': 'Central Asian merchant exotic costume',
+        '虬须': 'curly beard rugged face',
+        '黑衣': 'black robes dark clothing',
+        '白衣': 'white robes light clothing',
+        '猴子': 'monkey-like agile figure',
+        '武士': 'warrior armor samurai',
+        '侠客': 'wandering swordsman wuxia',
+        '书生': 'scholar traditional hanfu',
+        '商人': 'merchant wealthy attire',
+        '仆人': 'servant simple clothes',
+        '占梦': 'dream divination mystical',
+        '童年': 'childhood young innocent'
     };
     
     // 提取匹配的英文关键词
@@ -6679,13 +6699,16 @@ function updateAssetsPanel() {
                             <div style="padding:8px;border-bottom:1px solid var(--border);">
                                 <div style="font-size:10px;color:var(--accent);margin-bottom:6px;">👔 服裝 (${costumeCount})</div>
                                 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;">
-                                    ${a.costumes.map((c, i) => `
+                                    ${a.costumes.map((c, i) => {
+                                        const desc = c.description || c.outfit || c.occasion || c.style || '';
+                                        const hasPrompt = c.ai_prompt || c.prompt;
+                                        return `
                                         <div class="production-card" onclick="showProductionDetail('costume', ${i})" style="background:var(--card);border-radius:6px;padding:8px;cursor:pointer;border:1px solid var(--border);">
                                             <div style="font-size:11px;font-weight:bold;color:var(--text);margin-bottom:4px;">${c.character || c.name || '服裝'}</div>
-                                            <div style="font-size:9px;color:var(--text2);line-height:1.3;">${(c.occasion || c.style || '').substring(0,20)}</div>
-                                            ${c.ai_prompt ? '<div style="font-size:8px;color:var(--accent);margin-top:4px;">✓ Prompt</div>' : ''}
+                                            <div style="font-size:9px;color:var(--text2);line-height:1.3;">${desc.substring(0,30)}${desc.length > 30 ? '...' : ''}</div>
+                                            ${hasPrompt ? '<div style="font-size:8px;color:var(--accent);margin-top:4px;">✓ Prompt</div>' : '<div style="font-size:8px;color:#888;margin-top:4px;">無Prompt</div>'}
                                         </div>
-                                    `).join('')}
+                                    `}).join('')}
                                 </div>
                             </div>
                         ` : ''}
