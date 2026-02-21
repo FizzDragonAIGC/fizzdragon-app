@@ -7588,24 +7588,24 @@ function showChapterStoryboard(num) {
         </div>`;
     } else {
         let shotsHtml = storyboard.slice(0, 15).map((shot, i) => `
-            <div class="shot-card" style="padding:10px;margin:6px 0;background:#1a1a1a;border-radius:6px;border-left:3px solid var(--accent);">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                    <span style="color:var(--accent);font-weight:bold;font-size:11px;">🎬 ${shot.shot_id || 'S'+(i+1)}</span>
-                    <span style="font-size:9px;color:#888;">${shot.shot_type || ''} | ${shot.camera || ''}</span>
+            <div class="shot-card" style="padding:6px 8px;margin:3px 0;background:#1a1a1a;border-radius:4px;border-left:2px solid var(--accent);font-size:10px;line-height:1.4;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="color:var(--accent);font-weight:bold;">🎬 ${shot.shot_id || 'S'+(i+1)}</span>
+                    <span style="color:#666;">${shot.shot_type || ''} | ${shot.camera || ''}</span>
                 </div>
-                <div style="font-size:12px;font-weight:500;margin-bottom:6px;">${shot.scene || shot.description || ''}</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10px;color:#aaa;">
-                    ${shot.time ? `<div>🕐 ${shot.time}</div>` : ''}
-                    ${shot.lighting ? `<div>💡 ${shot.lighting.substring(0,15)}</div>` : ''}
-                    ${shot.mood ? `<div>🎭 ${shot.mood.substring(0,15)}</div>` : ''}
-                    ${shot.movement ? `<div>🎥 ${shot.movement.substring(0,15)}</div>` : ''}
+                <div style="font-size:11px;font-weight:500;margin:2px 0;color:#eee;">${shot.scene || shot.description || ''}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;color:#999;">
+                    ${shot.time ? `<span>🕐${shot.time}</span>` : ''}
+                    ${shot.lighting ? `<span>💡${shot.lighting.substring(0,12)}</span>` : ''}
+                    ${shot.mood ? `<span>🎭${shot.mood.substring(0,12)}</span>` : ''}
+                    ${shot.movement ? `<span>🎥${shot.movement.substring(0,10)}</span>` : ''}
+                    ${(shot.characters || shot.character) ? `<span>👤${shot.characters || shot.character}</span>` : ''}
                 </div>
-                ${(shot.characters || shot.character) ? `<div style="font-size:10px;color:#ccc;margin-top:4px;">👤 ${shot.characters || shot.character}</div>` : ''}
-                ${shot.action ? `<div style="font-size:10px;color:#ccc;margin-top:2px;">🎬 ${shot.action.substring(0,50)}${shot.action.length > 50 ? '...' : ''}</div>` : ''}
-                ${shot.dialogue && shot.dialogue !== '-' ? `<div style="font-size:10px;color:#ffd700;margin-top:2px;font-style:italic;">"${shot.dialogue.substring(0,40)}${shot.dialogue.length > 40 ? '...' : ''}"</div>` : ''}
-                <div style="display:flex;gap:6px;margin-top:8px;">
-                    ${(shot.Image_Prompt || shot.image_prompt) ? `<button onclick="copyText('${(shot.Image_Prompt || shot.image_prompt).replace(/'/g, "\\'")}');this.textContent='✓'" style="flex:1;padding:4px;background:#333;border:1px solid #444;color:#ccc;border-radius:4px;cursor:pointer;font-size:9px;">🖼️ 複製圖片Prompt</button>` : ''}
-                    ${(shot.Video_Prompt || shot.video_prompt) ? `<button onclick="copyText('${(shot.Video_Prompt || shot.video_prompt).replace(/'/g, "\\'")}');this.textContent='✓'" style="flex:1;padding:4px;background:#333;border:1px solid #444;color:#ccc;border-radius:4px;cursor:pointer;font-size:9px;">🎬 複製視頻Prompt</button>` : ''}
+                ${shot.action ? `<div style="color:#bbb;margin-top:2px;">🎬 ${shot.action.substring(0,60)}${shot.action.length > 60 ? '...' : ''}</div>` : ''}
+                ${shot.dialogue && shot.dialogue !== '-' ? `<div style="color:#ffd700;font-style:italic;">"${shot.dialogue.substring(0,50)}${shot.dialogue.length > 50 ? '...' : ''}"</div>` : ''}
+                <div style="display:flex;gap:4px;margin-top:4px;">
+                    ${(shot.Image_Prompt || shot.image_prompt) ? `<button onclick="copyText('${(shot.Image_Prompt || shot.image_prompt).replace(/'/g, "\\'")}');this.textContent='✓'" style="flex:1;padding:2px 4px;background:#252525;border:1px solid #333;color:#888;border-radius:3px;cursor:pointer;font-size:8px;">🖼️ 圖片</button>` : ''}
+                    ${(shot.Video_Prompt || shot.video_prompt) ? `<button onclick="copyText('${(shot.Video_Prompt || shot.video_prompt).replace(/'/g, "\\'")}');this.textContent='✓'" style="flex:1;padding:2px 4px;background:#252525;border:1px solid #333;color:#888;border-radius:3px;cursor:pointer;font-size:8px;">🎬 視頻</button>` : ''}
                 </div>
             </div>
         `).join('');
