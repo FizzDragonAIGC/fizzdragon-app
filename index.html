@@ -16124,19 +16124,23 @@ function handleUserInput(text) {
     
     // ==================== 格式重組目標輸入 ====================
     if (state.waitingForAdapterTarget) {
-        state.waitingForAdapterTarget = false;
-        // 解析 "30集3分鐘" 或 "30 3" 或 "30集 3分鐘"
+        // 解析 "30集3分鐘" 或 "30 3" 或 "30集 3分鐘" 或 "100集3分钟"
         const nums = text.match(/\d+/g);
         if (nums && nums.length >= 2) {
             const episodes = parseInt(nums[0]);
             const minutes = parseInt(nums[1]);
             if (episodes >= 1 && episodes <= 200 && minutes >= 1 && minutes <= 30) {
+                state.waitingForAdapterTarget = false;  // ✅ 成功才清除状态
                 setAdapterTarget(episodes, minutes);
             } else {
-                addAIMessage('❌ 請輸入有效範圍：集數1-200，每集1-30分鐘');
+                // ⚠️ 保持状态，让用户重新输入
+                addAIMessage('❌ 請輸入有效範圍：集數1-200，每集1-30分鐘\n\n例如：「100集3分鐘」');
             }
+        } else if (nums && nums.length === 1) {
+            // 🔧 只输入了一个数字，提示需要时长
+            addAIMessage(`📝 收到 ${nums[0]} 集，請補充每集時長（分鐘）\n\n例如：「${nums[0]}集3分鐘」或直接輸入「3」表示3分鐘`);
         } else {
-            addAIMessage('❌ 格式錯誤，請輸入如「30集3分鐘」');
+            addAIMessage('❌ 格式錯誤，請輸入如「100集3分鐘」');
         }
         return;
     }
