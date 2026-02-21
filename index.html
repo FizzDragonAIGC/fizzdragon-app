@@ -12110,14 +12110,27 @@ function friendlyError(err, step) {
         };
     }
     
-    if (msg.includes('API') || msg.includes('401') || msg.includes('403')) {
+    if (msg.includes('401') || msg.includes('403') || msg.includes('Unauthorized') || msg.includes('authentication')) {
         return {
             title: '🔑 服務驗證問題',
             reason: 'API密鑰可能需要更新',
             solutions: [
                 '聯繫管理員檢查配置',
                 '稍後重試'
-            ]
+            ],
+            debug: msg
+        };
+    }
+    
+    if (msg.includes('API') && !msg.includes('401') && !msg.includes('403')) {
+        return {
+            title: '⚠️ API調用問題',
+            reason: msg,
+            solutions: [
+                '重試一次',
+                '如持續失敗，檢查輸入內容'
+            ],
+            debug: msg
         };
     }
     
@@ -12147,12 +12160,20 @@ function friendlyError(err, step) {
 function showFriendlyError(err, step, retryAction) {
     const info = friendlyError(err, step);
     
+    // 在控制台显示详细错误
+    console.error(`❌ ${step} 錯誤:`, err);
+    
+    let debugInfo = '';
+    if (info.debug) {
+        debugInfo = `\n\n<details><summary>🔍 詳細錯誤</summary>\n\n\`\`\`\n${info.debug}\n\`\`\`\n</details>`;
+    }
+    
     addAIMessage(`${info.title}
 
 **可能原因**: ${info.reason}
 
 **建議**:
-${info.solutions.map(s => `• ${s}`).join('\n')}`, [
+${info.solutions.map(s => `• ${s}`).join('\n')}${debugInfo}`, [
         { text: '🔄 重試', action: retryAction },
         { text: '💾 保存進度', action: () => saveProject() },
         { text: '🆘 求助小助手', action: () => callHelpAgent() }
@@ -14339,7 +14360,16 @@ async function callAgent(agentId, content, context = {}, retryCount = 0) {
         clearTimeout(timeoutId);
         
         if (!response.ok) {
-            throw new Error(`API錯誤: ${response.status}`);
+            // 获取详细错误信息
+            let errorDetail = '';
+            try {
+                const errorData = await response.json();
+                errorDetail = errorData.error || errorData.message || JSON.stringify(errorData);
+            } catch (e) {
+                errorDetail = await response.text().catch(() => '');
+            }
+            console.error(`API錯誤 ${response.status}:`, errorDetail);
+            throw new Error(`API ${response.status}: ${errorDetail || '未知錯誤'}`);
         }
         
         const data = await response.json();
