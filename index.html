@@ -5436,10 +5436,6 @@ function showFullScript(chapterNum) {
     const script = state.assets.scripts?.[chapterNum] || '暫無劇本';
     addAIMessage(`📝 **第 ${chapterNum} 集完整劇本**\n\n${script}`);
 }
-    state.step = 6;
-    saveProject(null, true);
-    updateAssetsPanel();
-}
 
 // 调整界面
 function showCharacterAdjustment() {
