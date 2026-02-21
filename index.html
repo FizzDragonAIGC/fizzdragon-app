@@ -5597,17 +5597,25 @@ async function runAutoPilotCore() {
             updateStep('ap-production', 'done', '⏭️ 6. 服化道（已有）');
         }
         
-        // 7. 剧本（剧本模式已有，跳过）
-        if (!hasScripts) {
-            updateStep('ap-script', 'running', '🔄 7. 劇本生成中...');
-            await runScriptStepSilent(1);
-            updateStep('ap-script', 'done', '✅ 7. 劇本生成完成');
+        // 7. 劇本：必須覆蓋所有章節（只生成第1集會導致Auto-Pilot卡住）
+        const totalChapters = state.assets?.chapters?.length || 1;
+        const existingScripts = Object.keys(state.assets?.scripts || {}).length;
+        
+        if (existingScripts < totalChapters) {
+            for (let i = 1; i <= totalChapters; i++) {
+                if (state.assets?.scripts?.[i]) {
+                    console.log(`⏭️ 第${i}集劇本已存在，跳過`);
+                    continue;
+                }
+                updateStep('ap-script', 'running', `🔄 7. 劇本生成中 (${i}/${totalChapters})...`);
+                await runScriptStepSilent(i);
+            }
+            updateStep('ap-script', 'done', `✅ 7. 劇本生成完成 (${totalChapters}集)`);
         } else {
             updateStep('ap-script', 'done', '⏭️ 7. 劇本（已有）');
         }
         
-        // 8. 分镜（循环生成所有章节）
-        const totalChapters = state.assets?.chapters?.length || 1;
+        // 8. 分鏡（循環生成所有章節）
         const existingStoryboards = Object.keys(state.assets?.storyboards || {}).length;
         
         if (existingStoryboards < totalChapters) {
