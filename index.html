@@ -12229,8 +12229,8 @@ async function callHelpAgent() {
         hasNovel: !!state.novel,
         novelLength: state.novel?.length || 0,
         hasConcept: !!state.concept,
-        hasChapters: !!state.chapters || !!writeState.outline,
-        chapterCount: (state.chapters?.chapters || state.chapters?.episodes || writeState.outline?.chapters || []).length,
+        hasChapters: !!state.chapters || !!writeState.outline || (state.assets?.chapters?.length > 0),
+        chapterCount: (state.chapters?.chapters || state.chapters?.episodes || writeState.outline?.chapters || state.assets?.chapters || []).length,
         hasCharacters: !!state.characters,
         characterCount: (state.characters?.characters || []).length,
         writtenChapters: writeState.chapters?.length || 0,
@@ -12268,7 +12268,8 @@ async function callHelpAgent() {
         fixes.push({ text: '📖 重新分析小說', action: () => runConceptStep() });
     }
     
-    if (diagnosis.hasConcept && !diagnosis.hasChapters && diagnosis.step >= 2) {
+    // 格式重组模式已有章节，跳过这个检查
+    if (diagnosis.hasConcept && !diagnosis.hasChapters && diagnosis.step >= 2 && !state.adapterMode) {
         issues.push('⚠️ 章節規劃未完成');
         fixes.push({ text: '📝 生成章節規劃', action: () => state.mode === 'write' ? generateOutline() : runChaptersStep() });
     }
