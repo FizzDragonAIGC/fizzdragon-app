@@ -7514,19 +7514,27 @@ function startNewProject() {
     state.novelTitle = '';
     state.step = 0;
     state.mode = null;
+    state.concept = null;  // 🔧 清空旧的concept引用
+    state.characters = null;
+    state.interview = null;
+    state.storyboard = null;
+    state.narrativeStyle = null;  // 🔧 清空风格选择
     writeState.idea = null;
+    writeState.interview = null;  // 🔧 清空访谈回答
     writeState.outline = null;
     writeState.chapters = [];
-    writeState.currentQuestion = null;
+    writeState.currentQuestion = -1;  // 🔧 重置问题索引
     
-    // 🔧 清空项目资产（这是漏掉的！）
+    // 🔧 清空项目资产
     state.assets = {
         concept: null,
         characters: [],
         chapters: [],
         costumes: null,
         scripts: {},
-        storyboards: {}
+        storyboards: {},
+        artstyle: null,
+        story: null
     };
     state.production = {
         episodes: 10,
@@ -8613,7 +8621,30 @@ function startWriteMode() {
 
 function doStartWriteMode() {
     state.mode = 'write';
+    
+    // 🔧 重置写作状态，避免旧数据污染
     writeState.currentQuestion = -1;
+    writeState.idea = null;
+    writeState.interview = {};
+    writeState.outline = null;
+    writeState.chapters = [];
+    state.narrativeStyle = null;
+    
+    // 🔧 清空项目资产（如果是新项目）
+    if (!currentProjectId) {
+        state.assets = {
+            concept: null,
+            characters: [],
+            chapters: [],
+            costumes: null,
+            scripts: {},
+            storyboards: {},
+            artstyle: null,
+            story: null
+        };
+        state.concept = null;
+        state.characters = null;
+    }
     
     addAIMessage(`${t('writeMode')}
 
