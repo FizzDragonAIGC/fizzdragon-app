@@ -1547,6 +1547,26 @@
             100% { opacity: 0; transform: translateY(-10px); }
         }
         
+        /* AI模式选择器 */
+        .ai-mode-select {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            padding: 6px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+        .ai-mode-select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .ai-mode-select.claude {
+            border-color: #B87333;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a1a10 100%);
+        }
+        
         /* 语言选择器 */
         .lang-select {
             background: var(--surface);
@@ -2718,6 +2738,11 @@
             </div>
             <!-- 右侧：系统区 -->
             <div class="header-system">
+                <!-- AI模式切换 -->
+                <select class="ai-mode-select" id="aiModeSelect" onchange="changeAIMode(this.value)" title="AI模式">
+                    <option value="deepseek">🚀 DeepSeek (快速)</option>
+                    <option value="claude">✨ Claude Opus (高級)</option>
+                </select>
                 <div class="status">
                     <div class="status-dot" id="statusDot"></div>
                     <span id="statusText">連接中...</span>
@@ -3249,6 +3274,58 @@ For example: "A Hong Kong minibus driver picks up strange passengers at midnight
 
 function t(key) {
     return i18n[currentLang]?.[key] || i18n['zh-TW'][key] || key;
+}
+
+// ==================== AI模式切换 ====================
+let currentAIMode = localStorage.getItem('aiMode') || 'deepseek';
+
+// 积分消耗配置
+const AI_MODE_COSTS = {
+    deepseek: { name: 'DeepSeek', costMultiplier: 1, perRequest: 1 },    // 1积分/请求
+    claude: { name: 'Claude Opus', costMultiplier: 10, perRequest: 10 }  // 10积分/请求
+};
+
+function changeAIMode(mode) {
+    currentAIMode = mode;
+    localStorage.setItem('aiMode', mode);
+    
+    const select = document.getElementById('aiModeSelect');
+    if (mode === 'claude') {
+        select.classList.add('claude');
+        addAIMessage(`✨ **已切換到 Claude Opus 模式**
+
+🎯 特點：
+• 更高品質的創作輸出
+• 更精準的風格把控
+• 每次請求消耗 **10 積分**
+
+適合：重要項目、精細創作`);
+    } else {
+        select.classList.remove('claude');
+        addAIMessage(`🚀 **已切換到 DeepSeek 模式**
+
+🎯 特點：
+• 快速生成
+• 性價比高
+• 每次請求消耗 **1 積分**
+
+適合：日常創作、快速測試`);
+    }
+}
+
+function getAIModeCost() {
+    return AI_MODE_COSTS[currentAIMode] || AI_MODE_COSTS.deepseek;
+}
+
+// 初始化AI模式
+function initAIMode() {
+    const select = document.getElementById('aiModeSelect');
+    if (select) {
+        select.value = currentAIMode;
+        if (currentAIMode === 'claude') {
+            select.classList.add('claude');
+        }
+    }
 }
 
 function changeLanguage(lang) {
@@ -8433,6 +8510,9 @@ async function init() {
     // 初始化用户
     initUser();
     
+    // 🆕 初始化AI模式
+    initAIMode();
+    
     // 🔧 立即显示本地项目（不等云端）
     renderProjectList();
     
@@ -13435,10 +13515,13 @@ async function callAgent(agentId, content, context = {}, retryCount = 0) {
     const timeoutId = setTimeout(() => controller.abort(), 180000);
     
     try {
+        // 🆕 根据AI模式选择provider
+        const provider = currentAIMode === 'claude' ? 'anthropic' : 'deepseek';
+        
         const response = await fetch(`${API_BASE}/agent/${agentId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content, ...context, useReasoner }),
+            body: JSON.stringify({ content, ...context, useReasoner, provider }),
             signal: controller.signal
         });
         
