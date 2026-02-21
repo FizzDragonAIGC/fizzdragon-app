@@ -4231,14 +4231,133 @@ ${episodes > 5 ? `\n...還有 ${episodes - 5} 集` : ''}
 
 function showChaptersDetail() {
     const chapters = state.assets.chapters || [];
-    let detail = chapters.map((ch, i) => 
-        `**第${ch.num}集: ${ch.title}**
-• 字數: ${ch.wordCount || '?'}
-• 斷點: ${ch.breakReason || '-'}
-• 鉤子: ${ch.outroHook || '-'}`
-    ).join('\n\n');
+    const isAdapterMode = state.adapterMode;
     
-    addAIMessage(`📋 **全部章節詳情**\n\n${detail}`);
+    let detail = chapters.map((ch, i) => {
+        if (isAdapterMode) {
+            // 格式重组模式：显示断点信息
+            return `**第${ch.num}集: ${ch.title}**
+├ 📏 字數: ${ch.wordCount || '?'}字
+├ ✂️ 斷點: ${ch.breakReason || '-'}
+└ 🪝 結尾鉤子: ${ch.outroHook || '-'}`;
+        } else {
+            // 传统模式：显示章节概要
+            return `**第${ch.num}集: ${ch.title}**
+${ch.summary || ch.description || '-'}`;
+        }
+    }).join('\n\n');
+    
+    if (isAdapterMode) {
+        addAIMessage(`✂️ **格式重組章節詳情**
+
+📌 **工作原理**：保留原文內容，只在斷點處切分
+🪝 **結尾鉤子**：每集結尾添加懸念，吸引觀眾繼續看
+
+${detail}`, [
+            { text: '🎬 生成全部分鏡', action: () => runStoryboardForAllChapters() },
+            { text: '✏️ 調整斷點', action: () => showAdjustBreakpoints() }
+        ]);
+    } else {
+        addAIMessage(`📋 **全部章節詳情**\n\n${detail}`);
+    }
+}
+
+// 显示调整断点界面
+function showAdjustBreakpoints() {
+    const chapters = state.assets.chapters || [];
+    
+    addAIMessage(`✏️ **調整斷點**
+
+目前有 ${chapters.length} 個斷點。如需調整，請告訴我：
+
+• 「第3集太短，合併到第2集」
+• 「第5集斷點不好，應該在XXX處切」
+• 「第7集結尾鉤子改成XXX」
+
+請輸入你的調整需求：`);
+    
+    state.waitingForBreakpointAdjust = true;
+}
+
+// 处理断点调整
+async function handleBreakpointAdjust(userInput) {
+    addTypingIndicator();
+    
+    try {
+        // 调用AI分析用户的调整需求
+        const response = await callAPI('format_adapter', {
+            novel: state.originalScript,
+            current_chapters: state.assets.chapters,
+            adjustment_request: userInput,
+            instruction: `用戶想調整斷點：「${userInput}」
+            
+目前的章節結構：
+${state.assets.chapters.map(c => `第${c.num}集: ${c.title} (${c.wordCount}字) - 斷點:${c.breakReason}`).join('\n')}
+
+請根據用戶需求調整，返回更新後的章節結構。`
+        });
+        
+        removeTypingIndicator();
+        
+        const result = safeJSONParse(response.result || response.response || response);
+        
+        if (result && result.episodes) {
+            // 更新章节
+            state.assets.chapters = result.episodes.map((ep, i) => ({
+                num: i + 1,
+                title: ep.title || `第${i+1}集`,
+                start: ep.start_position,
+                end: ep.end_position,
+                wordCount: ep.word_count,
+                breakReason: ep.break_reason,
+                outroHook: ep.outro_hook
+            }));
+            
+            // 重新提取每集内容
+            state.assets.scripts = {};
+            const scriptText = state.originalScript;
+            const avgWords = Math.round(scriptText.length / state.assets.chapters.length);
+            
+            result.episodes.forEach((ep, i) => {
+                const start = parseInt(ep.start_position?.replace(/[^0-9]/g, '') || (i * avgWords));
+                const end = parseInt(ep.end_position?.replace(/[^0-9]/g, '') || ((i+1) * avgWords));
+                let content = scriptText.substring(start, Math.min(end, scriptText.length));
+                
+                if (ep.outro_hook) {
+                    content += `\n\n【懸念】${ep.outro_hook}`;
+                }
+                
+                state.assets.scripts[i + 1] = content;
+            });
+            
+            saveProject(null, true);
+            updateAssetsPanel();
+            
+            addAIMessage(`✅ **斷點已調整！**
+
+更新後：${state.assets.chapters.length} 集
+
+${state.assets.chapters.slice(0, 5).map(c => 
+    `第${c.num}集: ${c.title} (${c.wordCount}字)`
+).join('\n')}
+${state.assets.chapters.length > 5 ? `...還有 ${state.assets.chapters.length - 5} 集` : ''}`, [
+                { text: '🎬 生成分鏡', action: () => runStoryboardForAllChapters() },
+                { text: '📝 查看詳情', action: () => showChaptersDetail() },
+                { text: '✏️ 繼續調整', action: () => showAdjustBreakpoints() }
+            ]);
+        } else {
+            addAIMessage(`⚠️ 無法解析調整結果，請重試或換個說法`, [
+                { text: '🔄 重試', action: () => showAdjustBreakpoints() }
+            ]);
+        }
+        
+    } catch (err) {
+        removeTypingIndicator();
+        console.error('斷點調整失敗:', err);
+        addAIMessage(`❌ 調整失敗: ${err.message}`, [
+            { text: '🔄 重試', action: () => showAdjustBreakpoints() }
+        ]);
+    }
 }
 
 // ==================== 导入剧本模式 ====================
@@ -15663,6 +15782,13 @@ function handleUserInput(text) {
         } else {
             addAIMessage('❌ 格式錯誤，請輸入如「30集3分鐘」');
         }
+        return;
+    }
+    
+    // ==================== 斷點調整輸入 ====================
+    if (state.waitingForBreakpointAdjust) {
+        state.waitingForBreakpointAdjust = false;
+        handleBreakpointAdjust(text);
         return;
     }
     
