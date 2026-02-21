@@ -14316,9 +14316,14 @@ async function runChaptersStep() {
     addProgressCard('生成章節規劃', 0);
     
     try {
+        // 🔧 获取目标集数（用户设置 > 默认10集）
+        const targetEpisodes = state.production?.episodes || 10;
+        
         const context = {
             concept: state.concept || state.assets?.concept,
-            interview: state.interview || writeState.interview
+            interview: state.interview || writeState.interview,
+            targetEpisodes: targetEpisodes,  // 🔧 传递目标集数！
+            production: state.production     // 传递完整制作参数
         };
         
         // 🔧 修复Bug#3: 防止null.substring()错误，增加更多fallback
@@ -14331,9 +14336,13 @@ async function runChaptersStep() {
         // 🔧 调试：确保使用正确的项目内容
         console.log('📝 runChaptersStep - novelText前100字:', novelText.substring(0, 100));
         console.log('📝 runChaptersStep - 当前项目:', state.novelTitle, currentProjectId);
+        console.log('📝 runChaptersStep - 目标集数:', targetEpisodes);
         
         updateProgress(30);
-        const result = await callAgent('narrative', novelText.substring(0, 5000), context);
+        
+        // 🔧 在prompt中明确要求集数
+        const promptWithEpisodes = `【重要】請規劃 ${targetEpisodes} 集的章節結構。\n\n${novelText.substring(0, 5000)}`;
+        const result = await callAgent('narrative', promptWithEpisodes, context);
         updateProgress(100);
         
         state.chapters = safeJSONParse(result, 'chapters');
@@ -14342,6 +14351,7 @@ async function runChaptersStep() {
         removeProgressCard();
         
         const eps = state.chapters.chapters || state.chapters.episodes || [];
+        const targetEps = state.production?.episodes || 10;
         
         // 🔧 保存到assets（不覆盖已有角色）
         state.assets.chapters = eps;
@@ -14349,23 +14359,126 @@ async function runChaptersStep() {
         updateAssetsPanel();
         updateAgentToolbar();
         
-        // 🔧 不自动继续，让用户选择
+        // 🔧 检查是否达到目标集数
         const hasChars = (state.assets.characters?.length || 0) > 0;
-        addAIMessage(`📝 **章節規劃完成！** 共 ${eps.length} 集
+        
+        if (eps.length < targetEps) {
+            // ⚠️ 集数不够，提示用户
+            addAIMessage(`⚠️ **章節規劃完成，但集數不足**
+
+目標：${targetEps} 集
+實際：${eps.length} 集
+
+${eps.slice(0, 3).map((ep, i) => `• 第${i+1}集: ${ep.title || ep.name || '未命名'}`).join('\n')}
+${eps.length > 3 ? `• ...還有 ${eps.length - 3} 集` : ''}
+
+可能原因：AI單次輸出有長度限制，長篇需要分批生成。`, [
+                { text: '📝 繼續生成剩餘章節', action: () => continueChapterGeneration(eps.length + 1, targetEps) },
+                { text: '✅ 先用這些章節', action: () => showChapterComplete(eps) },
+                { text: '🔄 重新規劃', action: () => runChaptersStep() }
+            ]);
+        } else {
+            // ✅ 集数达标
+            addAIMessage(`📝 **章節規劃完成！** 共 ${eps.length} 集
 
 ${eps.slice(0, 3).map((ep, i) => `• 第${i+1}集: ${ep.title || ep.name || '未命名'}`).join('\n')}
 ${eps.length > 3 ? `• ...還有 ${eps.length - 3} 集` : ''}`, [
-            hasChars 
-                ? { text: '✍️ 開始寫劇本', action: () => triggerAgentWithCheck('script') }
-                : { text: '👤 設計角色', action: () => triggerAgentWithCheck('character') },
-            { text: '👗 服化道設計', action: () => triggerAgentWithCheck('production') }
-        ]);
+                hasChars 
+                    ? { text: '✍️ 開始寫劇本', action: () => triggerAgentWithCheck('script') }
+                    : { text: '👤 設計角色', action: () => triggerAgentWithCheck('character') },
+                { text: '👗 服化道設計', action: () => triggerAgentWithCheck('production') }
+            ]);
+        }
         
     } catch (err) {
         removeProgressCard();
         recordError(err, '章節規劃');
         showFriendlyError(err, '章節規劃', () => runChaptersStep());
     }
+}
+
+// 🔧 分批生成章节（处理100+集长篇）
+async function continueChapterGeneration(startEp, targetEps) {
+    const batchSize = 20;  // 每批生成20集
+    const endEp = Math.min(startEp + batchSize - 1, targetEps);
+    
+    addProgressCard(`生成第${startEp}-${endEp}集章節`, 0);
+    
+    try {
+        const existingChapters = state.assets.chapters || [];
+        const existingSummary = existingChapters.slice(-3).map(ep => 
+            `第${ep.number || existingChapters.indexOf(ep)+1}集: ${ep.title} - ${ep.summary?.substring(0, 50) || ''}`
+        ).join('\n');
+        
+        const context = {
+            concept: state.concept || state.assets?.concept,
+            existingChapters: existingSummary,
+            startEpisode: startEp,
+            endEpisode: endEp,
+            totalEpisodes: targetEps
+        };
+        
+        const novelText = state.novel || JSON.stringify(state.assets?.concept || {});
+        const prompt = `【續寫章節】請生成第${startEp}集到第${endEp}集的章節規劃。
+
+前情提要（已有章節）：
+${existingSummary}
+
+故事素材：
+${novelText.substring(0, 3000)}
+
+請繼續規劃第${startEp}-${endEp}集，保持故事連貫性。`;
+        
+        updateProgress(50);
+        const result = await callAgent('narrative', prompt, context);
+        updateProgress(100);
+        
+        const newChapters = safeJSONParse(result, 'chapters');
+        const newEps = newChapters.chapters || newChapters.episodes || [];
+        
+        // 合并新旧章节
+        state.assets.chapters = [...existingChapters, ...newEps];
+        saveProject();
+        updateAssetsPanel();
+        
+        removeProgressCard();
+        
+        const totalNow = state.assets.chapters.length;
+        
+        if (totalNow < targetEps) {
+            addAIMessage(`📝 **已生成 ${totalNow}/${targetEps} 集**
+
+新增：${newEps.length} 集
+剩餘：${targetEps - totalNow} 集`, [
+                { text: `📝 繼續生成 (${totalNow+1}-${Math.min(totalNow+batchSize, targetEps)}集)`, action: () => continueChapterGeneration(totalNow + 1, targetEps) },
+                { text: '✅ 先用這些章節', action: () => showChapterComplete(state.assets.chapters) }
+            ]);
+        } else {
+            addAIMessage(`✅ **全部 ${totalNow} 集章節規劃完成！**`, [
+                { text: '👤 設計角色', action: () => triggerAgentWithCheck('character') },
+                { text: '✍️ 開始寫劇本', action: () => triggerAgentWithCheck('script') }
+            ]);
+        }
+        
+    } catch (err) {
+        removeProgressCard();
+        recordError(err, '續寫章節');
+        showFriendlyError(err, '續寫章節', () => continueChapterGeneration(startEp, targetEps));
+    }
+}
+
+// 🔧 显示章节完成状态
+function showChapterComplete(eps) {
+    const hasChars = (state.assets.characters?.length || 0) > 0;
+    addAIMessage(`📝 **使用現有 ${eps.length} 集章節**
+
+${eps.slice(0, 5).map((ep, i) => `• 第${i+1}集: ${ep.title || ep.name || '未命名'}`).join('\n')}
+${eps.length > 5 ? `• ...還有 ${eps.length - 5} 集` : ''}`, [
+        hasChars 
+            ? { text: '✍️ 開始寫劇本', action: () => triggerAgentWithCheck('script') }
+            : { text: '👤 設計角色', action: () => triggerAgentWithCheck('character') },
+        { text: '👗 服化道設計', action: () => triggerAgentWithCheck('production') }
+    ]);
 }
 
 async function runCharacterStep() {
