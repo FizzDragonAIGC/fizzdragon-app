@@ -4117,12 +4117,9 @@ async function handleAdapterScriptUpload(e) {
 • 字數：${wordCount.toLocaleString()} 字
 • 預估時長：${estimatedMinutes} 分鐘
 
-⬇️ **請選擇目標格式（點擊下方按鈕）** ⬇️`, [
-        { text: '80集×3分鐘 (短劇)', action: () => setAdapterTarget(80, 3) },
-        { text: '100集×3分鐘 (長篇)', action: () => setAdapterTarget(100, 3) },
-        { text: '50集×2分鐘 (快節奏)', action: () => setAdapterTarget(50, 2) },
-        { text: '30集×5分鐘 (精品)', action: () => setAdapterTarget(30, 5) },
-        { text: '📝 自定義集數/時長', action: () => askCustomAdapterTarget() }
+**請選擇改編模式：**`, [
+        { text: '📋 只切分（保持原時長）', action: () => showSliceOptions(estimatedMinutes) },
+        { text: '✍️ 擴寫改編（擴大時長）', action: () => showExpandOptions(estimatedMinutes) }
     ]);
         
     } catch (err) {
@@ -4132,6 +4129,67 @@ async function handleAdapterScriptUpload(e) {
             { text: '🔄 重試', action: () => uploadScriptForAdapter() }
         ]);
     }
+}
+
+// 📋 切分模式选项（保持原时长）
+function showSliceOptions(originalMinutes) {
+    state.adapterExpandMode = false;
+    
+    // 根据原时长推荐切分方案
+    const options = [];
+    if (originalMinutes >= 60) {
+        options.push({ text: `${Math.round(originalMinutes/3)}集×3分鐘`, eps: Math.round(originalMinutes/3), min: 3 });
+        options.push({ text: `${Math.round(originalMinutes/2)}集×2分鐘`, eps: Math.round(originalMinutes/2), min: 2 });
+    }
+    if (originalMinutes >= 30) {
+        options.push({ text: `${Math.round(originalMinutes/5)}集×5分鐘`, eps: Math.round(originalMinutes/5), min: 5 });
+    }
+    options.push({ text: `${originalMinutes}集×1分鐘`, eps: originalMinutes, min: 1 });
+    
+    addAIMessage(`📋 **切分模式**
+原片 ${originalMinutes} 分鐘 → 切成短劇（總時長不變）
+
+選擇目標格式：`, options.slice(0, 4).map(o => ({
+        text: o.text,
+        action: () => setAdapterTarget(o.eps, o.min)
+    })).concat([
+        { text: '📝 自定義', action: () => askCustomAdapterTarget() },
+        { text: '↩️ 返回', action: () => uploadScriptForAdapter() }
+    ]));
+}
+
+// ✍️ 扩写模式选项（扩大时长）
+function showExpandOptions(originalMinutes) {
+    state.adapterExpandMode = true;
+    
+    // 扩写建议：原时长的2-4倍
+    const expand2x = originalMinutes * 2;
+    const expand3x = originalMinutes * 3;
+    
+    addAIMessage(`✍️ **擴寫改編模式**
+原片 ${originalMinutes} 分鐘 → 擴寫成更長的短劇
+
+⚠️ 這個模式會消耗較多API（每集都需要AI擴寫）
+
+選擇目標時長：`, [
+        { text: `${Math.round(expand2x/3)}集×3分鐘 (${expand2x}分鐘, 2倍)`, action: () => setAdapterTargetExpand(Math.round(expand2x/3), 3) },
+        { text: `${Math.round(expand3x/3)}集×3分鐘 (${expand3x}分鐘, 3倍)`, action: () => setAdapterTargetExpand(Math.round(expand3x/3), 3) },
+        { text: `${Math.round(expand2x/2)}集×2分鐘 (${expand2x}分鐘, 2倍)`, action: () => setAdapterTargetExpand(Math.round(expand2x/2), 2) },
+        { text: '📝 自定義', action: () => askCustomExpandTarget() },
+        { text: '↩️ 返回', action: () => uploadScriptForAdapter() }
+    ]);
+}
+
+// 自定义扩写目标
+function askCustomExpandTarget() {
+    addAIMessage(`📝 請輸入擴寫目標
+
+格式：集數 + 每集分鐘
+例如：「100集3分鐘」表示擴寫成100集，每集3分鐘
+
+直接在下方輸入框打字即可 👇`);
+    state.waitingForAdapterTarget = true;
+    state.adapterExpandMode = true;
 }
 
 function askCustomAdapterTarget() {
@@ -4145,26 +4203,160 @@ function askCustomAdapterTarget() {
 }
 
 async function setAdapterTarget(episodes, minutes) {
-    addUserMessage(`${episodes}集 × ${minutes}分鐘`);
+    addUserMessage(`${episodes}集 × ${minutes}分鐘 (切分模式)`);
     
     const wordCount = state.originalScript?.length || 0;
     const targetWordsPerEp = minutes * 300;
     const totalTargetWords = episodes * targetWordsPerEp;
     
-    // 检查是否合理
+    // 切分模式：检查是否超过原文
     if (totalTargetWords > wordCount * 1.2) {
         addAIMessage(`⚠️ 目標總字數(${totalTargetWords.toLocaleString()})超過原劇本(${wordCount.toLocaleString()})
-        
-建議調整：
+
+切分模式不會增加內容，建議：
 • 減少集數
-• 增加每集時長`, [
-            { text: '繼續使用', action: () => runFormatAdapter(episodes, minutes) },
+• 或選擇「擴寫改編」模式`, [
+            { text: '繼續切分', action: () => runFormatAdapter(episodes, minutes) },
+            { text: '✍️ 改用擴寫模式', action: () => setAdapterTargetExpand(episodes, minutes) },
             { text: '重新設定', action: () => askCustomAdapterTarget() }
         ]);
         return;
     }
     
     await runFormatAdapter(episodes, minutes);
+}
+
+// ✍️ 扩写模式
+async function setAdapterTargetExpand(episodes, minutes) {
+    addUserMessage(`${episodes}集 × ${minutes}分鐘 (擴寫模式)`);
+    state.adapterExpandMode = true;
+    
+    const wordCount = state.originalScript?.length || 0;
+    const targetWordsPerEp = minutes * 300;
+    const totalTargetWords = episodes * targetWordsPerEp;
+    const expandRatio = (totalTargetWords / wordCount).toFixed(1);
+    
+    addAIMessage(`✍️ **擴寫改編確認**
+
+📊 原劇本：${wordCount.toLocaleString()} 字
+📊 目標：${episodes}集 × ${minutes}分鐘 = ${totalTargetWords.toLocaleString()} 字
+📊 擴寫比例：${expandRatio}倍
+
+⚠️ 擴寫流程：
+1. 先切分原劇本為${episodes}集大綱
+2. 每集調用AI擴寫（需要${episodes}次API）
+3. 預計耗時：${Math.ceil(episodes * 0.5)}分鐘
+
+確認開始？`, [
+        { text: '✅ 開始擴寫', action: () => runExpandAdapter(episodes, minutes) },
+        { text: '📋 改用切分模式', action: () => setAdapterTarget(episodes, minutes) },
+        { text: '↩️ 重新設定', action: () => showExpandOptions(Math.round(wordCount / 300)) }
+    ]);
+}
+
+// ✍️ 扩写改编执行
+async function runExpandAdapter(episodes, minutes) {
+    addTypingIndicator();
+    
+    const wordCount = state.originalScript?.length || 0;
+    const wordsPerEp = minutes * 300;
+    
+    try {
+        // Step 1: 先用format_adapter切分为大纲
+        addAIMessage(`📝 **第1步：生成${episodes}集大綱...**`);
+        
+        const outlineResponse = await callAgent('format_adapter', state.originalScript, {
+            target_episodes: episodes,
+            episode_duration: minutes,
+            mode: 'outline_only',
+            instruction: `將劇本切分為${episodes}集大綱（每集${minutes}分鐘），只需要標題和內容摘要，不需要完整內容。`
+        });
+        
+        const outlineResult = safeJSONParse(outlineResponse.result || outlineResponse);
+        const outlines = outlineResult.episodes || outlineResult.chapters || [];
+        
+        if (outlines.length === 0) {
+            throw new Error('大綱生成失敗');
+        }
+        
+        removeTypingIndicator();
+        addAIMessage(`✅ 大綱完成：${outlines.length}集
+
+📝 **第2步：逐集擴寫中...**
+這需要一些時間，請耐心等待。`);
+        
+        // Step 2: 逐集扩写
+        state.assets.chapters = [];
+        state.assets.scripts = {};
+        
+        for (let i = 0; i < outlines.length; i++) {
+            const outline = outlines[i];
+            const epNum = i + 1;
+            
+            // 显示进度
+            addProgressCard(`擴寫第${epNum}/${outlines.length}集`, Math.round((i / outlines.length) * 100));
+            
+            // 获取原剧本对应段落
+            const avgLen = Math.round(wordCount / outlines.length);
+            const originalContent = state.originalScript.substring(i * avgLen, (i + 1) * avgLen);
+            
+            // 调用screenwriter扩写
+            const expandResult = await callAgent('screenwriter', `原內容（${originalContent.length}字）：
+${originalContent.substring(0, 2000)}
+
+請擴寫為${wordsPerEp}字的完整劇本。保持風格一致，增加：
+- 更多對話細節
+- 場景描寫
+- 角色動作和表情
+- 氛圍渲染`, {
+                episode: epNum,
+                title: outline.title || `第${epNum}集`,
+                targetWords: wordsPerEp,
+                originalSummary: outline.summary || outline.content
+            });
+            
+            // 保存结果
+            state.assets.chapters.push({
+                num: epNum,
+                title: outline.title || `第${epNum}集`,
+                summary: outline.summary || '',
+                wordCount: wordsPerEp
+            });
+            
+            state.assets.scripts[epNum] = expandResult.result || expandResult;
+            
+            removeProgressCard();
+            
+            // 每5集显示一次进度
+            if (epNum % 5 === 0 || epNum === outlines.length) {
+                addAIMessage(`✅ 已完成 ${epNum}/${outlines.length} 集`);
+            }
+        }
+        
+        state.step = 5;
+        saveProject(null, true);
+        updateAssetsPanel();
+        
+        addAIMessage(`🎉 **擴寫完成！**
+
+📊 原劇本：${wordCount.toLocaleString()} 字
+📊 擴寫後：${(outlines.length * wordsPerEp).toLocaleString()} 字 (${outlines.length}集)
+📊 擴寫比例：${((outlines.length * wordsPerEp) / wordCount).toFixed(1)}倍
+
+下一步：生成分鏡表`, [
+            { text: '🎬 生成全部分鏡', action: () => runStoryboardForAllChapters() },
+            { text: '🎬 生成第1集分鏡', action: () => runStoryboardStepSilent(1) },
+            { text: '📝 查看劇本', action: () => showChaptersDetail() }
+        ]);
+        
+    } catch (err) {
+        removeTypingIndicator();
+        removeProgressCard();
+        console.error('擴寫失敗:', err);
+        addAIMessage(`❌ 擴寫失敗: ${err.message}`, [
+            { text: '🔄 重試', action: () => runExpandAdapter(episodes, minutes) }
+        ]);
+    }
 }
 
 async function runFormatAdapter(episodes, minutes) {
@@ -16198,7 +16390,12 @@ function handleUserInput(text) {
             const minutes = parseInt(nums[1]);
             if (episodes >= 1 && episodes <= 200 && minutes >= 1 && minutes <= 30) {
                 state.waitingForAdapterTarget = false;  // ✅ 成功才清除状态
-                setAdapterTarget(episodes, minutes);
+                // 🔧 根据模式调用不同函数
+                if (state.adapterExpandMode) {
+                    setAdapterTargetExpand(episodes, minutes);
+                } else {
+                    setAdapterTarget(episodes, minutes);
+                }
             } else {
                 // ⚠️ 保持状态，让用户重新输入
                 addAIMessage('❌ 請輸入有效範圍：集數1-200，每集1-30分鐘\n\n例如：「100集3分鐘」');
