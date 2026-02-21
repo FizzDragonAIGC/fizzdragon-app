@@ -10591,6 +10591,10 @@ function showToast(message, duration = 3000) {
     setTimeout(() => toast.remove(), duration);
 }
 
+// 用于存储每条消息的按钮action
+window._messageReplies = window._messageReplies || {};
+let _messageReplyId = 0;
+
 function addAIMessage(text, quickReplies = []) {
     const container = document.getElementById('chatContainer');
     const msg = document.createElement('div');
@@ -10599,11 +10603,15 @@ function addAIMessage(text, quickReplies = []) {
     let html = `<div class="role">🎬 AIGC番劇助手</div><div class="content">${formatMessage(text)}</div>`;
     
     if (quickReplies.length > 0) {
+        const msgId = ++_messageReplyId;
+        window._messageReplies[msgId] = quickReplies;
+        
         html += '<div class="quick-replies">';
         quickReplies.forEach((r, i) => {
-            html += `<button class="quick-reply" onclick="handleQuickReply(${i})">${r.text}</button>`;
+            html += `<button class="quick-reply" onclick="handleQuickReplyById(${msgId}, ${i})">${r.text}</button>`;
         });
         html += '</div>';
+        // 兼容旧代码
         window._quickReplies = quickReplies;
     }
     
@@ -11413,6 +11421,30 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==================== 快捷回复 ====================
+// 🔧 新版：根据消息ID获取正确的action
+function handleQuickReplyById(msgId, index) {
+    const replies = window._messageReplies?.[msgId];
+    if (replies && replies[index]) {
+        const reply = replies[index];
+        
+        // 重置滚动锁定，允许自动滚动
+        userScrolledUp = false;
+        scrollLockUntil = 0;
+        
+        if (reply.action) {
+            reply.action();
+            // 强制滚动到底部
+            setTimeout(() => scrollToBottom(true), 200);
+        } else if (reply.text) {
+            document.getElementById('userInput').value = reply.text;
+            sendMessage();
+        }
+    } else {
+        console.warn('⚠️ handleQuickReplyById: 找不到按钮action', { msgId, index });
+    }
+}
+
+// 兼容旧版
 function handleQuickReply(index) {
     if (window._quickReplies && window._quickReplies[index]) {
         const reply = window._quickReplies[index];
