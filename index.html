@@ -3555,7 +3555,7 @@ async function handleFastTrackScript(e) {
         updateURLForProject(currentProjectId);  // 🔗 更新URL
         text = cleanScriptText(text);  // 🧹 清洗水印/页眉页脚
         state.novel = text;
-        state.novelTitle = file.name.replace(/\.[^.]+$/, '');
+        state.novelTitle = extractProjectTitle(file.name) || file.name.replace(/\.[^.]+$/, '');
         state.mode = 'fasttrack';
         updateAgentToolbar();  // 显示智能体工具栏
         
@@ -4127,7 +4127,9 @@ async function handleAdapterScriptUpload(e) {
         state.mode = 'adapter';  // 🔧 设置模式，防止跳回欢迎语
         state.step = 1;          // 🔧 设置步骤
         state.originalScript = text;
-        state.originalScriptTitle = file.name.replace(/\.[^/.]+$/, '');
+        state.originalScriptTitle = extractProjectTitle(file.name) || file.name.replace(/\.[^/.]+$/, '');
+        // 同步项目名（用于侧边栏/导出/标题）
+        state.novelTitle = state.originalScriptTitle;
         
         const wordCount = text.length;
         const estimatedMinutes = Math.round(wordCount / 300);
@@ -6587,6 +6589,23 @@ function cleanScriptMarkdown(text) {
 
 // ==================== JSON解析（带自动修复）====================
 // 🧹 清洗剧本文本：去除PDF水印、页眉页脚、格式化问题
+// 🏷️ 从文件名/标题中提取项目名（优先取《》内）
+function extractProjectTitle(raw) {
+    if (!raw) return '';
+    let s = String(raw).trim();
+    // 去扩展名
+    s = s.replace(/\.[a-z0-9]+$/i, '');
+    // 优先取《书名》
+    const m = s.match(/《([^》]{1,50})》/);
+    if (m) return m[1].trim();
+    // 去常见前缀日期/编号
+    s = s.replace(/^\d{6,8}[-_\s]*/,'');
+    // 去常见后缀
+    s = s.replace(/\(.*?\)|（.*?）/g,'').trim();
+    // 只保留前30字
+    return s.substring(0, 30).trim();
+}
+
 function cleanScriptText(text) {
     if (!text) return text;
     
