@@ -4291,6 +4291,11 @@ async function runExpandAdapter(episodes, minutes) {
     const wordsPerEp = minutes * 300;
     
     try {
+        // 🔧 确保已有项目ID，避免生成过程中“看得到但没落盘”
+        if (!currentProjectId) {
+            const defaultName = state.novelTitle || state.originalScriptTitle || '未命名項目';
+            saveProject(defaultName, true);
+        }
         // Step 1: 生成大纲
         if (!isActiveRun(runToken)) return;
         addAIMessage(`📝 **第1步：生成${episodes}集大綱...**`);
