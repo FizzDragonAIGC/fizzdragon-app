@@ -4316,8 +4316,34 @@ async function runExpandAdapter(episodes, minutes) {
 請直接輸出JSON：{"chapters":[...]}`
             });
             
-            const batchResult = safeJSONParse(batchResponse.result || batchResponse);
-            const batchOutlines = batchResult.chapters || batchResult.episodes || [];
+            // 🔧 调试批次响应
+            console.log(`📝 批次${batch + 1}原始响应:`, batchResponse);
+            
+            // 尝试多种方式解析
+            let batchResult = {};
+            if (typeof batchResponse === 'string') {
+                batchResult = safeJSONParse(batchResponse);
+            } else if (batchResponse?.result) {
+                batchResult = safeJSONParse(batchResponse.result);
+            } else {
+                batchResult = batchResponse || {};
+            }
+            
+            console.log(`📝 批次${batch + 1}解析后:`, batchResult);
+            
+            let batchOutlines = batchResult.chapters || batchResult.episodes || [];
+            
+            // 🔧 如果解析失败，生成占位大纲
+            if (batchOutlines.length === 0) {
+                console.warn(`⚠️ 批次${batch + 1}解析失败，生成占位大纲`);
+                for (let j = startEp; j <= endEp; j++) {
+                    batchOutlines.push({
+                        number: j,
+                        title: `第${j}集`,
+                        summary: `基於原劇本第${Math.round((j-1) * wordCount / episodes)}-${Math.round(j * wordCount / episodes)}字的內容`
+                    });
+                }
+            }
             
             // 重新编号
             batchOutlines.forEach((o, i) => {
