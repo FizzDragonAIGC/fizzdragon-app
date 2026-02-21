@@ -4607,6 +4607,21 @@ async function runAutoPilotCore() {
         return;
     }
     
+    // 🔧 强制清空旧的生成结果，确保从头开始
+    console.log('🧹 清空旧数据，准备重新生成...');
+    state.assets.concept = null;
+    state.assets.characters = [];
+    state.assets.chapters = [];
+    state.assets.costumes = null;
+    state.assets.scripts = {};
+    state.assets.storyboards = {};
+    state.assets.artstyle = null;
+    state.assets.interview = null;
+    state.concept = null;
+    state.characters = null;
+    state.interview = null;
+    state.storyboard = null;
+    
     // 标记项目正在运行
     console.log('🚀 Auto-Pilot开始，项目ID:', currentProjectId);
     if (currentProjectId) {
