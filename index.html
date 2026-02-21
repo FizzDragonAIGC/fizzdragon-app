@@ -6551,7 +6551,7 @@ function getChaptersHtml(a) {
                         ${generatingScripts[num] 
                             ? `<span style="color:#E31B23;font-size:11px;" class="generating-pulse">正在生成中...</span>`
                             : (hasScript 
-                                ? `<span style="color:#38a169;font-size:11px;">✅ 點擊查看</span>` 
+                                ? `<span style="color:#38a169;font-size:11px;">✅ 點擊查看</span><button onclick="event.stopPropagation();requestRewriteChapter(${num})" style="margin-left:6px;padding:2px 6px;font-size:9px;background:var(--surface);border:1px solid var(--border);border-radius:3px;cursor:pointer;color:var(--text2);" title="重寫此集">🔄</button>` 
                                 : `<span style="color:#6366F1;font-size:11px;cursor:pointer;" onclick="event.stopPropagation();runScriptWriting(${num})">生成第${num}集</span>`)}
                     </div>
                     <div class="chapter-box-right" style="cursor:pointer;" onclick="${hasStoryboard ? `showChapterStoryboard(${num})` : `runStoryboardGeneration(${num})`}" id="storyboardBox${num}">
