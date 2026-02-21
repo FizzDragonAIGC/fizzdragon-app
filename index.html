@@ -3460,7 +3460,7 @@ function showFastTrack() {
 **📝 上傳劇本**
 • 🤖 AI智能分集（上傳檔案，AI自動拆分）
 • 📋 手動分集（一集一集複製貼上）
-• ✂️ 格式重組（影視→短劇，保留內容只改集數）
+• ✂️ 格式重組：影視變短劇（保留內容只改集數）
 
 **👤 輸入人物**
 • 問答方式錄入人物小傳
@@ -3469,7 +3469,7 @@ function showFastTrack() {
 • 先輸入人物，再上傳劇本`, [
         { text: '🤖 AI智能分集', action: () => importScript() },
         { text: '📋 手動分集', action: () => startManualEpisodeInput() },
-        { text: '✂️ 格式重組', action: () => startFormatAdapter() },
+        { text: '✂️ 影視變短劇', action: () => startFormatAdapter() },
         { text: '👤 輸入人物', action: () => inputCharactersFastTrack() },
         { text: '📝+👤 都有', action: () => inputCharactersFastTrack(true) },
         { text: '↩️ 返回', action: () => showStartOptions() }
@@ -4027,7 +4027,7 @@ async function finishManualEpisodeInput() {
 
 // ==================== 格式重組模式（影視→短劇）====================
 async function startFormatAdapter() {
-    addAIMessage(`✂️ **格式重組模式**
+    addAIMessage(`✂️ **格式重組：影視變短劇**
 
 這個模式適用於：已有完整的影視劇本，需要改成短劇格式。
 **保留原內容，只做切分和衔接優化。**
