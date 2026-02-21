@@ -4445,12 +4445,30 @@ async function runExpandAdapter(episodes, minutes) {
 這需要一些時間，請耐心等待。`);
         
         // Step 2: 逐集扩写
-        state.assets.chapters = [];
-        state.assets.scripts = {};
+        // ✅ 保留大綱的所有欄位（衝突/亮點/鉤子/情感弧線/場景列表等），不要覆蓋成簡化版
+        state.assets = state.assets || {};
+        state.assets.chapters = outlines.map((o, idx) => ({
+            // 统一编号字段
+            num: o.num || o.number || (idx + 1),
+            number: o.number || o.num || (idx + 1),
+            title: o.title || o.name || `第${idx + 1}集`,
+            phase: o.phase || '',
+            summary: o.summary || o.outline || o.大綱 || '',
+            conflict: o.conflict || '',
+            highlight: o.highlight || '',
+            hook: o.hook || o.outro_hook || '',
+            emotion: o.emotion || '',
+            scenes: o.scenes || '',
+            // 其余字段原样保留
+            ...o
+        }));
+        state.assets.scripts = state.assets.scripts || {};
+        saveProject(null, true);
+        updateAssetsPanel();
         
-        for (let i = 0; i < outlines.length; i++) {
-            const outline = outlines[i];
-            const epNum = i + 1;
+        for (let i = 0; i < state.assets.chapters.length; i++) {
+            const outline = state.assets.chapters[i];
+            const epNum = outline.num || (i + 1);
             
             // 显示进度
             addProgressCard(`擴寫第${epNum}/${outlines.length}集`, Math.round((i / outlines.length) * 100));
@@ -4481,15 +4499,15 @@ ${outline.summary || ''}
                 originalSummary: outline.summary || outline.content
             });
             
-            // 保存结果
-            state.assets.chapters.push({
-                num: epNum,
-                title: outline.title || `第${epNum}集`,
-                summary: outline.summary || '',
-                wordCount: wordsPerEp
-            });
-            
+            // 保存结果：只补充/更新，不覆盖大纲信息
             state.assets.scripts[epNum] = expandResult.result || expandResult;
+            const ch = state.assets.chapters[i];
+            if (ch) {
+                ch.wordCount = wordsPerEp;
+                ch.scriptGenerated = true;
+            }
+            saveProject(null, true);
+            updateAssetsPanel();
             
             removeProgressCard();
             
