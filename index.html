@@ -6211,7 +6211,12 @@ function generatePromptFromChinese(item, type) {
 
 async function runScriptStepSilent(chapterNum) {
     const chapter = state.assets.chapters?.[chapterNum - 1];
-    const result = await callAgent('screenwriter', (state.novel || '').substring(0, 15000), {
+    const sourceText = (state.assets?.story?.content || state.originalScript || state.novel || '').toString();
+    const chapterSpec = `【本集硬性大纲（必须严格遵守）】\n- 集号：第${chapterNum}集\n- 标题：${chapter?.title || `第${chapterNum}集`}\n- 大纲：${chapter?.summary || ''}\n- 冲突：${chapter?.conflict || ''}\n- 亮点：${chapter?.highlight || ''}\n- 悬念钩子：${chapter?.hook || ''}\n- 情感弧线：${chapter?.emotion || ''}\n- 场景列表：${chapter?.scenes || ''}`;
+
+    const input = `${chapterSpec}\n\n---故事源参考（只补细节）---\n${(sourceText || '').substring(0, 12000)}`;
+
+    const result = await callAgent('screenwriter', input, {
         concept: state.assets.concept,
         characters: state.assets.characters,
         chapter: chapter,
@@ -15014,15 +15019,30 @@ ${state.assets.chapters?.length > 0
             instruction: `【重要】本集時長 ${durationMin} 分鐘，劇本必須達到 ${targetWords} 字以上！不要寫太短！`
         };
         
-        // 在小说内容前加明确的字数要求
+        // 🔧 关键修复：每集都必须以“本集大纲/冲突/钩子”为唯一生成依据，避免每集都写成第1集
+        const sourceText = (state.assets?.story?.content || state.originalScript || state.novel || '').toString();
+        const chapterSpec = `【本集硬性大纲（必须严格遵守）】
+- 集号：第${chapterNum}集
+- 标题：${chapter.title || `第${chapterNum}集`}
+- 大纲：${chapter.summary || ''}
+- 冲突：${chapter.conflict || ''}
+- 亮点：${chapter.highlight || ''}
+- 悬念钩子：${chapter.hook || ''}
+- 情感弧线：${chapter.emotion || ''}
+- 场景列表：${chapter.scenes || ''}`;
+
+        // 在内容前加明确的字数要求 + 大纲约束
         const novelWithInstructions = `【編劇指令】請為第${chapterNum}集寫完整劇本
 - 時長要求：${durationMin} 分鐘
-- 字數要求：至少 ${targetWords} 字（約 ${Math.ceil(targetWords/100)} 段場景）
+- 字數要求：至少 ${targetWords} 字
 - 必須包含：場景描寫、動作指示、完整對白
 - 格式：【場景N：地點 - 時間】
+- 絕對禁止：把第1集的劇情/場景照抄到本集
 
----以下是原著參考---
-${state.novel.substring(0, 2000)}`;
+${chapterSpec}
+
+---以下是故事源參考（只用來補充細節，不得改變本集大纲）---
+${(sourceText || '').substring(0, 2000)}`;
         
         // 🔧 使用流式API避免Cloudflare超时
         let result = await callAgentStream('screenwriter', novelWithInstructions, context, 
