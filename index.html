@@ -6908,6 +6908,37 @@ function safeJSONParse(text, context = 'unknown') {
     } catch (e) {}
     
     console.error(`safeJSONParse [${context}]: 所有修复尝试失败`);
+
+    // 🔧 自动留证：保存原始返回，提供一键复制（不再让用户去找“复制原始返回”按钮）
+    window._LAST_BAD_JSON = {
+        context,
+        raw: text,
+        cleaned: cleaned,
+        at: new Date().toISOString()
+    };
+
+    // 创建一个全局悬浮按钮：复制最近一次解析失败的原始返回
+    try {
+        if (!document.getElementById('copyBadJsonBtn')) {
+            const btn = document.createElement('button');
+            btn.id = 'copyBadJsonBtn';
+            btn.textContent = '📋 複製解析失敗原文';
+            btn.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:99999;padding:10px 12px;border-radius:10px;border:1px solid #333;background:#111;color:#ddd;font-size:12px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.4);';
+            btn.onclick = () => {
+                const raw = window._LAST_BAD_JSON?.raw || '';
+                navigator.clipboard?.writeText(String(raw)).then(() => {
+                    if (typeof showToast === 'function') showToast('已複製解析失敗原文', 3000);
+                }).catch(() => {
+                    if (typeof showToast === 'function') showToast('複製失敗', 3000);
+                });
+            };
+            document.body.appendChild(btn);
+        }
+    } catch (e) {}
+
+    // 同时给一个toast提示
+    try { if (typeof showToast === 'function') showToast('⚠️ JSON解析失敗：右下角可點「複製解析失敗原文」', 6000); } catch (e) {}
+
     return {};
 }
 
