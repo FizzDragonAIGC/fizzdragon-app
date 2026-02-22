@@ -2736,6 +2736,15 @@
         
         <div class="sidebar-section">
             <div class="sidebar-section-title" id="projectListTitle">我的影視項目</div>
+
+            <!-- 批量操作栏（多选删除/移入垃圾桶） -->
+            <div id="projectBulkBar" style="display:none;gap:8px;align-items:center;padding:8px 10px;margin:6px 8px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:rgba(0,0,0,0.25);">
+                <span id="projectBulkCount" style="font-size:12px;color:var(--text2);">已選 0</span>
+                <button class="action-btn" style="margin-left:auto;" onclick="selectAllVisibleProjects()" title="全選">全選</button>
+                <button class="action-btn" onclick="clearProjectSelection()" title="清除">清除</button>
+                <button class="action-btn" style="color:#E31B23;" onclick="bulkMoveSelectedToTrash()" title="移入垃圾桶">刪除</button>
+            </div>
+
             <div class="project-list" id="projectList">
                 <!-- 项目列表动态生成 -->
             </div>
@@ -9416,6 +9425,57 @@ function switchAppMode(mode) {
     }
 }
 
+// ==================== 项目多选（批量删除）====================
+let selectedProjectIds = new Set();
+let _lastVisibleProjectIds = [];
+
+function updateProjectBulkBar() {
+    const bar = document.getElementById('projectBulkBar');
+    const countEl = document.getElementById('projectBulkCount');
+    if (!bar || !countEl) return;
+
+    const n = selectedProjectIds.size;
+    if (n > 0) {
+        bar.style.display = 'flex';
+        countEl.textContent = `已選 ${n}`;
+    } else {
+        bar.style.display = 'none';
+        countEl.textContent = '已選 0';
+    }
+}
+
+function toggleProjectSelection(projectId) {
+    if (selectedProjectIds.has(projectId)) selectedProjectIds.delete(projectId);
+    else selectedProjectIds.add(projectId);
+    updateProjectBulkBar();
+    renderProjectList();
+}
+
+function clearProjectSelection() {
+    selectedProjectIds = new Set();
+    updateProjectBulkBar();
+    renderProjectList();
+}
+
+function selectAllVisibleProjects() {
+    (_lastVisibleProjectIds || []).forEach(id => selectedProjectIds.add(id));
+    updateProjectBulkBar();
+    renderProjectList();
+}
+
+function bulkMoveSelectedToTrash() {
+    const ids = Array.from(selectedProjectIds);
+    if (ids.length === 0) return;
+
+    if (!confirm(`確定要將選中的 ${ids.length} 個項目移入垃圾桶嗎？\n\n你之後可以在「垃圾桶」中恢復或永久刪除。`)) return;
+
+    ids.forEach(id => {
+        try { moveProjectToTrash(id); } catch (e) {}
+    });
+    clearProjectSelection();
+    showToast(`🗑️ 已移入垃圾桶：${ids.length} 個項目`);
+}
+
 function renderProjectListByMode() {
     const projects = getProjects();
     const list = Object.values(projects)
@@ -9437,6 +9497,9 @@ function renderProjectListByMode() {
             return new Date(b.timestamp) - new Date(a.timestamp);
         });
     const container = document.getElementById('projectList');
+
+    _lastVisibleProjectIds = list.map(p => p.id);
+    updateProjectBulkBar();
     
     if (list.length === 0) {
         container.innerHTML = `<div style="padding:12px;color:var(--text2);font-size:12px;">${t('noProjects')}</div>`;
@@ -9482,6 +9545,7 @@ function renderProjectListByMode() {
         
         const displayName = String(p.name || t('unnamed') || '未命名');
         const safeName = displayName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const isChecked = selectedProjectIds.has(p.id);
         return `
             <div class="project-item ${isSelected ? 'active' : ''}" 
                  draggable="true"
@@ -9492,6 +9556,7 @@ function renderProjectListByMode() {
                  ondragover="handleDragOver(event)"
                  ondragleave="handleDragLeave(event)"
                  ondrop="handleDrop(event, '${p.id}')">
+                <input type="checkbox" ${isChecked ? 'checked' : ''} style="margin-right:8px;" onclick="event.stopPropagation(); toggleProjectSelection('${p.id}')" title="多選" />
                 ${statusIndicator}
                 <div class="icon">${icon}</div>
                 <div class="info">
