@@ -7493,10 +7493,14 @@ function updateAssetsPanel() {
     html += `</div>`; // 关闭 tabContentProd
     
     // 🔧 保持章節面板展开状态：updateAssetsPanel会重绘DOM，需恢复用户正在查看的剧本/分镜
-    if (state.ui?.openChapter?.num) {
+    // 但只能在「生產」Tab可见时恢复，避免用户切到其他Tab又被“拉回來”
+    if (state.ui?.openChapter?.num && currentTab === 'prod') {
         const { num, view } = state.ui.openChapter;
         setTimeout(() => {
             try {
+                const prodEl = document.getElementById('tabContentProd');
+                const isProdVisible = prodEl && prodEl.style.display !== 'none';
+                if (!isProdVisible) return;
                 if (view === 'storyboard') showChapterStoryboard(num);
                 else showChapterScript(num);
             } catch (e) {}
