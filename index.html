@@ -6181,7 +6181,8 @@ async function runStoryboardStepSilent(chapterNum) {
     const artstylePrompt = state.assets.artstyle?.final_suggestion?.full_prompt || 
                            state.assets.artstyle?.recommendations?.[0]?.prompt_keywords || '';
 
-    const result = await callAgent('storyboard', script, {
+    // ==================== 兩段式分鏡（20鏡/次，防截斷）====================
+    const skeletonResult = await callAgent('storyboard_skeleton', script, {
         concept: state.assets.concept,
         characters: state.assets.characters,
         production: state.production,
@@ -6189,22 +6190,40 @@ async function runStoryboardStepSilent(chapterNum) {
     });
 
     // 🔧 调试：保留原始返回（避免0镜头时无证据）
-    state.lastStoryboardRaw = (typeof result === 'string') ? result : JSON.stringify(result);
-    console.log(`🎬 storyboard raw (ep ${chapterNum}) head:`, state.lastStoryboardRaw.substring(0, 300));
+    state.lastStoryboardRaw = (typeof skeletonResult === 'string') ? skeletonResult : JSON.stringify(skeletonResult);
+    console.log(`🎬 storyboard skeleton raw (ep ${chapterNum}) head:`, state.lastStoryboardRaw.substring(0, 300));
 
-    const parsed = safeJSONParse(result, 'storyboard');
-    
-    // 兼容多种返回格式：shots / storyboard / data.storyboard / 直接数组
-    let shots = parsed.shots || parsed.storyboard || parsed.data?.storyboard || (Array.isArray(parsed) ? parsed : []);
+    const parsed = safeJSONParse(skeletonResult, 'storyboard');
+    let shots = parsed.storyboard || parsed.shots || parsed.data?.storyboard || (Array.isArray(parsed) ? parsed : []);
 
     // 🔧 兜底：从原始文本里强行提取 storyboard 数组
     if ((!shots || shots.length === 0) && typeof state.lastStoryboardRaw === 'string') {
         const m = state.lastStoryboardRaw.match(/"storyboard"\s*:\s*(\[[\s\S]*?\])\s*[\}\n]/);
         if (m) {
-            try {
-                shots = JSON.parse(m[1]);
-            } catch (e) {}
+            try { shots = JSON.parse(m[1]); } catch (e) {}
         }
+    }
+
+    // Prompt補全
+    if (Array.isArray(shots) && shots.length > 0) {
+        const promptResult = await callAgent('storyboard_prompt', JSON.stringify({ storyboard: shots }), {
+            artstyle: artstylePrompt,
+            concept: state.assets.concept,
+            production: state.production
+        });
+        const prData = safeJSONParse(promptResult, 'storyboard');
+        const promptRows = prData.storyboard || prData.shots || prData.data?.storyboard || (Array.isArray(prData) ? prData : []);
+        const key = (r) => `${r.scene_no ?? r.sceneNo ?? 0}_${r.shot_no ?? r.shotNo ?? 0}`;
+        const map = new Map(promptRows.map(r => [key(r), r]));
+        shots = shots.map(s => {
+            const r = map.get(key(s));
+            if (!r) return s;
+            return {
+                ...s,
+                Image_Prompt: r.Image_Prompt || r.image_prompt || s.Image_Prompt,
+                Video_Prompt: r.Video_Prompt || r.video_prompt || s.Video_Prompt
+            };
+        });
     }
 
     // 如果仍然是空，不要覆盖已有分镜，给出可复制的调试信息
@@ -15676,17 +15695,18 @@ ${totalChapters > 0
 - video_prompt: AI視頻Prompt (英文, 4 seconds, cinematic motion)`
         };
         
-        const result = await callAgent('storyboard', script, context);
-        
-        // 更新步骤为全部完成
-        steps.forEach(s => { s.done = true; s.current = false; });
-        showAgentStatus('🎬 分鏡導演', '「整理分鏡數據，馬上完成...」', 'storyboard', steps);
-        
-        // 🔧 保存原始返回，方便调试0镜头/解析失败
-        state.lastStoryboardRaw = (typeof result === 'string') ? result : JSON.stringify(result);
+        // ==================== 兩段式分鏡（20鏡/次，防截斷）====================
+        // 1) 結構骨架（不含 Image/Video Prompt）
+        const skeletonResult = await callAgent('storyboard_skeleton', script, {
+            ...context,
+            useReasoner: false
+        });
 
-        const sbData = safeJSONParse(result, 'storyboard');
-        let shots = sbData.shots || sbData.storyboard || sbData.data?.storyboard || (Array.isArray(sbData) ? sbData : []);
+        // 🔧 保存原始返回，方便调试0镜头/解析失败
+        state.lastStoryboardRaw = (typeof skeletonResult === 'string') ? skeletonResult : JSON.stringify(skeletonResult);
+
+        const skData = safeJSONParse(skeletonResult, 'storyboard');
+        let shots = skData.storyboard || skData.shots || skData.data?.storyboard || (Array.isArray(skData) ? skData : []);
 
         // 兜底：从原始文本里强行提取 storyboard 数组
         if ((!shots || shots.length === 0) && typeof state.lastStoryboardRaw === 'string') {
@@ -15695,6 +15715,38 @@ ${totalChapters > 0
                 try { shots = JSON.parse(m[1]); } catch (e) {}
             }
         }
+
+        // 2) Prompt補全（只返回每個鏡頭的 Image_Prompt / Video_Prompt）
+        if (Array.isArray(shots) && shots.length > 0) {
+            const artstylePrompt = state.assets.artstyle?.final_suggestion?.full_prompt || 
+                                   state.assets.artstyle?.recommendations?.[0]?.prompt_keywords || '';
+
+            const promptResult = await callAgent('storyboard_prompt', JSON.stringify({ storyboard: shots }), {
+                artstyle: artstylePrompt,
+                concept: state.assets.concept,
+                production: state.production
+            });
+
+            const prData = safeJSONParse(promptResult, 'storyboard');
+            const promptRows = prData.storyboard || prData.shots || prData.data?.storyboard || (Array.isArray(prData) ? prData : []);
+
+            const key = (r) => `${r.scene_no ?? r.sceneNo ?? 0}_${r.shot_no ?? r.shotNo ?? 0}`;
+            const map = new Map(promptRows.map(r => [key(r), r]));
+
+            shots = shots.map(s => {
+                const r = map.get(key(s));
+                if (!r) return s;
+                return {
+                    ...s,
+                    Image_Prompt: r.Image_Prompt || r.image_prompt || s.Image_Prompt,
+                    Video_Prompt: r.Video_Prompt || r.video_prompt || s.Video_Prompt
+                };
+            });
+        }
+
+        // 更新步骤为全部完成
+        steps.forEach(s => { s.done = true; s.current = false; });
+        showAgentStatus('🎬 分鏡導演', '「整理分鏡數據，馬上完成...」', 'storyboard', steps);
 
         removeTypingIndicator();
         hideAgentStatus();
