@@ -9250,6 +9250,8 @@ function renderProjectListByMode() {
     const projects = getProjects();
     const list = Object.values(projects)
         .filter(p => {
+            // 垃圾桶：默认不在项目列表显示
+            if (p.deleted) return false;
             // 广告模式：只显示type='ad'的项目
             // 影视模式：显示type不是'ad'的项目（包括没有type字段的旧项目）
             if (appMode === 'ad') {
@@ -12138,7 +12140,7 @@ function manageProjects() {
 
     addAIMessage(`🗑️ **管理項目**
 
-你可以單個刪除，也可以批量刪除。
+你可以單個刪除，也可以批量刪除。刪除會進入「垃圾桶」，可恢復。
 
 **最近項目（前${Math.min(20, list.length)}個）**
 ${preview}
@@ -12146,6 +12148,7 @@ ${preview}
 選擇操作：`, [
         { text: '🧹 批量刪除（輸入序號）', action: () => askBatchDeleteProjects(list) },
         { text: '🗑️ 單個刪除（按鈕）', action: () => showSingleDeleteButtons(list) },
+        { text: '🗑️ 垃圾桶（可恢復）', action: () => showTrash() },
         { text: '🔙 返回列表', action: () => showProjectList() }
     ]);
 }
@@ -12175,7 +12178,7 @@ function askBatchDeleteProjects(list) {
 輸入 0 取消。`);
 }
 
-function handleBatchDeleteInput(text) {
+function handleBatchDeleteInput(text) { // 批量刪除=移入垃圾桶
     const raw = (text || '').trim();
     if (raw === '0' || raw.toLowerCase() === 'cancel') {
         state.waitingForBatchDelete = false;
@@ -12198,7 +12201,7 @@ function handleBatchDeleteInput(text) {
     const projects = getProjects();
     const names = ids.map(id => projects[id]?.name).filter(Boolean);
 
-    if (!confirm(`確定要批量刪除 ${ids.length} 個項目嗎？\n\n${names.slice(0, 10).join('\n')}${names.length > 10 ? '\n...' : ''}\n\n此操作無法撤銷！`)) {
+    if (!confirm(`確定要批量刪除 ${ids.length} 個項目（移入垃圾桶）嗎？\n\n${names.slice(0, 10).join('\n')}${names.length > 10 ? '\n...' : ''}\n\n你之後可以在垃圾桶恢復。`)) {
         addAIMessage('✅ 已取消批量刪除。', [ { text: '↩️ 返回管理', action: () => manageProjects() } ]);
         state.waitingForBatchDelete = false;
         state.batchDeleteList = null;
@@ -12206,7 +12209,13 @@ function handleBatchDeleteInput(text) {
     }
 
     ids.forEach(id => {
-        if (projects[id]) delete projects[id];
+        if (projects[id]) {
+            projects[id].deleted = true;
+            projects[id].deletedAt = new Date().toISOString();
+            projects[id].timestamp = new Date().toISOString();
+            // 同步到后端（异步）
+            syncProjectToBackend(id, projects[id]);
+        }
     });
     localStorage.setItem(getProjectsKey(), JSON.stringify(projects));
 
@@ -12227,7 +12236,7 @@ function handleBatchDeleteInput(text) {
     state.batchDeleteList = null;
 
     renderProjectList();
-    addAIMessage(`✅ 已批量刪除 ${ids.length} 個項目。`, [ { text: '↩️ 返回管理', action: () => manageProjects() } ]);
+    addAIMessage(`✅ 已將 ${ids.length} 個項目移入垃圾桶。`, [ { text: '🗑️ 打開垃圾桶', action: () => showTrash() }, { text: '↩️ 返回管理', action: () => manageProjects() } ]);
 }
 
 function renameProject(projectId, currentName) {
@@ -12364,36 +12373,115 @@ function handleChatDrop(e) {
 }
 
 function confirmDeleteProject(projectId, name) {
-    if (confirm(`確定要刪除項目「${name}」嗎？\n\n此操作無法撤銷！`)) {
-        deleteProject(projectId);
+    if (confirm(`確定要將項目「${name}」移入垃圾桶嗎？\n\n你之後可以在「垃圾桶」中恢復或永久刪除。`)) {
+        deleteProject(projectId); // deleteProject=移入垃圾桶（兼容旧调用）
     }
 }
 
+// 兼容旧调用：deleteProject 现在等同“移入垃圾桶”
 function deleteProject(projectId) {
+    return moveProjectToTrash(projectId);
+}
+
+function moveProjectToTrash(projectId) {
     const projects = getProjects();
     const name = projects[projectId]?.name;
-    delete projects[projectId];
+    if (!projects[projectId]) return;
+
+    projects[projectId].deleted = true;
+    projects[projectId].deletedAt = new Date().toISOString();
+    projects[projectId].timestamp = new Date().toISOString();
     localStorage.setItem(getProjectsKey(), JSON.stringify(projects));
-    
-    // 如果删除的是当前项目，清空当前项目
+
+    // 同步到后端（让云端也进入垃圾桶状态）
+    syncProjectToBackend(projectId, projects[projectId]);
+
+    // 如果当前正在查看被删除项目，切到空态
     if (projectId === currentProjectId) {
         currentProjectId = null;
-        // 🔧 用Object.assign重置，不能重新赋值const
-        Object.assign(state, { 
-            novel: '', 
-            novelTitle: '', 
-            step: 0, 
+        Object.assign(state, {
+            novel: '',
+            novelTitle: '',
+            step: 0,
             mode: '',
             assets: { concept: null, characters: [], chapters: [], costumes: null, scripts: {}, storyboards: {} }
         });
         document.getElementById('headerTitle').textContent = 'FizzDragon AIGC番劇系統';
-        // 只在删除当前项目时显示提示
-        addAIMessage(`🗑️ 已刪除項目「${name}」`);
+        addAIMessage(`🗑️ 已移入垃圾桶：「${name}」`);
     }
-    
+
     renderProjectList();
-    // 用toast提示删除成功（不污染其他项目对话）
-    showToast(`🗑️ 已刪除「${name}」`);
+    showToast(`🗑️ 已移入垃圾桶：${name}`);
+}
+
+function restoreProject(projectId) {
+    const projects = getProjects();
+    if (!projects[projectId]) return;
+    projects[projectId].deleted = false;
+    delete projects[projectId].deletedAt;
+    projects[projectId].timestamp = new Date().toISOString();
+    localStorage.setItem(getProjectsKey(), JSON.stringify(projects));
+    syncProjectToBackend(projectId, projects[projectId]);
+    renderProjectList();
+    showToast('✅ 已恢復項目');
+}
+
+function permanentlyDeleteProject(projectId) {
+    const projects = getProjects();
+    const name = projects[projectId]?.name;
+    if (!projects[projectId]) return;
+    if (!confirm(`⚠️ 永久刪除「${name}」？\n\n此操作無法撤銷！`)) return;
+
+    delete projects[projectId];
+    localStorage.setItem(getProjectsKey(), JSON.stringify(projects));
+
+    // 云端目前没有delete接口，先不做远端物理删除（避免误删）。
+    // 未来可增加后端DELETE端点。
+
+    if (projectId === currentProjectId) {
+        currentProjectId = null;
+    }
+    renderProjectList();
+    showToast(`🗑️ 已永久刪除：${name}`);
+}
+
+function showTrash() {
+    const projects = getProjects();
+    const trash = Object.values(projects)
+        .filter(p => p.deleted)
+        .sort((a, b) => new Date(b.deletedAt || b.timestamp || 0) - new Date(a.deletedAt || a.timestamp || 0));
+
+    if (trash.length === 0) {
+        addAIMessage('🗑️ **垃圾桶**\n\n目前是空的。', [
+            { text: '↩️ 返回管理', action: () => manageProjects() }
+        ]);
+        return;
+    }
+
+    const preview = trash.slice(0, 20).map((p, i) => {
+        const d = p.deletedAt ? new Date(p.deletedAt).toLocaleString() : '';
+        return `${i + 1}. ${p.name}${d ? ` (刪除於 ${d})` : ''}`;
+    }).join('\n');
+
+    addAIMessage(`🗑️ **垃圾桶**\n\n可恢復或永久刪除：\n\n${preview}`, [
+        { text: '✅ 恢復（按鈕）', action: () => showRestoreButtons(trash) },
+        { text: '⚠️ 永久刪除（按鈕）', action: () => showPermanentDeleteButtons(trash) },
+        { text: '↩️ 返回管理', action: () => manageProjects() }
+    ]);
+}
+
+function showRestoreButtons(list) {
+    addAIMessage('✅ **從垃圾桶恢復**\n\n選擇要恢復的項目：', list.slice(0, 20).map(p => ({
+        text: `✅ 恢復 ${p.name}`,
+        action: () => restoreProject(p.id)
+    })).concat([{ text: '↩️ 返回垃圾桶', action: () => showTrash() }]));
+}
+
+function showPermanentDeleteButtons(list) {
+    addAIMessage('⚠️ **永久刪除**\n\n選擇要永久刪除的項目：', list.slice(0, 20).map(p => ({
+        text: `🗑️ 永久刪除 ${p.name}`,
+        action: () => permanentlyDeleteProject(p.id)
+    })).concat([{ text: '↩️ 返回垃圾桶', action: () => showTrash() }]));
 }
 
 function showExportOptions() {
