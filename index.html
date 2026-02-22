@@ -9076,6 +9076,18 @@ function renderProjectList() {
 }
 
 function openProject(projectId) {
+    // 🔧 Auto-Pilot运行中时，切换项目会导致状态/上下文被清空（相当于中止）
+    if (currentProjectId && projectId !== currentProjectId && (runningProjects && runningProjects[currentProjectId])) {
+        const ok = confirm('⚠️ Auto-Pilot 正在運行中。切換項目會中止當前自動流程。\n\n是否繼續切換？');
+        if (!ok) return;
+        // 中止当前Auto-Pilot标记（实际网络请求可能仍在飞，但结果会被后续runToken丢弃）
+        state.autoPilotMode = false;
+        delete runningProjects[currentProjectId];
+        delete activeProjects[currentProjectId];
+        errorProjects[currentProjectId] = true;
+        renderProjectList();
+    }
+
     currentProjectId = projectId;
     renderProjectList();
     loadProject(projectId);
