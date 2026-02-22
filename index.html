@@ -10079,7 +10079,7 @@ function handleLogout() {
 
     const token = localStorage.getItem('fizzdragon_token');
     if (token) {
-        fetch('/api/auth/logout', {
+        fetch(`${API_BASE}/auth/logout`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
         }).catch(() => {});
@@ -17739,13 +17739,14 @@ if (!authToken) {
     init();
 } else {
     // 验证token
-    fetch('/api/auth/verify', {
+    fetch(`${API_BASE}/auth/verify`, {
         headers: { 'Authorization': `Bearer ${authToken}` }
     }).then(res => {
         if (!res.ok) {
-            localStorage.removeItem('fizzdragon_token');
-            localStorage.removeItem('fizzdragon_user');
-            init(); // 内测模式：验证失败也初始化
+            // 🔧 不要擅自清空登录：GitHub Pages 环境下 /api/auth/verify 可能因网络/部署导致失败。
+            // 进入离线模式继续使用，待网络恢复再验证。
+            console.warn('⚠️ auth verify failed, continue in offline mode');
+            init();
         } else {
             // 登录有效，初始化
             init();
