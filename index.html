@@ -9150,6 +9150,15 @@ function openProject(projectId) {
     state.ui = state.ui || {};
     state.ui.openChapter = null;
 
+    // 🔧 清空所有“等待输入”状态，避免用户输入被错误路由（导致100集→误变3集等）
+    state.waitingForEpisodeInput = false;
+    state.waitingForDurationInput = false;
+    state.waitingForBatchDelete = false;
+    state.waitingForCustomStyle = false;
+    state.waitingForAdapterTarget = false;
+    state.waitingForBatchDelete = false;
+    state.rewriteTarget = null;
+
     currentProjectId = projectId;
     renderProjectList();
     loadProject(projectId);
@@ -11825,6 +11834,14 @@ function loadProject(projectId) {
     state.ui = { openChapter: null };
     generatingScripts = {};
     generatingStoryboards = {};
+
+    // 🔧 清空所有“等待输入”状态（避免输入被错误解释）
+    state.waitingForEpisodeInput = false;
+    state.waitingForDurationInput = false;
+    state.waitingForBatchDelete = false;
+    state.waitingForCustomStyle = false;
+    state.waitingForAdapterTarget = false;
+    state.rewriteTarget = null;
     
     // 清空writeState
     writeState.idea = null;
