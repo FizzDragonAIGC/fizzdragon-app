@@ -6915,6 +6915,14 @@ function isActiveRun(token) {
     return token === window._RUN_TOKEN;
 }
 
+// 🔧 运行上下文：用于防止切换项目后异步回包“窜台”
+function createRunContext() {
+    return { projectId: currentProjectId, runToken: newRunToken() };
+}
+function isRunContextActive(ctx) {
+    return !!ctx && ctx.projectId === currentProjectId && isActiveRun(ctx.runToken);
+}
+
 let currentUser = {
     id: localStorage.getItem('user_id') || 'guest_' + Date.now(),
     plan: 'free'
@@ -12662,7 +12670,13 @@ function showToast(message, duration = 3000) {
 window._messageReplies = window._messageReplies || {};
 let _messageReplyId = 0;
 
-function addAIMessage(text, quickReplies = []) {
+function addAIMessage(text, quickReplies = [], meta = null) {
+    // 🔧 防窜台：如果消息属于旧项目/旧运行，直接丢弃
+    if (meta && (meta.projectId || meta.runToken)) {
+        if (meta.projectId && meta.projectId !== currentProjectId) return null;
+        if (meta.runToken && !isActiveRun(meta.runToken)) return null;
+    }
+
     const container = document.getElementById('chatContainer');
     const msg = document.createElement('div');
     msg.className = 'message ai';
@@ -14938,6 +14952,7 @@ async function runProductionDesign() {
 // ==================== 剧本写作（步骤5，分章）====================
 async function runScriptWriting(chapterNum) {
     if (!checkNovelExists()) return;
+    const runCtx = createRunContext();
     
     // 🔧 调试：打印当前项目关键信息，帮助追踪数据污染
     console.log('🔍 runScriptWriting 数据检查:', {
@@ -15047,10 +15062,13 @@ ${(sourceText || '').substring(0, 2000)}`;
         // 🔧 使用流式API避免Cloudflare超时
         let result = await callAgentStream('screenwriter', novelWithInstructions, context, 
             (chunk, fullText) => {
+                if (!isRunContextActive(runCtx)) return; // 防窜台
                 // 实时更新显示
                 updateAgentStatus('✍️ 編劇', `生成中... ${fullText.length}字`);
             }
         );
+
+        if (!isRunContextActive(runCtx)) return; // 防窜台
         
         // 🔧 清理Markdown标记（剧本不需要**粗体**）
         result = cleanScriptMarkdown(result);
@@ -15077,13 +15095,13 @@ ${result.substring(0, 300)}...
 ───────────────────────
 ✅ 已存入項目資產
 
-${chapterNum < state.assets.chapters.length ? `繼續寫第${chapterNum + 1}集...` : '全部劇本完成！'}`);
+${chapterNum < state.assets.chapters.length ? `繼續寫第${chapterNum + 1}集...` : '全部劇本完成！'}`, [], runCtx);
         
         saveProject();
         
         if (chapterNum < state.assets.chapters.length) {
-            // 继续下一集
-            setTimeout(() => runScriptWriting(chapterNum + 1), 1500);
+            // 继续下一集（仍需校验runCtx）
+            setTimeout(() => { if (isRunContextActive(runCtx)) runScriptWriting(chapterNum + 1); }, 1500);
         } else {
             // 全部完成，自动开始生成分镜
             state.step = 6;
@@ -15856,6 +15874,7 @@ async function callAgentStream(agentId, content, context = {}, onChunk = null) {
 // ==================== 分镜生成（步骤6，分章）====================
 async function runStoryboardGeneration(chapterNum) {
     if (!checkNovelExists()) return;
+    const runCtx = createRunContext();
     
     // 标记处理中
     if (currentProjectId) {
@@ -15974,6 +15993,8 @@ ${totalChapters > 0
             const artstylePrompt = state.assets.artstyle?.final_suggestion?.full_prompt || 
                                    state.assets.artstyle?.recommendations?.[0]?.prompt_keywords || '';
 
+            if (!isRunContextActive(runCtx)) return; // 防窜台
+
             const promptResult = await callAgent('storyboard_prompt', JSON.stringify({ storyboard: shots }), {
                 artstyle: artstylePrompt,
                 concept: state.assets.concept,
@@ -16001,6 +16022,7 @@ ${totalChapters > 0
         steps.forEach(s => { s.done = true; s.current = false; });
         showAgentStatus('🎬 分鏡導演', '「整理分鏡數據，馬上完成...」', 'storyboard', steps);
 
+        if (!isRunContextActive(runCtx)) return; // 防窜台
         removeTypingIndicator();
         hideAgentStatus();
 
@@ -16049,12 +16071,13 @@ ${shots.length > 3 ? `\n... 共 ${shots.length} 個鏡頭` : ''}
 
 ${isLastChapter ? '🎉 全部分鏡完成！' : `繼續生成第${chapterNum + 1}集...`}`);
 
+        if (!isRunContextActive(runCtx)) return; // 防窜台
         saveProject();
         updateAssetsPanel();
 
         if (!isLastChapter) {
             // 自动继续下一集
-            setTimeout(() => runStoryboardGeneration(chapterNum + 1), 1500);
+            setTimeout(() => { if (isRunContextActive(runCtx)) runStoryboardGeneration(chapterNum + 1); }, 1500);
         } else {
             // 全部完成
             addAIMessage(`🎉 **全部分鏡生成完成！**
