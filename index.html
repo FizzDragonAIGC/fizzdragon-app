@@ -7808,6 +7808,12 @@ function getChaptersHtml(a) {
         const hasStoryboard = a.storyboards?.[num];
         const shotCount = a.storyboards?.[num]?.length || 0;
         const scriptPreview = hasScript ? a.scripts[num].substring(0, 100) + '...' : '';
+
+        // 🔧 分鏡校驗：顯示目標/已生成/缺少（便於驗收）
+        const dur = ch.duration || state.production?.durationMin || 3;
+        const spm = state.production?.shotsPerMin || 10;
+        const targetShots = Math.ceil(dur * spm);
+        const missingShots = Math.max(0, targetShots - shotCount);
         
         // 获取phase标签
         let phase = ch.phase || '';
@@ -7834,8 +7840,8 @@ function getChaptersHtml(a) {
                     <span style="background:${phaseColor};color:white;padding:1px 6px;border-radius:3px;margin-right:6px;font-size:9px;font-weight:600;">【${phase}】</span>
                     <span style="color:var(--accent);margin-right:6px;font-weight:600;">E${String(num).padStart(2,'0')}</span>
                     <span style="flex:1;font-weight:500;" onclick="toggleChapterContent(${num})">${ch.title || `第${num}集`}</span>
-                    ${generatingStoryboards[num] ? `<span style="color:#E31B23;font-size:10px;" class="generating-pulse">🔄 生成中...</span>` : ''}
-                    ${hasStoryboard ? `<span style="color:#38a169;font-size:10px;">✅ ${shotCount}鏡</span>` : ''}
+                    ${generatingStoryboards[num] ? `<span style="color:#E31B23;font-size:10px;" class="generating-pulse">🔄 分鏡生成中...</span>` : ''}
+                    ${hasStoryboard ? `<span style="color:#38a169;font-size:10px;">✅ ${shotCount}/${targetShots} 鏡${missingShots > 0 ? ` (缺${missingShots})` : ''}</span>` : ''}
                     <span id="chapterToggle${num}" style="font-size:10px;color:#666;margin-left:6px;" onclick="toggleChapterContent(${num})">${(state.ui && state.ui.openChapter && state.ui.openChapter.num === num) ? '▲' : '▼'}</span>
                 </div>
                 <!-- 章节详情（大纲、冲突、亮点）-->
@@ -7868,7 +7874,7 @@ function getChaptersHtml(a) {
                         ${generatingStoryboards[num] 
                             ? `<span style="color:#E31B23;font-size:11px;" class="generating-pulse">正在生成中...</span>`
                             : (hasStoryboard 
-                                ? `<span style="color:#38a169;font-size:11px;">✅ ${shotCount}鏡</span>` 
+                                ? `<span style="color:#38a169;font-size:11px;">✅ ${shotCount}/${targetShots}鏡${missingShots > 0 ? ` (缺${missingShots})` : ''}</span>` 
                                 : `<span style="color:#6366F1;font-size:11px;cursor:pointer;" onclick="event.stopPropagation();runStoryboardGeneration(${num})">生成第${num}集</span>`)}
                     </div>
                 </div>
