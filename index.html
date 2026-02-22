@@ -15036,8 +15036,9 @@ ${state.assets.chapters?.length > 0
         
         const prevScripts = [];
         for (let i = Math.max(1, chapterNum - 2); i < chapterNum; i++) {
-            if (state.assets.scripts[i]) {
-                prevScripts.push(`【第${i}集摘要】${state.assets.scripts[i].substring(0, 500)}...`);
+            const s = state.assets?.scripts?.[i];
+            if (typeof s === 'string' && s.trim().length > 0) {
+                prevScripts.push(`【第${i}集摘要】${s.substring(0, 500)}...`);
             }
         }
         
