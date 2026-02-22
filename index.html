@@ -15593,6 +15593,10 @@ function extractQuestions(text) {
 }
 
 function askNextQuestion() {
+    // 🔧 进入访谈输入路由（避免step错乱导致“回答后没下一题”）
+    state.step = 2;
+    state.mode = state.mode || 'import';
+
     if (state.currentQuestion >= state.interviewQuestions.length) {
         // 访谈结束
         finishInterview();
@@ -17861,7 +17865,8 @@ function handleUserInput(text) {
     }
     
     // 导入模式 - 访谈问题（纯对话式）
-    if (state.step === 2 && state.currentQuestion < (state.interviewQuestions?.length || 0)) {
+    // 🔧 兼容：即使step被其他流程覆盖，只要存在访谈队列就继续问下一题
+    if ((state.interviewQuestions?.length || 0) > 0 && typeof state.currentQuestion === 'number' && state.currentQuestion < (state.interviewQuestions?.length || 0)) {
         // 支持跳过命令
         if (text.toLowerCase() === '跳過' || text.toLowerCase() === '跳过') {
             state.interview[state.currentQuestion] = '(跳過)';
