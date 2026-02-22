@@ -5829,7 +5829,14 @@ function showAutoPilotComplete() {
 
 // 静默执行各步骤（不显示对话，只更新资产）
 async function runConceptStepSilent() {
-    const result = await callAgent('concept', state.novel.substring(0, 3000), {});
+    // 🔧 Auto-Pilot / 导入剧本模式下，可能没有 state.novel
+    const fallbackScript = state.assets?.scripts ? Object.values(state.assets.scripts)[0] : '';
+    const sourceText = (state.novel || state.originalScript || fallbackScript || '').toString();
+    if (!sourceText || sourceText.trim().length === 0) {
+        throw new Error('缺少内容（請先導入故事/劇本）');
+    }
+
+    const result = await callAgent('concept', sourceText.substring(0, 3000), {});
     const concept = safeJSONParse(result, 'concept');
     state.assets.concept = concept;
     state.step = 1;
