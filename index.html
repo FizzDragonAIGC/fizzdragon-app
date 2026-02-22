@@ -6245,14 +6245,40 @@ async function runScriptStepSilent(chapterNum) {
     updateAssetsPanel();
 }
 
-async function runStoryboardStepSilent(chapterNum) {
+async function runStoryboardStepSilent(chapterNum, options = {}) {
     const script = state.assets.scripts?.[chapterNum] || state.novel?.substring(0, 15000) || '';
+    const append = !!options.append;
+    const desiredShots = Math.max(1, Math.min(20, Number(options.desiredShots || 20))); // 单次最多20镜
+
+    // 已有分镜（用于自动补齐）
+    const existing = Array.isArray(state.assets?.storyboards?.[chapterNum]) ? state.assets.storyboards[chapterNum] : [];
+
     // 获取选中的画风prompt
     const artstylePrompt = state.assets.artstyle?.final_suggestion?.full_prompt || 
                            state.assets.artstyle?.recommendations?.[0]?.prompt_keywords || '';
 
     // ==================== 兩段式分鏡（20鏡/次，防截斷）====================
-    const skeletonResult = await callAgent('storyboard_skeleton', script, {
+    // 🔧 自动补齐：如果已有分镜，则要求“续写下一批”，禁止重复，继续编号
+    let inputText = script;
+    if (append && existing.length > 0) {
+        // 只取最后一些镜头key，避免输入过长
+        const key = (r) => `${r.scene_no ?? r.sceneNo ?? 0}_${r.shot_no ?? r.shotNo ?? 0}`;
+        const tailKeys = existing.slice(-30).map(key).join(',');
+        // 找到最后一个镜头用于续写承接
+        const last = existing[existing.length - 1] || {};
+        const lastScene = last.scene_no ?? last.sceneNo ?? 0;
+        const lastShot = last.shot_no ?? last.shotNo ?? 0;
+
+        inputText = `【續寫分鏡：請從已生成的最後鏡頭之後繼續，不要重複任何 scene_no+shot_no】\n` +
+                    `已生成鏡頭key(末30個): ${tailKeys}\n` +
+                    `最後鏡頭: scene_no=${lastScene}, shot_no=${lastShot}\n` +
+                    `請繼續生成接下來 ${desiredShots} 個鏡頭（最多20個）。\n` +
+                    `規則：若延續同一場景(scene_no不變)則shot_no遞增；若切換新場景則scene_no+1且shot_no=1。\n` +
+                    `只輸出JSON，且不要任何解釋文字。\n\n` +
+                    script;
+    }
+
+    const skeletonResult = await callAgent('storyboard_skeleton', inputText, {
         concept: state.assets.concept,
         characters: state.assets.characters,
         production: state.production,
@@ -6274,7 +6300,7 @@ async function runStoryboardStepSilent(chapterNum) {
         }
     }
 
-    // Prompt補全
+    // Prompt補全（只对本批shots补prompt；自动补齐时避免重算已有）
     if (Array.isArray(shots) && shots.length > 0) {
         const promptResult = await callAgent('storyboard_prompt', JSON.stringify({ storyboard: shots }), {
             artstyle: artstylePrompt,
@@ -6294,6 +6320,20 @@ async function runStoryboardStepSilent(chapterNum) {
                 Video_Prompt: r.Video_Prompt || r.video_prompt || s.Video_Prompt
             };
         });
+    }
+
+    // 🔧 自动补齐合并：append时与existing去重合并
+    if (append && existing.length > 0) {
+        const key = (r) => `${r.scene_no ?? r.sceneNo ?? 0}_${r.shot_no ?? r.shotNo ?? 0}`;
+        const merged = [...existing];
+        const seen = new Set(existing.map(key));
+        for (const s of shots) {
+            const k = key(s);
+            if (seen.has(k)) continue;
+            seen.add(k);
+            merged.push(s);
+        }
+        shots = merged;
     }
 
     // 如果仍然是空，不要覆盖已有分镜，给出可复制的调试信息
@@ -16387,8 +16427,8 @@ ${totalChapters > 0
         removeTypingIndicator();
         hideAgentStatus();
 
-        // 🔄 清除生成状态
-        delete generatingStoryboards[chapterNum];
+        // 🔄 清除生成状态（延后：自动补齐期间保持“生成中”）
+        // delete generatingStoryboards[chapterNum];
 
         const totalChapters = state.assets.chapters.length;
         const isLastChapter = chapterNum >= totalChapters;
@@ -16414,6 +16454,35 @@ ${totalChapters > 0
         // ✅ 存入项目资产
         state.assets.storyboards = state.assets.storyboards || {};
         state.assets.storyboards[chapterNum] = shots;
+
+        // ==================== 自动补齐到目标镜头数（用户无需手动续跑）====================
+        // 如果不足 targetShots，则自动追加生成下一批，直到达标或达到最大轮次
+        const MAX_FILL_ROUNDS = 6;
+        let fillRounds = 0;
+        while (isRunContextActive(runCtx) && Array.isArray(state.assets.storyboards[chapterNum]) && state.assets.storyboards[chapterNum].length < targetShots && fillRounds < MAX_FILL_ROUNDS) {
+            fillRounds++;
+            const currentCount = state.assets.storyboards[chapterNum].length;
+            const need = Math.min(20, targetShots - currentCount);
+
+            // 更新UI：保持“生成中”并提示补齐
+            generatingStoryboards[chapterNum] = true;
+            updateAssetsPanel();
+            showAgentStatus('🎬 分鏡導演', `自動補齊中... (${currentCount}/${targetShots})`, 'storyboard');
+
+            try {
+                await runStoryboardStepSilent(chapterNum, { append: true, desiredShots: need });
+            } catch (e) {
+                console.warn('autoFill storyboard failed:', e);
+                break;
+            }
+        }
+
+        // 取最终结果
+        shots = state.assets.storyboards[chapterNum] || shots;
+
+        // 🔄 清除生成状态
+        delete generatingStoryboards[chapterNum];
+        hideAgentStatus();
 
         const completion = targetShots > 0 ? Math.round(shots.length / targetShots * 100) : 0;
 
