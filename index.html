@@ -15910,12 +15910,15 @@ async function runStoryboardGeneration(chapterNum) {
         renderProjectList();
     }
     
-    // 🔄 标记该章节正在生成分镜
-    generatingStoryboards[chapterNum] = true;
-    updateAssetsPanel(); // 刷新显示生成状态
-    
     const chapter = state.assets.chapters?.[chapterNum - 1];
     const script = state.assets.scripts?.[chapterNum];
+
+    // ⚠️ 只有在确认有剧本后，才显示“分镜生成中...”，避免误导
+    // （否则会出现：剧本未生成，但分镜显示生成中）
+    if (script) {
+        generatingStoryboards[chapterNum] = true;
+        updateAssetsPanel();
+    }
     
     if (!chapter) {
         const totalChapters = state.assets.chapters?.length || 0;
@@ -15930,16 +15933,20 @@ async function runStoryboardGeneration(chapterNum) {
 
 ${totalChapters > 0 
     ? `目前有 ${totalChapters} 集，請選擇要生成的分鏡：`
-    : '請先生成章節規劃'}`, buttons);
+    : '請先生成章節規劃'}`, buttons, runCtx);
         return;
     }
     
     if (!script) {
+        // 确保不残留“生成中”状态
+        delete generatingStoryboards[chapterNum];
+        updateAssetsPanel();
+
         addAIMessage(`⚠️ **第${chapterNum}集劇本尚未完成**
 
 請先生成劇本`, [
             { text: `✍️ 生成第${chapterNum}集劇本`, action: () => runScriptWriting(chapterNum) }
-        ]);
+        ], runCtx);
         return;
     }
     
