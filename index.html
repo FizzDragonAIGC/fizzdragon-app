@@ -10039,6 +10039,11 @@ function saveAdProject(name = null, silent = false) {
 // ==================== 初始化 ====================
 // 登出
 function handleLogout() {
+    // 内测模式：退出=清空登录信息，回到游客（不删项目数据）
+    if (!confirm('確定要退出登入嗎？\n\n退出後：\n- 你會以「游客」身份使用\n- 本地項目仍保留\n- 云端同步將以游客身份重新建立空間')) {
+        return;
+    }
+
     const token = localStorage.getItem('fizzdragon_token');
     if (token) {
         fetch('/api/auth/logout', {
@@ -10046,18 +10051,33 @@ function handleLogout() {
             headers: { 'Authorization': `Bearer ${token}` }
         }).catch(() => {});
     }
+
     localStorage.removeItem('fizzdragon_token');
     localStorage.removeItem('fizzdragon_user');
-    // window.location.href = 'login.html'; // 内测模式：跳过登录
+    localStorage.removeItem('user_id');
+
+    // 重新初始化为游客
+    currentUser = { id: 'guest_' + Date.now(), plan: 'free' };
+    initUser();
+    showCurrentUser();
+
+    // 🔄 直接刷新页面，确保所有缓存的userId/同步状态重置
+    window.location.reload();
 }
 
 // 显示当前用户名
 function showCurrentUser() {
+    const el = document.getElementById('currentUsername');
+    if (!el) return;
+
     const user = JSON.parse(localStorage.getItem('fizzdragon_user') || 'null');
     if (user && user.username) {
-        const el = document.getElementById('currentUsername');
-        if (el) el.textContent = `👤 ${user.username}`;
+        el.textContent = `👤 ${user.username}`;
+        return;
     }
+
+    // 未登录：显示游客
+    el.textContent = '👤 游客';
 }
 
 async function init() {
