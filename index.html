@@ -8593,6 +8593,29 @@ function deleteCharacter(index) {
 }
 
 // ==================== 故事源管理 ====================
+// 通用：查看长文本
+function viewLongTextModal(title, content) {
+    const modal = document.createElement('div');
+    modal.className = 'story-modal';
+    modal.innerHTML = `
+        <div class="story-modal-content">
+            <div class="story-modal-header">
+                <h3>📄 ${title || '全文'}</h3>
+                <button class="story-modal-close" onclick="this.closest('.story-modal').remove()">✕</button>
+            </div>
+            <div class="story-modal-body" style="white-space:pre-wrap;line-height:1.8;font-size:14px;">
+                ${(String(content || '(無內容)')).replace(/\n/g, '<br>')}
+            </div>
+            <div class="story-modal-footer">
+                <span>${(String(content || '').length).toLocaleString()} 字</span>
+                <button onclick="navigator.clipboard?.writeText(String(window.__MODAL_COPY_TEXT || '')).then(()=>showToast('已複製全文',3000)).catch(()=>showToast('複製失敗',3000))">📋 複製全文</button>
+            </div>
+        </div>
+    `;
+    window.__MODAL_COPY_TEXT = String(content || '');
+    document.body.appendChild(modal);
+}
+
 // 查看完整故事
 function viewFullStory() {
     const story = state.assets?.story;
@@ -18057,11 +18080,16 @@ async function triggerNonfictionRewrite() {
     const input = material.substring(0, 8000);
     const out = await callAgentStream('nonfiction_rewriter', input, { targetWords: 150000, useReasoner: false });
 
+    const finalText = (out || '').toString();
+    if (finalText.trim().length < 50) {
+      throw new Error('AI返回內容過短（可能是網絡中斷/流式未完整返回）。請重試。');
+    }
+
     state.assets.nonfiction_draft = {
       sourceChars: material.length,
-      rewrittenChars: (out || '').length,
+      rewrittenChars: finalText.length,
       updatedAt: new Date().toISOString(),
-      text: out
+      text: finalText
     };
 
     saveProject(null, true);
@@ -18070,7 +18098,20 @@ async function triggerNonfictionRewrite() {
     removeTypingIndicator();
     hideAgentStatus();
 
-    addAIMessage('✅ **已生成叙事科学改写稿（MVP）**\n\n我先对原稿前 15000 字进行了高质量改写并写入「项目资产」：assets.nonfiction_draft。\n\n下一步我会把它升级为【整稿分批扩写到15万字】（自动分批+续写+可暂停）。');
+    const preview = finalText.substring(0, 600);
+    addAIMessage(`✅ **已生成叙事科学改写稿（MVP）**
+
+我已把改写结果存入「项目资产」：**assets.nonfiction_draft**
+
+**预览**（前600字）：
+
+${preview}${finalText.length > 600 ? '…' : ''}
+`, [
+      { text: '📋 複製改寫全文', action: () => navigator.clipboard?.writeText(finalText).then(() => showToast('已複製全文', 3000)).catch(() => showToast('複製失敗', 3000)) },
+      { text: '👁️ 查看改寫全文', action: () => viewLongTextModal('叙事科学改写全文', finalText) }
+    ]);
+
+    addAIMessage('下一步我会把它升级为【整稿分批扩写到15万字】（自动分批+续写+可暂停）。');
 
   } catch (e) {
     removeTypingIndicator();
