@@ -11639,37 +11639,34 @@ function saveProject(name = null, silent = false) {
     // 4) 最后才用 項目_時間戳
     const existingName = currentProjectId && projects[currentProjectId]?.name ? projects[currentProjectId].name : null;
     const projectName = name || existingName || state.novelTitle || writeState.outline?.title || `項目_${Date.now()}`;
-    
+
     // 使用现有项目ID或创建新的
     const projectId = currentProjectId || projectName.replace(/\s+/g, '_').toLowerCase() + '_' + Date.now();
     currentProjectId = projectId;
-    
-    // 🔧 保存聊天历史（限制大小，只保留最近50条消息）
+
+    // 🔧 保存聊天历史（限制大小，只保留最近30条消息；避免localStorage爆掉）
     const chatContainer = document.getElementById('chatContainer');
-    const messages = chatContainer ? Array.from(chatContainer.children).slice(-50) : [];
+    const messages = chatContainer ? Array.from(chatContainer.children).slice(-30) : [];
     const chatHistory = messages.map(m => m.outerHTML).join('\n');
-    
-    projects[projectId] = {
+
+    const fullProject = {
         id: projectId,
         name: projectName,
         stage: state.mode === 'write' ? 'write' : 'import',
         step: state.step,
         timestamp: new Date().toISOString(),
-        
-        // 🔧 聊天历史
-        chatHistory: chatHistory,
-        
-        // 项目资产（新结构）
+
+        chatHistory,
         assets: state.assets,
         production: state.production,
-        
+
         // 写作模式数据（兼容）
         idea: writeState.idea,
         interview: writeState.interview,
         outline: writeState.outline,
         chapters: writeState.chapters,
         writeStoryboard: writeState.storyboard,
-        
+
         // 导入模式数据（兼容）
         novel: state.novel,
         novelTitle: state.novelTitle,
@@ -11678,27 +11675,77 @@ function saveProject(name = null, silent = false) {
         characters: state.characters || state.assets?.characters,
         storyboard: state.storyboard
     };
-    
-    localStorage.setItem(getProjectsKey(), JSON.stringify(projects));
-    
+
     // 🔄 同步到后端（异步，不阻塞UI）
-    syncProjectToBackend(projectId, projects[projectId]);
-    
+    // 云端存“完整版”，本地存“精简版”（避免QuotaExceededError）
+    syncProjectToBackend(projectId, fullProject);
+
+    function shrinkForLocal(p) {
+        const out = JSON.parse(JSON.stringify(p));
+        out.localTruncated = false;
+
+        // 1) story 源文本太大：本地只保留前2万字
+        if (out.assets?.story?.content && out.assets.story.content.length > 20000) {
+            out.assets.story.content = out.assets.story.content.substring(0, 20000) + '\n...(本地已截斷，完整內容在云端)';
+            out.localTruncated = true;
+        }
+
+        // 2) scripts 本地每集最多5k（避免100集爆掉）
+        if (out.assets?.scripts && typeof out.assets.scripts === 'object') {
+            for (const k of Object.keys(out.assets.scripts)) {
+                const s = out.assets.scripts[k];
+                if (typeof s === 'string' && s.length > 5000) {
+                    out.assets.scripts[k] = s.substring(0, 5000) + '\n...(本地已截斷，完整劇本在云端)';
+                    out.localTruncated = true;
+                }
+            }
+        }
+
+        // 3) storyboards 本地只保留每集前20镜（提示词太大）
+        if (out.assets?.storyboards && typeof out.assets.storyboards === 'object') {
+            for (const k of Object.keys(out.assets.storyboards)) {
+                const arr = out.assets.storyboards[k];
+                if (Array.isArray(arr) && arr.length > 20) {
+                    out.assets.storyboards[k] = arr.slice(0, 20);
+                    out.localTruncated = true;
+                }
+            }
+        }
+
+        return out;
+    }
+
+    // 写入本地：先尝试完整版，失败则自动降级
+    projects[projectId] = fullProject;
+    try {
+        localStorage.setItem(getProjectsKey(), JSON.stringify(projects));
+    } catch (e) {
+        console.warn('⚠️ localStorage quota exceeded, saving truncated version:', e.message);
+        projects[projectId] = shrinkForLocal(fullProject);
+        try {
+            localStorage.setItem(getProjectsKey(), JSON.stringify(projects));
+            showToast('⚠️ 本地存儲空間不足：已改用精簡保存（完整在云端）', 5000);
+        } catch (e2) {
+            console.error('❌ truncated save still failed:', e2.message);
+            showToast('❌ 本地存儲空間不足：已跳過本地保存（完整在云端）', 6000);
+        }
+    }
+
     // 更新左侧边栏
     renderProjectList();
-    
+
     // 更新右侧资产面板
     updateAssetsPanel();
-    
+
     // 更新标题
-    document.getElementById('headerTitle').textContent = projectName;
-    
+    const ht = document.getElementById('headerTitle');
+    if (ht) ht.textContent = projectName;
+
     if (!silent) {
         console.log(`💾 項目已保存: ${projectName}`);
-        // 显示保存提示（短暂）
         showSaveIndicator();
     }
-    
+
     return projectId;
 }
 
