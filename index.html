@@ -7684,6 +7684,7 @@ function updateAssetsPanel() {
                                         <span id="sbToggle${ep}" style="font-size:10px;color:#666;">▲</span>
                                         <button onclick="event.stopPropagation();exportChapterStoryboard(${ep})" class="fizzstudio-mini-btn" title="導出">📥</button>
                                         <button onclick="event.stopPropagation();copyChapterPrompts(${ep})" class="fizzstudio-mini-btn" title="複製">📋</button>
+                                        <button onclick="event.stopPropagation();fillStoryboardPrompts(${ep})" class="fizzstudio-mini-btn" title="補全Prompt">🧩</button>
                                     </div>
                                     <div class="fizzstudio-storyboard-detail" id="sbDetail${ep}" style="display:block;">
                                         <table class="sb-table">
@@ -8166,6 +8167,61 @@ function copyChapterPrompts(epNum) {
         addAIMessage(`✅ 第${epNum}集 ${prompts.length} 個Prompt已複製！`);
     } else {
         addAIMessage('❌ 沒有Prompt可複製');
+    }
+}
+
+// 🧩 为已有分镜补全 Image/Video Prompt（不重跑结构）
+async function fillStoryboardPrompts(epNum) {
+    const shots = state.assets?.storyboards?.[epNum];
+    if (!Array.isArray(shots) || shots.length === 0) {
+        addAIMessage(`❌ 第${epNum}集沒有分鏡數據`);
+        return;
+    }
+
+    const artstylePrompt = state.assets.artstyle?.final_suggestion?.full_prompt || 
+                           state.assets.artstyle?.recommendations?.[0]?.prompt_keywords || '';
+
+    addTypingIndicator();
+    showAgentStatus('🧩 Prompt補全', `補全第${epNum}集分鏡Prompt...`, 'storyboard_prompt');
+
+    try {
+        const key = (r) => `${r.scene_no ?? r.sceneNo ?? 0}_${r.shot_no ?? r.shotNo ?? 0}`;
+        const merged = [...shots];
+        const mapAll = new Map(merged.map(s => [key(s), s]));
+
+        // 分20镜一批补全
+        for (let i = 0; i < shots.length; i += 20) {
+            const batch = shots.slice(i, i + 20);
+            const promptResult = await callAgent('storyboard_prompt', JSON.stringify({ storyboard: batch }), {
+                artstyle: artstylePrompt,
+                concept: state.assets.concept,
+                production: state.production,
+                useReasoner: false
+            });
+            const prData = safeJSONParse(promptResult, 'storyboard');
+            const promptRows = prData.storyboard || prData.shots || prData.data?.storyboard || (Array.isArray(prData) ? prData : []);
+            for (const r of promptRows) {
+                const k = key(r);
+                const s = mapAll.get(k);
+                if (!s) continue;
+                s.Image_Prompt = r.Image_Prompt || r.image_prompt || s.Image_Prompt;
+                s.Video_Prompt = r.Video_Prompt || r.video_prompt || s.Video_Prompt;
+            }
+        }
+
+        state.assets.storyboards[epNum] = merged;
+        saveProject(null, true);
+        updateAssetsPanel();
+        renderProjectList();
+
+        removeTypingIndicator();
+        hideAgentStatus();
+
+        addAIMessage(`✅ 已補全第${epNum}集分鏡Prompt（不重跑結構）`);
+    } catch (e) {
+        removeTypingIndicator();
+        hideAgentStatus();
+        addAIMessage(`❌ Prompt補全失敗：${e.message}`);
     }
 }
 
