@@ -6321,12 +6321,41 @@ async function runStoryboardStepSilent(chapterNum, options = {}) {
                     script;
     }
 
-    const skeletonResult = await callAgent('storyboard_skeleton', inputText, {
-        concept: state.assets.concept,
-        characters: state.assets.characters,
-        production: state.production,
-        artstyle: artstylePrompt
-    });
+    // 🔧 骨架生成：若模型输出夹杂分析/非JSON，则自动重试（并降级镜头数，避免再次失控）
+    async function callSkeletonWithRetry(text, maxShots) {
+        let lastErr = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            const strictPrefix = `【重要】你只能输出「純JSON」(以{开头以}结尾)，禁止任何解释/分析文字。\n` +
+                                 `若无法保证纯JSON，请直接输出 {} 。\n` +
+                                 `本次最多输出 ${Math.min(20, maxShots)} 个镜头，达到就停止。\n\n`;
+            try {
+                const res = await callAgent('storyboard_skeleton', strictPrefix + text, {
+                    concept: state.assets.concept,
+                    characters: state.assets.characters,
+                    production: state.production,
+                    artstyle: artstylePrompt,
+                    useReasoner: false
+                });
+
+                const rawStr = (typeof res === 'string') ? res : JSON.stringify(res);
+                // 快速判定：必须包含 { 和 "storyboard"
+                if (!rawStr.includes('{') || !rawStr.includes('storyboard')) {
+                    lastErr = new Error('skeleton返回非JSON/缺storyboard');
+                    continue;
+                }
+                return res;
+            } catch (e) {
+                lastErr = e;
+            }
+            // 降级：20→10→5
+            maxShots = maxShots <= 5 ? 5 : (maxShots <= 10 ? 5 : 10);
+            await new Promise(r => setTimeout(r, 1200 * attempt));
+        }
+        throw lastErr || new Error('skeleton生成失败');
+    }
+
+    const skeletonResult = await callSkeletonWithRetry(inputText, desiredShots);
+
 
     // 🔧 调试：保留原始返回（避免0镜头时无证据）
     state.lastStoryboardRaw = (typeof skeletonResult === 'string') ? skeletonResult : JSON.stringify(skeletonResult);
