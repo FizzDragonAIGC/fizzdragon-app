@@ -11624,8 +11624,18 @@ function getCurrentUserId() {
     return user?.id || user?.username || 'guest';
 }
 
-// 🔄 同步项目到后端
+// 🔄 同步项目到后端（带熔断/退避，避免网络抖动时狂刷导致HTTP2错误）
+let _syncFailCount = 0;
+let _syncDisabledUntil = 0;
+let _syncWarnedAt = 0;
+
 async function syncProjectToBackend(projectId, projectData) {
+    const now = Date.now();
+    if (now < _syncDisabledUntil) {
+        // 熔断期间跳过
+        return;
+    }
+
     try {
         const userId = getCurrentUserId();
         await fetch(`${API_BASE}/user-projects/${userId}/${projectId}`, {
@@ -11633,9 +11643,20 @@ async function syncProjectToBackend(projectId, projectData) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(projectData)
         });
+        _syncFailCount = 0;
         console.log(`☁️ 已同步到云端: ${projectId}`);
     } catch (e) {
+        _syncFailCount += 1;
+        // 指数退避：1s,2s,4s... 最大5分钟
+        const backoffMs = Math.min(300000, 1000 * Math.pow(2, Math.min(_syncFailCount, 8)));
+        _syncDisabledUntil = Date.now() + backoffMs;
+
         console.warn('云端同步失败（本地已保存）:', e.message);
+        // 每30秒最多提示一次，避免刷屏
+        if (Date.now() - _syncWarnedAt > 30000) {
+            _syncWarnedAt = Date.now();
+            showToast(`☁️ 云端同步暫停（網絡不穩定）。約 ${(backoffMs/1000).toFixed(0)} 秒後自動重試。`, 5000);
+        }
     }
 }
 
@@ -11675,7 +11696,39 @@ async function syncProjectsFromBackend(retries = 2) {
                 }
             }
             
-            localStorage.setItem(getProjectsKey(), JSON.stringify(merged));
+            try {
+                localStorage.setItem(getProjectsKey(), JSON.stringify(merged));
+            } catch (e) {
+                // ⚠️ localStorage爆仓时，避免同步崩溃：仅保存轻量索引，完整内容仍在云端
+                console.warn('⚠️ 云端恢复写入本地失败（quota），改为轻量索引模式');
+                const light = {};
+                for (const [id, proj] of Object.entries(merged)) {
+                    light[id] = {
+                        id: proj.id,
+                        name: proj.name,
+                        timestamp: proj.timestamp,
+                        stage: proj.stage,
+                        step: proj.step,
+                        deleted: proj.deleted,
+                        deletedAt: proj.deletedAt,
+                        // 轻量统计
+                        assets: {
+                            concept: proj.assets?.concept || null,
+                            characters: Array.isArray(proj.assets?.characters) ? proj.assets.characters.slice(0, 3) : [],
+                            chapters: Array.isArray(proj.assets?.chapters) ? proj.assets.chapters.slice(0, 5) : [],
+                            scripts: {},
+                            storyboards: {}
+                        },
+                        production: proj.production
+                    };
+                }
+                try {
+                    localStorage.setItem(getProjectsKey(), JSON.stringify(light));
+                    showToast('⚠️ 本地空間不足：雲端項目已用「索引模式」恢復（打開項目時再拉取完整版）', 6000);
+                } catch (e2) {
+                    showToast('❌ 本地空間不足：已跳過本地恢復（雲端仍有）', 6000);
+                }
+            }
             
             // 🔧 有新项目时更新UI
             if (syncCount > 0) {
@@ -11849,28 +11902,29 @@ let autoSaveTimer = null;
 let lastSaveState = '';
 
 function startAutoSave() {
-    // 每30秒检查并自动保存
+    // 🔧 自动保存降频 + 去抖：避免网络差时触发大量云端同步/HTTP2错误
     if (autoSaveTimer) clearInterval(autoSaveTimer);
     autoSaveTimer = setInterval(() => {
         if (currentProjectId) {
-            // 检查聊天内容是否有变化
             const chatContainer = document.getElementById('chatContainer');
             const currentChatLen = chatContainer?.children?.length || 0;
             const currentState = JSON.stringify({
                 step: state.step,
-                assets: state.assets,
+                // 只取轻量指纹，避免巨对象 stringify 卡顿
+                assetsKeys: Object.keys(state.assets || {}),
+                scriptsCount: Object.keys(state.assets?.scripts || {}).length,
+                sbCount: Object.keys(state.assets?.storyboards || {}).length,
                 production: state.production,
                 chatLen: currentChatLen
             });
-            
-            // 只有状态变化时才保存
+
             if (currentState !== lastSaveState) {
                 saveProject(null, true);
                 lastSaveState = currentState;
                 console.log('🔄 自動保存 (聊天:', currentChatLen, '条)');
             }
         }
-    }, 15000);  // 改为15秒，更频繁保存聊天
+    }, 60000);  // 60秒一次（更稳）
 }
 
 function showSaveIndicator() {
