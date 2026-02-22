@@ -5266,10 +5266,19 @@ function toggleAutoPilotMode() {
     updateAutoPilotToggle();
     
     if (state.autoPilotMode) {
-        // 🔧 只设置模式，不中断当前步骤
-        addAIMessage(`🚀 **Auto-Pilot 已開啟**\n\n當前步驟完成後，系統將自動保存並繼續下一步。\n\n💡 正在進行中的步驟不會中斷。`);
+        // 🔧 只设置模式，不中断当前步骤（注意：这不是“开始全自动”）
+        addAIMessage(`🚀 **Auto-Pilot 自動續跑：已開啟**
+
+含義：當你手動完成某一步後，系統會自動保存並進入下一步。
+
+⚠️ 這不會自動開始整條流水線。
+要全自動跑完請點：左上 🚀 Auto（全自動）
+
+💡 正在進行中的步驟不會中斷。`);
     } else {
-        addAIMessage(`⏸️ **Auto-Pilot 已關閉**\n\n回到對話模式，每步完成後等待你的確認。`);
+        addAIMessage(`⏸️ **Auto-Pilot 自動續跑：已關閉**
+
+回到對話模式，每步完成後等待你的確認。`);
     }
 }
 
@@ -5368,6 +5377,12 @@ function runAutoPilot() {
         console.log('📋 从scripts构建novel:', state.novel.length, '字');
     }
     
+    // 🔧 确保有项目ID，否则左侧状态无法标记“运行中”
+    if (!currentProjectId) {
+        const title = state.novelTitle || state.originalScriptTitle || state.title || null;
+        saveProject(title, true);
+    }
+
     // 如果已有配置，直接开始；否则先问配置
     if (state.production?.episodes && state.production?.durationMin) {
         runAutoPilotCore();
@@ -5479,13 +5494,13 @@ async function runAutoPilotCore() {
     
     // 标记项目正在运行
     console.log('🚀 Auto-Pilot开始，项目ID:', currentProjectId);
-    if (currentProjectId) {
-        runningProjects[currentProjectId] = true;
-        console.log('📊 runningProjects:', JSON.stringify(runningProjects));
-        renderProjectList();
-    } else {
-        console.warn('⚠️ 没有currentProjectId，无法标记运行状态');
+    if (!currentProjectId) {
+        // 兜底：强制创建项目，确保左侧能显示“运行中”
+        saveProject(state.novelTitle || state.originalScriptTitle || null, true);
     }
+    runningProjects[currentProjectId] = true;
+    console.log('📊 runningProjects:', JSON.stringify(runningProjects));
+    renderProjectList();
     
     addAIMessage(`🚀 **Auto-Pilot 啟動！**
 
