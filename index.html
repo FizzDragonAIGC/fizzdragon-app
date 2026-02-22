@@ -6245,6 +6245,49 @@ async function runScriptStepSilent(chapterNum) {
     updateAssetsPanel();
 }
 
+function normalizeStoryboardShots(shots) {
+    if (!Array.isArray(shots)) return [];
+
+    // 兼容旧schema/缺字段：保证每个镜头都有 scene_no + shot_no（用于补Prompt与去重合并）
+    let currentScene = 1;
+    let shotInScene = 0;
+
+    return shots.map((s, idx) => {
+        const out = { ...s };
+
+        let sceneNo = out.scene_no ?? out.sceneNo;
+        let shotNo = out.shot_no ?? out.shotNo;
+
+        // 尝试从shot_id里提取
+        if ((shotNo === undefined || shotNo === null || Number.isNaN(Number(shotNo))) && out.shot_id) {
+            const m = String(out.shot_id).match(/(\d+)/);
+            if (m) shotNo = Number(m[1]);
+        }
+
+        if (sceneNo === undefined || sceneNo === null || Number.isNaN(Number(sceneNo))) {
+            sceneNo = currentScene;
+        }
+
+        if (shotNo === undefined || shotNo === null || Number.isNaN(Number(shotNo))) {
+            // 顺序编号
+            shotInScene += 1;
+            shotNo = shotInScene;
+        } else {
+            shotInScene = Number(shotNo);
+        }
+
+        // 如果scene跳变，重置shot计数
+        if (sceneNo !== currentScene) {
+            currentScene = Number(sceneNo) || currentScene;
+            shotInScene = Number(shotNo) || 1;
+        }
+
+        out.scene_no = Number(sceneNo) || 1;
+        out.shot_no = Number(shotNo) || (idx + 1);
+        return out;
+    });
+}
+
 async function runStoryboardStepSilent(chapterNum, options = {}) {
     const script = state.assets.scripts?.[chapterNum] || state.novel?.substring(0, 15000) || '';
     const append = !!options.append;
@@ -6291,6 +6334,7 @@ async function runStoryboardStepSilent(chapterNum, options = {}) {
 
     const parsed = safeJSONParse(skeletonResult, 'storyboard');
     let shots = parsed.storyboard || parsed.shots || parsed.data?.storyboard || (Array.isArray(parsed) ? parsed : []);
+    shots = normalizeStoryboardShots(shots);
 
     // 🔧 兜底：从原始文本里强行提取 storyboard 数组
     if ((!shots || shots.length === 0) && typeof state.lastStoryboardRaw === 'string') {
@@ -6302,13 +6346,30 @@ async function runStoryboardStepSilent(chapterNum, options = {}) {
 
     // Prompt補全（只对本批shots补prompt；自动补齐时避免重算已有）
     if (Array.isArray(shots) && shots.length > 0) {
+        shots = normalizeStoryboardShots(shots);
+
         const promptResult = await callAgent('storyboard_prompt', JSON.stringify({ storyboard: shots }), {
             artstyle: artstylePrompt,
             concept: state.assets.concept,
             production: state.production
         });
-        const prData = safeJSONParse(promptResult, 'storyboard');
-        const promptRows = prData.storyboard || prData.shots || prData.data?.storyboard || (Array.isArray(prData) ? prData : []);
+
+        // 🔧 留证，便于排查“缺两列”
+        state.lastStoryboardPromptRaw = (typeof promptResult === 'string') ? promptResult : JSON.stringify(promptResult);
+
+        let prData = safeJSONParse(promptResult, 'storyboard');
+        let promptRows = prData.storyboard || prData.shots || prData.data?.storyboard || (Array.isArray(prData) ? prData : []);
+
+        // 兜底：从原始文本里提取 storyboard 数组
+        if ((!promptRows || promptRows.length === 0) && typeof state.lastStoryboardPromptRaw === 'string') {
+            const m = state.lastStoryboardPromptRaw.match(/"storyboard"\s*:\s*(\[[\s\S]*?\])\s*[\}\n]/);
+            if (m) {
+                try { promptRows = JSON.parse(m[1]); } catch (e) {}
+            }
+        }
+
+        promptRows = normalizeStoryboardShots(promptRows);
+
         const key = (r) => `${r.scene_no ?? r.sceneNo ?? 0}_${r.shot_no ?? r.shotNo ?? 0}`;
         const map = new Map(promptRows.map(r => [key(r), r]));
         shots = shots.map(s => {
@@ -8186,20 +8247,31 @@ async function fillStoryboardPrompts(epNum) {
 
     try {
         const key = (r) => `${r.scene_no ?? r.sceneNo ?? 0}_${r.shot_no ?? r.shotNo ?? 0}`;
-        const merged = [...shots];
+        const merged = normalizeStoryboardShots([...shots]);
         const mapAll = new Map(merged.map(s => [key(s), s]));
 
         // 分20镜一批补全
-        for (let i = 0; i < shots.length; i += 20) {
-            const batch = shots.slice(i, i + 20);
+        for (let i = 0; i < merged.length; i += 20) {
+            const batch = merged.slice(i, i + 20);
             const promptResult = await callAgent('storyboard_prompt', JSON.stringify({ storyboard: batch }), {
                 artstyle: artstylePrompt,
                 concept: state.assets.concept,
                 production: state.production,
                 useReasoner: false
             });
-            const prData = safeJSONParse(promptResult, 'storyboard');
-            const promptRows = prData.storyboard || prData.shots || prData.data?.storyboard || (Array.isArray(prData) ? prData : []);
+
+            // 🔧 留证 + 兜底提取
+            state.lastStoryboardPromptRaw = (typeof promptResult === 'string') ? promptResult : JSON.stringify(promptResult);
+
+            let prData = safeJSONParse(promptResult, 'storyboard');
+            let promptRows = prData.storyboard || prData.shots || prData.data?.storyboard || (Array.isArray(prData) ? prData : []);
+            if ((!promptRows || promptRows.length === 0) && typeof state.lastStoryboardPromptRaw === 'string') {
+                const m = state.lastStoryboardPromptRaw.match(/"storyboard"\s*:\s*(\[[\s\S]*?\])\s*[\}\n]/);
+                if (m) {
+                    try { promptRows = JSON.parse(m[1]); } catch (e) {}
+                }
+            }
+            promptRows = normalizeStoryboardShots(promptRows);
             for (const r of promptRows) {
                 const k = key(r);
                 const s = mapAll.get(k);
