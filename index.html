@@ -18052,10 +18052,10 @@ async function triggerNonfictionRewrite() {
   ]);
 
   try {
-    // MVP：先对前15000字做一次高质量改写（避免超时）。
-    // 后续升级：分批续写（30K一批）+ 上一批摘要衔接 + 可暂停。
-    const input = material.substring(0, 15000);
-    const out = await callAgent('nonfiction_rewriter', input, { targetWords: 150000 });
+    // MVP：改为更稳的短输入 + 流式（避免HTTP超时导致Cloudflare返回无CORS的524/520）
+    // 后续升级：整稿分批续写（30K一批）+ 上一批摘要衔接 + 可暂停。
+    const input = material.substring(0, 8000);
+    const out = await callAgentStream('nonfiction_rewriter', input, { targetWords: 150000, useReasoner: false });
 
     state.assets.nonfiction_draft = {
       sourceChars: material.length,
