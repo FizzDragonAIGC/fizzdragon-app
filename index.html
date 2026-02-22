@@ -12160,20 +12160,27 @@ function renameProject(projectId, currentName) {
     if (newName && newName.trim() && newName !== currentName) {
         const projects = getProjects();
         if (projects[projectId]) {
-            projects[projectId].name = newName.trim();
+            const finalName = newName.trim();
+
+            // ✅ 改名必须“写入 + 更新时间戳 + 云端同步”，否则会被云端旧名覆盖回来
+            projects[projectId].name = finalName;
+            projects[projectId].timestamp = new Date().toISOString();
             localStorage.setItem(getProjectsKey(), JSON.stringify(projects));
+
+            // 🔄 同步到后端（避免 syncProjectsFromBackend 把旧名字覆盖回来）
+            syncProjectToBackend(projectId, projects[projectId]);
+
             renderProjectList();
             
             // 更新标题如果是当前项目
             if (projectId === currentProjectId) {
-                const finalName = newName.trim();
                 document.getElementById('headerTitle').textContent = finalName;
                 // 🔧 同步到关键字段，避免后续自动保存/流程用旧title覆盖显示
                 state.novelTitle = finalName;
                 state.originalScriptTitle = finalName;
                 writeState.outline = writeState.outline || {};
                 if (writeState.outline) writeState.outline.title = finalName;
-                // 立即静默保存一次，固化名称
+                // 立即静默保存一次，固化名称（也会再次同步）
                 saveProject(finalName, true);
             }
         }
