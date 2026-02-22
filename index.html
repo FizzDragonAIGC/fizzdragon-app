@@ -7109,6 +7109,21 @@ function updateAssetsPanel() {
     const a = state.assets || {};
     const p = state.production || {};
 
+    // 🔧 自动补齐故事源：避免右侧“故事源/人物小传都没有”
+    // 规则：只要有导入内容（novel/originalScript），就写入 assets.story 供资产面板统一展示
+    if (!a.story) {
+        const content = state.originalScript || state.novel || '';
+        const title = state.novelTitle || state.originalScriptTitle || state.title || '';
+        if (content && content.length > 0) {
+            a.story = {
+                type: state.originalScript ? 'upload' : 'manual',
+                title: title || '未命名故事',
+                content: content
+            };
+            state.assets = a;
+        }
+    }
+
     // 🔧 规范化数据结构（防止 characters/filter 报错）
     if (!Array.isArray(a.characters)) {
         if (Array.isArray(a.characters?.characters)) a.characters = a.characters.characters;
@@ -7242,6 +7257,23 @@ function updateAssetsPanel() {
                     </div>
                 </div>
             `;
+        } else {
+            // 占位：高概念未生成
+            html += `
+                <div class="canvas-card">
+                    <div class="canvas-card-header">
+                        <span class="canvas-card-num">01</span>
+                        <span class="canvas-card-title">💡 高概念</span>
+                        <span class="canvas-card-status">待生成</span>
+                    </div>
+                    <div class="canvas-card-body" style="padding:8px 10px;">
+                        <div style="font-size:10px;color:var(--text2);line-height:1.4;">缺少高概念會導致後續章節/分鏡不穩定。建議先生成。</div>
+                        <div style="margin-top:8px;display:flex;gap:6px;">
+                            <button class="story-btn" onclick="triggerAgentWithCheck('concept')">⚡ 一鍵生成高概念</button>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
         
         // 01.5 画风设计
@@ -7320,6 +7352,24 @@ function updateAssetsPanel() {
                     <div class="canvas-card-body" style="padding:0;">
                         <div id="charListMain">${renderCharList(mainChars, 0)}</div>
                         <div id="charListSide" style="display:none;">${renderCharList(sideChars, mainChars.length)}</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            // 占位：人物小传未生成
+            html += `
+                <div class="canvas-card">
+                    <div class="canvas-card-header">
+                        <span class="canvas-card-num">02</span>
+                        <span class="canvas-card-title">👤 人物小傳</span>
+                        <span class="canvas-card-status">待生成</span>
+                    </div>
+                    <div class="canvas-card-body" style="padding:8px 10px;">
+                        <div style="font-size:10px;color:var(--text2);line-height:1.4;">還沒有角色與人物小傳。分鏡/劇本很容易跑偏。</div>
+                        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+                            <button class="story-btn" onclick="triggerAgentWithCheck('character')">⚡ 一鍵識別角色/生成小傳</button>
+                            <button class="story-btn" onclick="askCharacterBioManual()">✍️ 手動輸入人物小傳</button>
+                        </div>
                     </div>
                 </div>
             `;
