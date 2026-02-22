@@ -7077,17 +7077,32 @@ function triggerAgentWithCheck(agentType) {
     const hasScripts = Object.keys(a.scripts || {}).length > 0;
     
     switch(agentType) {
-        case 'concept':
-            if (!state.novel) {
-                console.log('❌ No novel content');
+        case 'concept': {
+            // 🔧 兼容：已有故事源/剧本但没有 state.novel
+            const hasNovel = !!(state.novel && state.novel.length >= 10);
+            const hasOriginalScript = !!(state.originalScript && state.originalScript.length >= 10);
+            const hasScripts2 = !!(a.scripts && Object.keys(a.scripts).length > 0);
+            const hasStoryAsset = !!(a.story?.content && a.story.content.length >= 10);
+
+            if (!hasNovel && !hasOriginalScript && !hasScripts2 && !hasStoryAsset) {
+                console.log('❌ No story content');
                 addAIMessage('❌ 請先導入故事內容', [
-                    { text: '📄 導入故事', action: () => document.getElementById('fileInput').click() }
+                    { text: '📄 導入故事', action: () => document.getElementById('fileInput').click() },
+                    { text: '📝 導入劇本', action: () => showFastTrack() }
                 ]);
                 return;
             }
+
+            // 如果没有novel，构建一个用于概念分析的文本
+            if (!hasNovel) {
+                const fallbackScript = hasScripts2 ? a.scripts[Object.keys(a.scripts)[0]] : '';
+                state.novel = (a.story?.content || state.originalScript || fallbackScript || '').toString();
+            }
+
             console.log('✅ Calling runConceptStep');
             runConceptStep();
             break;
+        }
         
         case 'interview':
             if (!hasConcept) {
