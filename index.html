@@ -2704,6 +2704,10 @@
 <body>
     <!-- Toast 容器 -->
     <div class="toast-container" id="toastContainer"></div>
+    <script>
+      // Build marker (for cache/debug)
+      window.__BUILD = '2026-02-22T12:28Z 3f088a7';
+    </script>
     
     <!-- 侧边栏遮罩（手机端点击关闭） -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
@@ -2752,6 +2756,7 @@
         
         <div class="sidebar-footer">
             <div class="beta-badge">✨ 讓每個人都能創作影視</div>
+            <div style="margin-top:6px;font-size:10px;color:rgba(255,255,255,0.45);">build: <span id="buildId">-</span></div>
         </div>
     </div>
     
@@ -17943,6 +17948,12 @@ document.getElementById('userInput').addEventListener('keydown', (e) => {
 });
 
 // 自动调整高度
+// 显示 build 版本（用于判断是否命中缓存）
+try {
+  const el = document.getElementById('buildId');
+  if (el) el.textContent = window.__BUILD || 'unknown';
+} catch (e) {}
+
 document.getElementById('userInput').addEventListener('input', function() {
     this.style.height = 'auto';
     this.style.height = Math.min(this.scrollHeight, 150) + 'px';
