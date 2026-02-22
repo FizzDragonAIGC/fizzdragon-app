@@ -9145,6 +9145,11 @@ function openProject(projectId) {
         renderProjectList();
     }
 
+    // 🔧 切换项目时：使所有旧的异步回包失效，彻底防止“痕迹/窜台”
+    newRunToken();
+    state.ui = state.ui || {};
+    state.ui.openChapter = null;
+
     currentProjectId = projectId;
     renderProjectList();
     loadProject(projectId);
@@ -11815,6 +11820,11 @@ function loadProject(projectId) {
     state.step = 0;
     state.assets = { concept: null, characters: [], chapters: [], costumes: null, scripts: {}, storyboards: {} };
     state.production = { episodes: 10, durationMin: 3, shotsPerMin: 10 };
+
+    // 🔧 清空UI状态 & 生成中标记（避免切项目后残留“生成中/展开状态”等痕迹）
+    state.ui = { openChapter: null };
+    generatingScripts = {};
+    generatingStoryboards = {};
     
     // 清空writeState
     writeState.idea = null;
