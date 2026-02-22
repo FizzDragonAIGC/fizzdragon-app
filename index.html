@@ -13938,11 +13938,20 @@ function showGeneratedDetails() {
 
 // ==================== 检查小说内容 ====================
 function checkNovelExists() {
-    if (!state.novel || state.novel.length < 10) {
-        addAIMessage(`⚠️ **還沒有導入小說內容**
+    // 🔧 兼容：导入剧本/扩写模式可能没有 state.novel，但已有 scripts/originalScript
+    const hasNovel = !!(state.novel && state.novel.length >= 10);
+    const hasOriginalScript = !!(state.originalScript && state.originalScript.length >= 10);
+    const hasScripts = !!(state.assets?.scripts && Object.keys(state.assets.scripts).length > 0);
+
+    if (!hasNovel && !hasOriginalScript && !hasScripts) {
+        addAIMessage(`⚠️ **還沒有導入內容**
+
+你已經有劇本的話，請先：
+- 在右側「生產」Tab 生成/查看劇本（或導入劇本）
 
 請先選擇一種方式開始：`, [
             { text: '📄 導入現有故事', action: () => document.getElementById('fileInput').click() },
+            { text: '📝 導入劇本', action: () => showFastTrack() },
             { text: '✍️ 我要寫故事', action: () => startWriteStory() },
             { text: '🤖 AI幫我寫', action: () => startAIStoryWriting() }
         ]);
