@@ -5518,7 +5518,11 @@ async function runAutoPilotCore(forceRestart = false) {
         saveProject(state.novelTitle || state.originalScriptTitle || null, true);
     }
     runningProjects[currentProjectId] = true;
+    activeProjects[currentProjectId] = true; // 左侧显示“处理中”更明显
+    delete errorProjects[currentProjectId];
     console.log('📊 runningProjects:', JSON.stringify(runningProjects));
+    // 立刻保存一次，刷新timestamp，避免左侧/云端同步状态滞后
+    saveProject(null, true);
     renderProjectList();
     
     addAIMessage(`🚀 **Auto-Pilot 啟動！**
@@ -5681,6 +5685,8 @@ async function runAutoPilotCore(forceRestart = false) {
         // 清除运行状态
         if (currentProjectId) {
             delete runningProjects[currentProjectId];
+            delete activeProjects[currentProjectId];
+            errorProjects[currentProjectId] = true;
             renderProjectList();
         }
         console.error('Auto-Pilot error:', err);
@@ -5801,6 +5807,8 @@ function showAutoPilotComplete() {
     // 清除运行状态
     if (currentProjectId) {
         delete runningProjects[currentProjectId];
+        delete activeProjects[currentProjectId];
+        delete errorProjects[currentProjectId];
         renderProjectList();
     }
     saveProject(state.novelTitle, true);
