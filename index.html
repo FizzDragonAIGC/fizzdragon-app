@@ -7492,6 +7492,17 @@ function updateAssetsPanel() {
     }
     html += `</div>`; // 关闭 tabContentProd
     
+    // 🔧 保持章節面板展开状态：updateAssetsPanel会重绘DOM，需恢复用户正在查看的剧本/分镜
+    if (state.ui?.openChapter?.num) {
+        const { num, view } = state.ui.openChapter;
+        setTimeout(() => {
+            try {
+                if (view === 'storyboard') showChapterStoryboard(num);
+                else showChapterScript(num);
+            } catch (e) {}
+        }, 50);
+    }
+
     // ==================== Tab3：FizzStudio 素材庫 ====================
     html += `<div class="assets-tab-content" id="tabContentStudio" style="display:${currentTab === 'studio' ? 'block' : 'none'};">`;
     if (hasAnyAssets) {
@@ -7762,7 +7773,7 @@ function getChaptersHtml(a) {
                     <span style="flex:1;font-weight:500;" onclick="toggleChapterContent(${num})">${ch.title || `第${num}集`}</span>
                     ${generatingStoryboards[num] ? `<span style="color:#E31B23;font-size:10px;" class="generating-pulse">🔄 生成中...</span>` : ''}
                     ${hasStoryboard ? `<span style="color:#38a169;font-size:10px;">✅ ${shotCount}鏡</span>` : ''}
-                    <span id="chapterToggle${num}" style="font-size:10px;color:#666;margin-left:6px;" onclick="toggleChapterContent(${num})">▼</span>
+                    <span id="chapterToggle${num}" style="font-size:10px;color:#666;margin-left:6px;" onclick="toggleChapterContent(${num})">${(state.ui && state.ui.openChapter && state.ui.openChapter.num === num) ? '▲' : '▼'}</span>
                 </div>
                 <!-- 章节详情（大纲、冲突、亮点）-->
                 <div class="chapter-info" style="padding:8px 10px;background:rgba(0,0,0,0.2);font-size:10px;line-height:1.6;">
@@ -7799,7 +7810,7 @@ function getChaptersHtml(a) {
                     </div>
                 </div>
                 <!-- 展开的内容面板 -->
-                <div class="chapter-content-panel" id="chapterPanel${num}">
+                <div class="chapter-content-panel ${((state.ui && state.ui.openChapter && state.ui.openChapter.num === num) ? 'expanded' : '')}" id="chapterPanel${num}">
                     <div class="chapter-content-scroll" id="chapterContent${num}">
                         ${hasScript ? scriptPreview : '尚未生成劇本'}
                     </div>
@@ -8810,12 +8821,20 @@ function copyText(text) {
 function toggleChapterContent(num) {
     const panel = document.getElementById(`chapterPanel${num}`);
     const toggle = document.getElementById(`chapterToggle${num}`);
+    state.ui = state.ui || {};
+
     if (panel.classList.contains('expanded')) {
         panel.classList.remove('expanded');
         toggle.textContent = '▼';
+        // 关闭时清除记忆
+        if (state.ui.openChapter && state.ui.openChapter.num === num) {
+            state.ui.openChapter = null;
+        }
     } else {
         panel.classList.add('expanded');
         toggle.textContent = '▲';
+        // 记录展开状态（默认显示剧本）
+        state.ui.openChapter = { num, view: 'script' };
         // 加载内容
         showChapterScript(num);
     }
@@ -8823,6 +8842,9 @@ function toggleChapterContent(num) {
 
 // 显示剧本内容
 function showChapterScript(num) {
+    state.ui = state.ui || {};
+    state.ui.openChapter = { num, view: 'script' };
+
     const script = state.assets.scripts?.[num];
     const content = document.getElementById(`chapterContent${num}`);
     const panel = document.getElementById(`chapterPanel${num}`);
@@ -8850,6 +8872,9 @@ function showChapterScript(num) {
 
 // 显示分镜内容
 function showChapterStoryboard(num) {
+    state.ui = state.ui || {};
+    state.ui.openChapter = { num, view: 'storyboard' };
+
     const storyboard = state.assets.storyboards?.[num];
     const content = document.getElementById(`chapterContent${num}`);
     const panel = document.getElementById(`chapterPanel${num}`);
