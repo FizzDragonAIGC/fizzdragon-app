@@ -6241,6 +6241,7 @@ async function runStoryboardStepSilent(chapterNum) {
     state.assets.storyboards[chapterNum] = shots;
     saveProject(null, true);
     updateAssetsPanel();
+    renderProjectList();
 }
 
 // ==================== 重寫章節系統 ====================
@@ -7157,6 +7158,9 @@ function updateAssetsPanel() {
     if (typeof a.storyboards !== 'object' || a.storyboards === null) {
         a.storyboards = {};
     }
+
+    // 🔧 回写规范化后的assets，确保左侧项目列表/保存拿到最新结构
+    state.assets = a;
 
     // 🔧 更新顶部智能体进度条
     updateAgentProgressBar(a);
@@ -15776,6 +15780,7 @@ ${totalChapters > 0
         }
 
         // ✅ 存入项目资产
+        state.assets.storyboards = state.assets.storyboards || {};
         state.assets.storyboards[chapterNum] = shots;
 
         const completion = targetShots > 0 ? Math.round(shots.length / targetShots * 100) : 0;
