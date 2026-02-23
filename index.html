@@ -52,13 +52,77 @@
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
-            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            will-change: transform;
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.2s ease;
+            will-change: transform, width;
         }
         
         .sidebar.hidden {
             transform: translateX(-100%);
             position: absolute;
+        }
+
+        /* 桌面端：项目列表收起（给对话/资产库让宽） */
+        body.sidebar-collapsed .sidebar {
+            width: 56px;
+        }
+        body.sidebar-collapsed .sidebar-header {
+            padding: 14px 10px;
+        }
+        body.sidebar-collapsed .sidebar-logo,
+        body.sidebar-collapsed .sidebar-tagline,
+        body.sidebar-collapsed .mode-tabs,
+        body.sidebar-collapsed #newProjectBtn,
+        body.sidebar-collapsed .sidebar-section-title,
+        body.sidebar-collapsed #projectBulkBar,
+        body.sidebar-collapsed .sidebar-footer .beta-badge,
+        body.sidebar-collapsed .sidebar-footer div {
+            display: none !important;
+        }
+        body.sidebar-collapsed .sidebar-section {
+            padding: 8px;
+        }
+        body.sidebar-collapsed .project-item {
+            justify-content: center;
+            padding: 10px;
+        }
+        body.sidebar-collapsed .project-item .info,
+        body.sidebar-collapsed .project-item .icon,
+        body.sidebar-collapsed .project-item input[type="checkbox"],
+        body.sidebar-collapsed .project-item .proj-status {
+            display: none !important;
+        }
+        body.sidebar-collapsed .project-item::after {
+            content: "•";
+            color: rgba(255,255,255,0.35);
+            font-size: 18px;
+            line-height: 1;
+        }
+        body.sidebar-collapsed .project-item.active::after {
+            color: var(--accent);
+        }
+
+        .sidebar-collapse-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.04);
+            color: rgba(255,255,255,0.85);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .sidebar-collapse-btn:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.18);
+        }
+        body.sidebar-collapsed .sidebar-collapse-btn {
+            right: 8px;
         }
         
         .sidebar-header {
@@ -2717,7 +2781,8 @@
     
     <!-- 左侧边栏 -->
     <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
+        <div class="sidebar-header" style="position:relative;">
+            <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" onclick="toggleSidebarCollapse()" title="收起/展开项目列表">⟨⟩</button>
             <img src="logo.jpg" alt="FizzDragon" class="sidebar-logo">
             <div class="sidebar-tagline" id="sidebarTagline">創造好故事</div>
             
@@ -7150,6 +7215,27 @@ function toggleSidebar() {
     sidebar.classList.toggle('show');
     overlay.classList.toggle('show');
 }
+
+// ==================== 桌面端：左侧项目列表收起/展开 ====================
+function setSidebarCollapsed(collapsed) {
+    document.body.classList.toggle('sidebar-collapsed', !!collapsed);
+    localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
+    const btn = document.getElementById('sidebarCollapseBtn');
+    if (btn) btn.textContent = collapsed ? '⟩⟩' : '⟨⟩';
+}
+
+function toggleSidebarCollapse() {
+    const collapsed = document.body.classList.contains('sidebar-collapsed');
+    setSidebarCollapsed(!collapsed);
+}
+
+function restoreSidebarCollapsedState() {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    if (saved === '1') setSidebarCollapsed(true);
+}
+
+// 页面初始化时恢复
+setTimeout(restoreSidebarCollapsedState, 0);
 
 function toggleAssetsPanel() {
     const panel = document.getElementById('assetsPanel');
