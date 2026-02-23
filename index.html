@@ -11937,8 +11937,10 @@ async function convertToStoryboard() {
 // ==================== 项目管理 ====================
 // 用户级项目隔离 - 每个用户有独立的项目存储
 function getProjectsKey() {
-    // 使用固定key，确保项目持久化（内测阶段不做用户隔离）
-    return 'fizzdragon_projects';
+    // ✅ 本地项目按用户隔离（登录/游客分别存储）
+    const user = JSON.parse(localStorage.getItem('fizzdragon_user') || 'null');
+    if (user?.id) return `fizzdragon_projects_${user.id}`;
+    return 'fizzdragon_projects_guest';
 }
 
 // 获取当前用户ID（用于后端存储）
@@ -11961,9 +11963,15 @@ async function syncProjectToBackend(projectId, projectData) {
 
     try {
         const userId = getCurrentUserId();
+        const token = localStorage.getItem('fizzdragon_token');
+        if (!token) {
+            // 必须登录才可云端同步
+            return;
+        }
+
         await fetch(`${API_BASE}/user-projects/${userId}/${projectId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(projectData)
         });
         _syncFailCount = 0;
@@ -11993,8 +12001,15 @@ async function syncProjectsFromBackend(retries = 2) {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 10000); // 10秒超时
             
+            const token = localStorage.getItem('fizzdragon_token');
+            if (!token) {
+                // 必须登录才可云端恢复
+                return;
+            }
+
             const response = await fetch(`${API_BASE}/user-projects/${userId}`, {
-                signal: controller.signal
+                signal: controller.signal,
+                headers: { 'Authorization': `Bearer ${token}` }
             });
             clearTimeout(timeout);
             
