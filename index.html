@@ -12436,8 +12436,12 @@ function saveProject(name = null, silent = false) {
     };
 
     // 🔄 同步到后端（异步，不阻塞UI）
-    // 云端存“完整版”，本地存“精简版”（避免QuotaExceededError）
+    // 云端存“完整版”，本地尽量存“索引/精简版”（避免QuotaExceededError）
     syncProjectToBackend(projectId, fullProject);
+
+    const hasToken = !!(localStorage.getItem('fizzdragon_token') || sessionStorage.getItem('fizzdragon_token'));
+    const savedUser = JSON.parse((localStorage.getItem('fizzdragon_user') || sessionStorage.getItem('fizzdragon_user')) || 'null');
+    const isLoggedIn = hasToken && !!savedUser?.id;
 
     function shrinkForLocal(p, level = 1) {
         const out = JSON.parse(JSON.stringify(p));
@@ -12498,65 +12502,91 @@ function saveProject(name = null, silent = false) {
         return out;
     }
 
-    // 写入本地：先尝试完整版，失败则自动多级降级
-    projects[projectId] = fullProject;
-    try {
-        localStorage.setItem(getProjectsKey(), JSON.stringify(projects));
-    } catch (e) {
-        console.warn('⚠️ localStorage quota exceeded, saving truncated version:', e.message);
+    // 写入本地：
+    // - 已登录：默认 cloud-first，本地只存索引（避免分镜/Prompt 爆仓）
+    // - 未登录：尝试完整版→截断→索引模式
 
-        // 1) level-1 截断
-        projects[projectId] = shrinkForLocal(fullProject, 1);
+    if (isLoggedIn) {
+        // 本地仅索引：保留最近20个项目
+        projects[projectId] = shrinkForLocal(fullProject, 2);
+        projects[projectId].localIndexOnly = true;
+
+        const entries = Object.values(projects)
+            .filter(p => p)
+            .sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
+        const keep = entries.slice(0, 20);
+        const compact = {};
+        for (const p of keep) compact[p.id] = p;
+
+        try {
+            localStorage.setItem(getProjectsKey(), JSON.stringify(compact));
+        } catch (e) {
+            // 登录态下，若本地仍满：直接禁用本地保存，完全依赖云端
+            console.warn('⚠️ localStorage still full (logged-in), disable local save:', e.message);
+            localSaveDisabled = true;
+            showToast('⚠️ 本地存儲已滿：已切換「雲端優先」模式（本地不再保存）', 7000);
+        }
+
+    } else {
+        // 未登录（guest）才尝试本地保存大内容
+        projects[projectId] = fullProject;
         try {
             localStorage.setItem(getProjectsKey(), JSON.stringify(projects));
-            showToast('⚠️ 本地空間不足：已改用精簡保存（完整在云端/建议登录）', 5000);
-        } catch (e2) {
-            // 2) level-2 极限索引模式 + 仅保留最近少量项目
-            console.warn('⚠️ localStorage still full, switching to index mode:', e2.message);
-            const light = {};
-            const entries = Object.values(projects)
-                .filter(p => p && !p.deleted)
-                .sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
-            const keep = entries.slice(0, 5); // 只保留最近5个项目的索引
-            for (const proj of keep) {
-                light[proj.id] = {
-                    id: proj.id,
-                    name: proj.name,
-                    timestamp: proj.timestamp,
-                    stage: proj.stage,
-                    step: proj.step,
-                    deleted: proj.deleted,
-                    deletedAt: proj.deletedAt,
-                    assets: {
-                        concept: proj.assets?.concept || null,
-                        characters: Array.isArray(proj.assets?.characters) ? proj.assets.characters.slice(0, 3) : [],
-                        chapters: Array.isArray(proj.assets?.chapters) ? proj.assets.chapters.slice(0, 5) : [],
-                        scripts: {},
-                        storyboards: {},
-                        shortdrama: proj.assets?.shortdrama || null
-                    },
-                    production: proj.production,
-                    localTruncated: true,
-                    localIndexOnly: true
-                };
-            }
-            // 当前项目额外保存 level-2
-            light[projectId] = shrinkForLocal(fullProject, 2);
-            light[projectId].localIndexOnly = true;
+        } catch (e) {
+            console.warn('⚠️ localStorage quota exceeded, saving truncated version:', e.message);
 
+            // 1) level-1 截断
+            projects[projectId] = shrinkForLocal(fullProject, 1);
             try {
-                localStorage.setItem(getProjectsKey(), JSON.stringify(light));
-                showToast('⚠️ 本地已满：已切换「索引模式」（建议登录云端或清理旧项目）', 7000);
-            } catch (e3) {
-                console.error('❌ index save still failed:', e3.message);
-                localSaveDisabled = true;
-                showToast('❌ 本地存儲已满：将暂停本地自动保存（建议登录云端/导出/清理）', 8000);
-                if (!silent) {
-                    addAIMessage(`❌ **本地存儲空間已滿（guest 模式）**\n\n已無法把項目存進瀏覽器。建議：\n1) 先「登入」以啟用雲端保存（最推薦）\n2) 或刪除舊項目/清空垃圾桶\n3) 或立即導出（Excel/JSON/劇本）備份`, [
-                        { text: '🗑️ 打開垃圾桶', action: () => showTrash() },
-                        { text: '📤 導出分鏡', action: () => exportStoryboards() },
-                        { text: '📜 導出劇本', action: () => exportScripts() }
-                    ]);
+                localStorage.setItem(getProjectsKey(), JSON.stringify(projects));
+                showToast('⚠️ 本地空間不足：已改用精簡保存（完整在云端/建议登录）', 5000);
+            } catch (e2) {
+                // 2) level-2 极限索引模式 + 仅保留最近少量项目
+                console.warn('⚠️ localStorage still full, switching to index mode:', e2.message);
+                const light = {};
+                const entries = Object.values(projects)
+                    .filter(p => p && !p.deleted)
+                    .sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
+                const keep = entries.slice(0, 5);
+                for (const proj of keep) {
+                    light[proj.id] = {
+                        id: proj.id,
+                        name: proj.name,
+                        timestamp: proj.timestamp,
+                        stage: proj.stage,
+                        step: proj.step,
+                        deleted: proj.deleted,
+                        deletedAt: proj.deletedAt,
+                        assets: {
+                            concept: proj.assets?.concept || null,
+                            characters: Array.isArray(proj.assets?.characters) ? proj.assets.characters.slice(0, 3) : [],
+                            chapters: Array.isArray(proj.assets?.chapters) ? proj.assets.chapters.slice(0, 5) : [],
+                            scripts: {},
+                            storyboards: {},
+                            shortdrama: proj.assets?.shortdrama || null
+                        },
+                        production: proj.production,
+                        localTruncated: true,
+                        localIndexOnly: true
+                    };
+                }
+                light[projectId] = shrinkForLocal(fullProject, 2);
+                light[projectId].localIndexOnly = true;
+
+                try {
+                    localStorage.setItem(getProjectsKey(), JSON.stringify(light));
+                    showToast('⚠️ 本地已满：已切换「索引模式」（建议登录云端或清理旧项目）', 7000);
+                } catch (e3) {
+                    console.error('❌ index save still failed:', e3.message);
+                    localSaveDisabled = true;
+                    showToast('❌ 本地存儲已满：将暂停本地自动保存（建议登录云端/导出/清理）', 8000);
+                    if (!silent) {
+                        addAIMessage(`❌ **本地存儲空間已滿（游客模式）**\n\n已無法把項目存進瀏覽器。建議：\n1) 先「登入」以啟用雲端保存（最推薦）\n2) 或刪除舊項目/清空垃圾桶\n3) 或立即導出（Excel/JSON/劇本）備份`, [
+                            { text: '🗑️ 打開垃圾桶', action: () => showTrash() },
+                            { text: '📤 導出分鏡', action: () => exportStoryboards() },
+                            { text: '📜 導出劇本', action: () => exportScripts() }
+                        ]);
+                    }
                 }
             }
         }
