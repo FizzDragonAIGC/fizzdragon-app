@@ -3400,8 +3400,9 @@ function changeContentType(type) {
     if (type === 'shortdrama') {
         state.production.episodes = state.production.episodes || 50;
         state.production.durationMin = 2;
-        state.production.shotsPerMin = state.production.shotsPerMin || 10;
-        addAIMessage(`🔥 **已切換：短劇爽劇模式**\n\n系統會用更高爽點密度/更強钩子節奏來做改編，並在後續Concept/章節/劇本/分鏡時自動注入短劇爽劇規則。`);
+        // ✅ 短劇爽劇標準：每分鐘不低於15鏡（智能選擇/默認也遵守）
+        state.production.shotsPerMin = Math.max(15, state.production.shotsPerMin || 0);
+        addAIMessage(`🔥 **已切換：短劇爽劇模式**\n\n系統會用更高爽點密度/更強钩子節奏來做改編，並在後續Concept/章節/劇本/分鏡時自動注入短劇爽劇規則。\n\n📌 短劇標準：**≥15鏡/分鐘**（已自動套用）`);
     } else if (type === 'film') {
         state.production.durationMin = 5;
         addAIMessage(`🎞️ **已切換：電影感模式**\n\n節奏更克制、鏡頭更講究氛圍與留白。`);
@@ -5570,13 +5571,15 @@ function askCustomDuration(episodes) {
 }
 
 function startAutoPilotWithConfig(episodes, duration) {
+    const defaultSpm = (currentContentType === 'shortdrama') ? 15 : 10;
     state.production = {
         episodes: episodes,
         durationMin: duration,
-        shotsPerMin: 10  // 默认每分钟10镜头
+        // 短劇爽劇標準：≥15鏡/分鐘
+        shotsPerMin: defaultSpm
     };
     
-    const totalShots = episodes * duration * 10;
+    const totalShots = episodes * duration * defaultSpm;
     addAIMessage(`📋 **配置確認**
 
 • 集數：**${episodes}集**
@@ -18170,7 +18173,7 @@ const THINKING_STEPS = {
     storyboard: [
         '🐉 FizzDragon 正在調動AI模型...',
         '🎥 載入Katz《分鏡導演學》+ 電影運鏡技法...',
-        '📐 計算鏡頭密度（10鏡/分鐘標準）...',
+        '📐 計算鏡頭密度（依制作規格）...',
         '🎬 分析場景轉換與視覺節奏...',
         '💡 設計構圖、燈光、運鏡...',
         '🖼️ 生成AI繪圖Prompt（8K --ar 16:9）...',
