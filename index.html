@@ -17994,22 +17994,48 @@ function showAgentStatus(agentName, status, agentId = null, steps = null) {
 
 // ========== 隊列狀態監控 ==========
 let queuePollInterval = null;
+let _queuePollBackoffMs = 2000;
+let _queueLastWarnAt = 0;
+
+function isNetworkOnline() {
+    // navigator.onLine 在某些环境不准，但至少能挡住“明确断网”场景
+    return navigator.onLine !== false;
+}
 
 async function checkQueueStatus() {
+    // 明确断网：直接停止轮询，避免刷屏
+    if (!isNetworkOnline()) {
+        stopQueuePolling();
+        const now = Date.now();
+        if (now - _queueLastWarnAt > 8000) {
+            _queueLastWarnAt = now;
+            showToast('📡 你目前離線（斷網/切網）。恢復網絡後會自動繼續。', 4000);
+        }
+        return null;
+    }
+
     try {
-        const response = await fetch(`${API_BASE}/queue`);
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 4000);
+        const response = await fetch(`${API_BASE}/queue`, { signal: controller.signal });
+        clearTimeout(t);
+
         if (response.ok) {
             const queue = await response.json();
             updateQueueDisplay(queue);
+            _queuePollBackoffMs = 2000;
             return queue;
         }
     } catch (e) {
         // 網路斷線/切換很常見：不要狂刷console讓用戶困惑
-        if (String(e).includes('ERR_INTERNET_DISCONNECTED') || String(e).includes('Failed to fetch')) {
-            // 靜默
-        } else {
-            console.log('Queue check failed:', e);
-        }
+        const msg = String(e?.message || e);
+        const isNet = msg.includes('Failed to fetch') || msg.includes('ERR_NAME_NOT_RESOLVED') || msg.includes('ERR_NETWORK_CHANGED') || msg.includes('ERR_INTERNET_DISCONNECTED') || msg.includes('AbortError');
+        if (!isNet) console.log('Queue check failed:', e);
+
+        // 退避，降低刷请求
+        _queuePollBackoffMs = Math.min(30000, Math.round(_queuePollBackoffMs * 1.6));
+        stopQueuePolling();
+        setTimeout(() => startQueuePolling(true), _queuePollBackoffMs);
     }
     return null;
 }
@@ -18041,10 +18067,24 @@ function updateQueueDisplay(queue) {
     `;
 }
 
-function startQueuePolling() {
+function startQueuePolling(once = false) {
     if (queuePollInterval) return;
+    if (once) {
+        // 用于退避后的单次恢复
+        queuePollInterval = setInterval(checkQueueStatus, _queuePollBackoffMs);
+        return;
+    }
     queuePollInterval = setInterval(checkQueueStatus, 2000);
 }
+
+// 网络恢复时自动继续
+window.addEventListener('online', () => {
+    _queuePollBackoffMs = 2000;
+    startQueuePolling();
+});
+window.addEventListener('offline', () => {
+    stopQueuePolling();
+});
 
 function stopQueuePolling() {
     if (queuePollInterval) {
