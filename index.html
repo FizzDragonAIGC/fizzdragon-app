@@ -12172,14 +12172,15 @@ async function convertToStoryboard() {
 // 用户级项目隔离 - 每个用户有独立的项目存储
 function getProjectsKey() {
     // ✅ 本地项目按用户隔离（登录/游客分别存储）
-    const user = JSON.parse(localStorage.getItem('fizzdragon_user') || 'null');
+    // ⚠️ localStorage 爆仓时登录信息可能落在 sessionStorage，所以这里两边都要读
+    const user = JSON.parse((localStorage.getItem('fizzdragon_user') || sessionStorage.getItem('fizzdragon_user')) || 'null');
     if (user?.id) return `fizzdragon_projects_${user.id}`;
     return 'fizzdragon_projects_guest';
 }
 
 // 获取当前用户ID（用于后端存储）
 function getCurrentUserId() {
-    const user = JSON.parse(localStorage.getItem('fizzdragon_user') || 'null');
+    const user = JSON.parse((localStorage.getItem('fizzdragon_user') || sessionStorage.getItem('fizzdragon_user')) || 'null');
     return user?.id || user?.username || 'guest';
 }
 
