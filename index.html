@@ -12238,7 +12238,45 @@ function getProjects() {
     }
 }
 
+let localSaveDisabled = false;
+
 function saveProject(name = null, silent = false) {
+    // 如果本地已爆仓，静默自动保存时不要反复触发 setItem 报错刷屏
+    if (localSaveDisabled && silent) {
+        // 仍然尝试云端同步（登录时有效）
+        try {
+            const projectName = name || state.novelTitle || writeState.outline?.title || `項目_${Date.now()}`;
+            const projectId = currentProjectId || projectName.replace(/\s+/g, '_').toLowerCase() + '_' + Date.now();
+            currentProjectId = projectId;
+            const chatContainer = document.getElementById('chatContainer');
+            const messages = chatContainer ? Array.from(chatContainer.children).slice(-10) : [];
+            const chatHistory = messages.map(m => m.outerHTML).join('\n');
+            const fullProject = {
+                id: projectId,
+                name: projectName,
+                stage: state.mode === 'write' ? 'write' : 'import',
+                step: state.step,
+                timestamp: new Date().toISOString(),
+                chatHistory,
+                assets: state.assets,
+                production: state.production,
+                idea: writeState.idea,
+                interview: writeState.interview,
+                outline: writeState.outline,
+                chapters: writeState.chapters,
+                writeStoryboard: writeState.storyboard,
+                novel: state.novel,
+                novelTitle: state.novelTitle,
+                concept: state.concept || state.assets?.concept,
+                importInterview: state.interview,
+                characters: state.characters || state.assets?.characters,
+                storyboard: state.storyboard
+            };
+            syncProjectToBackend(projectId, fullProject);
+        } catch (e) {}
+        return;
+    }
+
     const projects = getProjects();
 
     // ✅ 项目命名规则：
@@ -12289,54 +12327,126 @@ function saveProject(name = null, silent = false) {
     // 云端存“完整版”，本地存“精简版”（避免QuotaExceededError）
     syncProjectToBackend(projectId, fullProject);
 
-    function shrinkForLocal(p) {
+    function shrinkForLocal(p, level = 1) {
         const out = JSON.parse(JSON.stringify(p));
-        out.localTruncated = false;
+        out.localTruncated = true;
 
-        // 1) story 源文本太大：本地只保留前2万字
-        if (out.assets?.story?.content && out.assets.story.content.length > 20000) {
-            out.assets.story.content = out.assets.story.content.substring(0, 20000) + '\n...(本地已截斷，完整內容在云端)';
-            out.localTruncated = true;
-        }
+        // level 1：温和截断
+        if (level === 1) {
+            // story 源文本太大：本地只保留前2万字
+            if (out.assets?.story?.content && out.assets.story.content.length > 20000) {
+                out.assets.story.content = out.assets.story.content.substring(0, 20000) + '\n...(本地已截斷，完整內容在云端)';
+            }
 
-        // 2) scripts 本地每集最多5k（避免100集爆掉）
-        if (out.assets?.scripts && typeof out.assets.scripts === 'object') {
-            for (const k of Object.keys(out.assets.scripts)) {
-                const s = out.assets.scripts[k];
-                if (typeof s === 'string' && s.length > 5000) {
-                    out.assets.scripts[k] = s.substring(0, 5000) + '\n...(本地已截斷，完整劇本在云端)';
-                    out.localTruncated = true;
+            // scripts 本地每集最多5k（避免100集爆掉）
+            if (out.assets?.scripts && typeof out.assets.scripts === 'object') {
+                for (const k of Object.keys(out.assets.scripts)) {
+                    const s = out.assets.scripts[k];
+                    if (typeof s === 'string' && s.length > 5000) {
+                        out.assets.scripts[k] = s.substring(0, 5000) + '\n...(本地已截斷，完整劇本在云端)';
+                    }
                 }
             }
-        }
 
-        // 3) storyboards 本地只保留每集前20镜（提示词太大）
-        if (out.assets?.storyboards && typeof out.assets.storyboards === 'object') {
-            for (const k of Object.keys(out.assets.storyboards)) {
-                const arr = out.assets.storyboards[k];
-                if (Array.isArray(arr) && arr.length > 20) {
-                    out.assets.storyboards[k] = arr.slice(0, 20);
-                    out.localTruncated = true;
+            // storyboards 本地只保留每集前20镜（提示词太大）
+            if (out.assets?.storyboards && typeof out.assets.storyboards === 'object') {
+                for (const k of Object.keys(out.assets.storyboards)) {
+                    const arr = out.assets.storyboards[k];
+                    if (Array.isArray(arr) && arr.length > 20) {
+                        out.assets.storyboards[k] = arr.slice(0, 20);
+                    }
                 }
             }
+
+            return out;
+        }
+
+        // level 2：极限保命（只保留“可恢复索引+关键资产骨架”）
+        // 目的：guest 模式也不崩；完整版依赖云端或用户导出
+        out.chatHistory = '';
+        out.novel = '';
+        out.originalScript = '';
+        out.storyboard = null;
+        out.writeStoryboard = null;
+
+        // story 只留很短摘要
+        if (out.assets?.story?.content) {
+            out.assets.story.content = out.assets.story.content.substring(0, 2000) + '\n...(本地索引模式)';
+        }
+
+        // scripts/storyboards 彻底清空（避免爆仓）
+        if (out.assets) {
+            out.assets.scripts = {};
+            out.assets.storyboards = {};
+            // characters/chapters 也做轻量化
+            if (Array.isArray(out.assets.characters)) out.assets.characters = out.assets.characters.slice(0, 8);
+            if (Array.isArray(out.assets.chapters)) out.assets.chapters = out.assets.chapters.slice(0, 15);
         }
 
         return out;
     }
 
-    // 写入本地：先尝试完整版，失败则自动降级
+    // 写入本地：先尝试完整版，失败则自动多级降级
     projects[projectId] = fullProject;
     try {
         localStorage.setItem(getProjectsKey(), JSON.stringify(projects));
     } catch (e) {
         console.warn('⚠️ localStorage quota exceeded, saving truncated version:', e.message);
-        projects[projectId] = shrinkForLocal(fullProject);
+
+        // 1) level-1 截断
+        projects[projectId] = shrinkForLocal(fullProject, 1);
         try {
             localStorage.setItem(getProjectsKey(), JSON.stringify(projects));
-            showToast('⚠️ 本地存儲空間不足：已改用精簡保存（完整在云端）', 5000);
+            showToast('⚠️ 本地空間不足：已改用精簡保存（完整在云端/建议登录）', 5000);
         } catch (e2) {
-            console.error('❌ truncated save still failed:', e2.message);
-            showToast('❌ 本地存儲空間不足：已跳過本地保存（完整在云端）', 6000);
+            // 2) level-2 极限索引模式 + 仅保留最近少量项目
+            console.warn('⚠️ localStorage still full, switching to index mode:', e2.message);
+            const light = {};
+            const entries = Object.values(projects)
+                .filter(p => p && !p.deleted)
+                .sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
+            const keep = entries.slice(0, 5); // 只保留最近5个项目的索引
+            for (const proj of keep) {
+                light[proj.id] = {
+                    id: proj.id,
+                    name: proj.name,
+                    timestamp: proj.timestamp,
+                    stage: proj.stage,
+                    step: proj.step,
+                    deleted: proj.deleted,
+                    deletedAt: proj.deletedAt,
+                    assets: {
+                        concept: proj.assets?.concept || null,
+                        characters: Array.isArray(proj.assets?.characters) ? proj.assets.characters.slice(0, 3) : [],
+                        chapters: Array.isArray(proj.assets?.chapters) ? proj.assets.chapters.slice(0, 5) : [],
+                        scripts: {},
+                        storyboards: {},
+                        shortdrama: proj.assets?.shortdrama || null
+                    },
+                    production: proj.production,
+                    localTruncated: true,
+                    localIndexOnly: true
+                };
+            }
+            // 当前项目额外保存 level-2
+            light[projectId] = shrinkForLocal(fullProject, 2);
+            light[projectId].localIndexOnly = true;
+
+            try {
+                localStorage.setItem(getProjectsKey(), JSON.stringify(light));
+                showToast('⚠️ 本地已满：已切换「索引模式」（建议登录云端或清理旧项目）', 7000);
+            } catch (e3) {
+                console.error('❌ index save still failed:', e3.message);
+                localSaveDisabled = true;
+                showToast('❌ 本地存儲已满：将暂停本地自动保存（建议登录云端/导出/清理）', 8000);
+                if (!silent) {
+                    addAIMessage(`❌ **本地存儲空間已滿（guest 模式）**\n\n已無法把項目存進瀏覽器。建議：\n1) 先「登入」以啟用雲端保存（最推薦）\n2) 或刪除舊項目/清空垃圾桶\n3) 或立即導出（Excel/JSON/劇本）備份`, [
+                        { text: '🗑️ 打開垃圾桶', action: () => showTrash() },
+                        { text: '📤 導出分鏡', action: () => exportStoryboards() },
+                        { text: '📜 導出劇本', action: () => exportScripts() }
+                    ]);
+                }
+            }
         }
     }
 
