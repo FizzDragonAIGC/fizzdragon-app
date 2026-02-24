@@ -15644,13 +15644,33 @@ ${state.novel.substring(0, 5000)}`;
         steps[1].done = true; steps[1].current = false;
         steps[2].done = true; steps[3].done = true;
         
+        // 🔧 调试留证：章节生成原文前200字
+        console.log('📝 narrative raw head:', String(result || '').substring(0, 200));
+
         const chapData = safeJSONParse(result, 'chapters');
-        const chapters = chapData.chapters || chapData.episodes || [];
-        
+
+        // 兼容：直接返回数组 / 或嵌套在 book/outline 中
+        let chapters = [];
+        if (Array.isArray(chapData)) {
+            chapters = chapData;
+        } else {
+            chapters = chapData.chapters || chapData.episodes || chapData.outline?.chapters || chapData.book?.chapters || [];
+        }
+
+        // 如果后端返回了错误JSON（non_json_output等）
+        if ((!chapters || chapters.length === 0) && chapData?.error) {
+            throw new Error(`章節規劃失敗：${chapData.error}`);
+        }
+
         // 🔧 检查章节数量是否符合要求
         const targetCount = state.production.episodes || 10;
         if (chapters.length < targetCount) {
             console.warn(`⚠️ 章節數量不足: 需要${targetCount}集，只生成了${chapters.length}集`);
+        }
+
+        // 🔧 极端情况：0集 → 直接报错并引导重试
+        if (!chapters || chapters.length === 0) {
+            throw new Error('章節規劃輸出為空（0集）。請重試，或先把目標集數降低到 20/30，再用「續寫章節」分批補齊。');
         }
         
         // 存入项目资产（包含完整信息）
