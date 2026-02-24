@@ -16502,19 +16502,41 @@ async function runCharacterStep() {
     addProgressCard('生成角色設計', 0);
     
     try {
-        const context = {
-            concept: state.concept,
-            chapters: state.chapters
-        };
-        
-        // 🔧 修复Bug#3: 防止null.substring()错误
-        const novelText = state.novel || writeState.outline?.synopsis || JSON.stringify(state.chapters) || '';
-        
+        // ✅ 统一走 assets（避免新旧状态不一致导致“缺少内容”）
+        const a = state.assets || {};
+        const concept = state.concept || a.concept;
+        const chapters = state.chapters || a.chapters;
+
+        const context = { concept, chapters };
+
+        // 🔧 兜底：如果 state.novel 不存在，优先用 assets.story / originalScript / scripts
+        const fallbackScript = a.scripts && Object.keys(a.scripts).length ? a.scripts[Object.keys(a.scripts)[0]] : '';
+        const storyText = (a.story?.content || state.novel || state.originalScript || fallbackScript || writeState.outline?.synopsis || '').toString();
+        const minLenOk = storyText.length >= 10;
+
+        if (!minLenOk) {
+            removeProgressCard();
+            addAIMessage('❌ 角色設計缺少內容：請先導入小說/劇本（或先生成章節/劇本）', [
+                { text: '📄 導入小說', action: () => document.getElementById('fileInput').click() },
+                { text: '📝 導入劇本', action: () => showFastTrack() }
+            ]);
+            return;
+        }
+
         updateProgress(30);
-        const result = await callAgent('character', novelText.substring(0, 4000), context);
+        const injection = (currentContentType === 'shortdrama' && a.shortdrama?.prompt_injection)
+            ? `【短劇爽劇規則 - 必須遵守】\n${a.shortdrama.prompt_injection}\n\n`
+            : '';
+
+        const result = await callAgent('character', (injection + storyText).substring(0, 4000), context);
         updateProgress(100);
-        
+
         state.characters = safeJSONParse(result, 'characters');
+        // 同步到 assets
+        state.assets = state.assets || {};
+        state.assets.characters = state.characters?.characters || state.assets.characters || [];
+        state.assets.character = state.characters;
+
         state.step = 4;  // 标记角色设计完成
         
         removeProgressCard();
