@@ -2861,8 +2861,9 @@
                     <option value="zh-TW">繁</option>
                 </select>
                 <div class="user-menu" id="userMenu">
-                    <span id="currentUsername">👤</span>
-                    <button onclick="handleLogout()" title="登出" style="background:none;border:none;color:#888;cursor:pointer;padding:5px;">🚪</button>
+                    <span id="currentUsername" style="cursor:pointer;" onclick="handleUserMenuClick()">👤</span>
+                    <button onclick="showAuthModal('login')" id="loginBtn" title="登入/註冊" style="background:none;border:none;color:#888;cursor:pointer;padding:5px;display:none;">🔑</button>
+                    <button onclick="handleLogout()" id="logoutBtn" title="登出" style="background:none;border:none;color:#888;cursor:pointer;padding:5px;">🚪</button>
                 </div>
                 <button class="menu-toggle mobile-assets-btn" onclick="toggleAssetsPanel()">📦</button>
             </div>
@@ -10651,16 +10652,110 @@ function handleLogout() {
 // 显示当前用户名
 function showCurrentUser() {
     const el = document.getElementById('currentUsername');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
     if (!el) return;
 
     const user = JSON.parse(localStorage.getItem('fizzdragon_user') || 'null');
-    if (user && user.username) {
+    const token = localStorage.getItem('fizzdragon_token');
+
+    if (token && user && user.username) {
         el.textContent = `👤 ${user.username}`;
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (logoutBtn) logoutBtn.style.display = '';
         return;
     }
 
-    // 未登录：显示游客
+    // 未登录：显示游客 + 显示登录按钮
     el.textContent = '👤 游客';
+    if (loginBtn) loginBtn.style.display = '';
+    if (logoutBtn) logoutBtn.style.display = 'none';
+}
+
+function handleUserMenuClick() {
+    const token = localStorage.getItem('fizzdragon_token');
+    if (!token) {
+        showAuthModal('login');
+    }
+}
+
+// ==================== 登录/注册 UI ====================
+let _authMode = 'login';
+
+function showAuthModal(mode = 'login') {
+    _authMode = mode;
+    const modal = document.getElementById('authModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    switchAuthMode(mode);
+    setTimeout(() => {
+        const u = document.getElementById('authUsername');
+        if (u) u.focus();
+    }, 0);
+}
+
+function closeAuthModal() {
+    const modal = document.getElementById('authModal');
+    if (modal) modal.style.display = 'none';
+    const err = document.getElementById('authError');
+    if (err) { err.style.display = 'none'; err.textContent = ''; }
+}
+
+function switchAuthMode(mode) {
+    _authMode = mode;
+    const title = document.getElementById('authModalTitle');
+    const btn = document.getElementById('authSubmitBtn');
+    const tabL = document.getElementById('authTabLogin');
+    const tabR = document.getElementById('authTabRegister');
+    if (title) title.textContent = mode === 'register' ? '註冊' : '登入';
+    if (btn) btn.textContent = mode === 'register' ? '註冊' : '登入';
+    if (tabL) tabL.style.borderColor = mode === 'login' ? 'var(--accent)' : 'rgba(255,255,255,0.12)';
+    if (tabR) tabR.style.borderColor = mode === 'register' ? 'var(--accent)' : 'rgba(255,255,255,0.12)';
+}
+
+async function submitAuth() {
+    const username = (document.getElementById('authUsername')?.value || '').trim();
+    const password = (document.getElementById('authPassword')?.value || '').trim();
+    const err = document.getElementById('authError');
+
+    if (!username || !password) {
+        if (err) { err.style.display = ''; err.textContent = '請輸入 username 和 password'; }
+        return;
+    }
+
+    try {
+        if (err) { err.style.display = 'none'; err.textContent = ''; }
+
+        const url = _authMode === 'register' ? `${API_BASE}/auth/register` : `${API_BASE}/auth/login`;
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || '登入/註冊失敗');
+
+        // 保存 token + user
+        if (data.token) localStorage.setItem('fizzdragon_token', data.token);
+        if (data.user) {
+            localStorage.setItem('fizzdragon_user', JSON.stringify(data.user));
+            // 关键：让 getProjectsKey 进入 fizzdragon_projects_<userId>
+            localStorage.setItem('user_id', data.user.id);
+        }
+
+        // 登录后：刷新用户显示 + 拉取云端项目
+        showCurrentUser();
+        closeAuthModal();
+        showToast('✅ 登入成功：已啟用雲端保存', 4000);
+
+        // 云端恢复（不阻塞 UI）
+        syncProjectsFromBackend().then(() => {
+            renderProjectList();
+        }).catch(() => {});
+
+    } catch (e) {
+        if (err) { err.style.display = ''; err.textContent = e.message || '登入失敗'; }
+    }
 }
 
 async function init() {
@@ -18624,5 +18719,33 @@ if (!authToken) {
     });
 }
     </script>
+
+    <!-- 登录/注册弹窗 -->
+    <div id="authModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;">
+        <div style="width:min(520px,92vw);background:#0b0b10;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:18px;box-shadow:0 30px 80px rgba(0,0,0,0.6);">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="font-weight:700;color:#fff;" id="authModalTitle">登入</div>
+                <div style="margin-left:auto;display:flex;gap:8px;">
+                    <button class="action-btn" onclick="switchAuthMode('login')" id="authTabLogin">登入</button>
+                    <button class="action-btn" onclick="switchAuthMode('register')" id="authTabRegister">註冊</button>
+                    <button class="action-btn" onclick="closeAuthModal()">✕</button>
+                </div>
+            </div>
+
+            <div style="margin-top:14px;color:rgba(255,255,255,0.6);font-size:12px;line-height:1.4;">
+                ✅ 登入後：項目會以你的帳號隔離並可雲端保存（不再受 localStorage 爆倉影響）。
+            </div>
+
+            <div style="margin-top:14px;display:flex;flex-direction:column;gap:10px;">
+                <input id="authUsername" placeholder="username" style="padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:#fff;outline:none;">
+                <input id="authPassword" type="password" placeholder="password" style="padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:#fff;outline:none;">
+                <div style="display:flex;gap:10px;align-items:center;">
+                    <button class="btn btn-primary" id="authSubmitBtn" onclick="submitAuth()" style="flex:1;">登入</button>
+                    <button class="btn" onclick="closeAuthModal()" style="flex:0 0 auto;">取消</button>
+                </div>
+                <div id="authError" style="display:none;color:#ef4444;font-size:12px;"></div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
