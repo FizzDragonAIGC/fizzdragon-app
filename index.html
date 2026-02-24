@@ -10628,7 +10628,7 @@ function handleLogout() {
         return;
     }
 
-    const token = localStorage.getItem('fizzdragon_token');
+    const token = localStorage.getItem('fizzdragon_token') || sessionStorage.getItem('fizzdragon_token');
     if (token) {
         fetch(`${API_BASE}/auth/logout`, {
             method: 'POST',
@@ -10639,6 +10639,8 @@ function handleLogout() {
     localStorage.removeItem('fizzdragon_token');
     localStorage.removeItem('fizzdragon_user');
     localStorage.removeItem('user_id');
+    sessionStorage.removeItem('fizzdragon_token');
+    sessionStorage.removeItem('fizzdragon_user');
 
     // 重新初始化为游客
     currentUser = { id: 'guest_' + Date.now(), plan: 'free' };
@@ -10656,8 +10658,8 @@ function showCurrentUser() {
     const logoutBtn = document.getElementById('logoutBtn');
     if (!el) return;
 
-    const user = JSON.parse(localStorage.getItem('fizzdragon_user') || 'null');
-    const token = localStorage.getItem('fizzdragon_token');
+    const user = JSON.parse((localStorage.getItem('fizzdragon_user') || sessionStorage.getItem('fizzdragon_user')) || 'null');
+    const token = localStorage.getItem('fizzdragon_token') || sessionStorage.getItem('fizzdragon_token');
 
     if (token && user && user.username) {
         el.textContent = `👤 ${user.username}`;
@@ -10673,7 +10675,7 @@ function showCurrentUser() {
 }
 
 function handleUserMenuClick() {
-    const token = localStorage.getItem('fizzdragon_token');
+    const token = localStorage.getItem('fizzdragon_token') || sessionStorage.getItem('fizzdragon_token');
     if (!token) {
         showAuthModal('login');
     }
@@ -10736,11 +10738,25 @@ async function submitAuth() {
         if (!res.ok) throw new Error(data?.error || '登入/註冊失敗');
 
         // 保存 token + user
-        if (data.token) localStorage.setItem('fizzdragon_token', data.token);
-        if (data.user) {
-            localStorage.setItem('fizzdragon_user', JSON.stringify(data.user));
-            // 关键：让 getProjectsKey 进入 fizzdragon_projects_<userId>
-            localStorage.setItem('user_id', data.user.id);
+        // ⚠️ 如果此前 guest 项目把 localStorage 塞满，这里 setItem 也可能失败。
+        // 策略：先尝试释放空间（清理 guest 大key），再写入登录信息。
+        try {
+            // 只清理 guest 的项目空间（最大头），不会影响你已登录后的云端数据
+            localStorage.removeItem('fizzdragon_projects_guest');
+        } catch (e) {}
+
+        try {
+            if (data.token) localStorage.setItem('fizzdragon_token', data.token);
+            if (data.user) {
+                localStorage.setItem('fizzdragon_user', JSON.stringify(data.user));
+                // 关键：让 getProjectsKey 进入 fizzdragon_projects_<userId>
+                localStorage.setItem('user_id', data.user.id);
+            }
+        } catch (e) {
+            // 本地仍满：降级到 sessionStorage（本次会话可用），并提示用户清理
+            if (data.token) sessionStorage.setItem('fizzdragon_token', data.token);
+            if (data.user) sessionStorage.setItem('fizzdragon_user', JSON.stringify(data.user));
+            showToast('⚠️ 本地存储已满：登录信息仅保存在本次会话（建议清空旧项目/站点数据）', 7000);
         }
 
         // 登录后：刷新用户显示 + 拉取云端项目
@@ -12181,7 +12197,7 @@ async function syncProjectToBackend(projectId, projectData) {
 
     try {
         const userId = getCurrentUserId();
-        const token = localStorage.getItem('fizzdragon_token');
+        const token = localStorage.getItem('fizzdragon_token') || sessionStorage.getItem('fizzdragon_token');
         if (!token) {
             // 必须登录才可云端同步
             return;
@@ -12219,7 +12235,7 @@ async function syncProjectsFromBackend(retries = 2) {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 10000); // 10秒超时
             
-            const token = localStorage.getItem('fizzdragon_token');
+            const token = localStorage.getItem('fizzdragon_token') || sessionStorage.getItem('fizzdragon_token');
             if (!token) {
                 // 必须登录才可云端恢复
                 return;
@@ -18690,8 +18706,8 @@ function exportAll() {
 
 // ==================== 启动 ====================
 // 检查登录状态
-const authToken = localStorage.getItem('fizzdragon_token');
-const savedUser = JSON.parse(localStorage.getItem('fizzdragon_user') || 'null');
+const authToken = localStorage.getItem('fizzdragon_token') || sessionStorage.getItem('fizzdragon_token');
+const savedUser = JSON.parse((localStorage.getItem('fizzdragon_user') || sessionStorage.getItem('fizzdragon_user')) || 'null');
 if (savedUser) {
     currentUser = { ...currentUser, ...savedUser };
 }
