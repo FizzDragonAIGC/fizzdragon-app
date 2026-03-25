@@ -63,7 +63,7 @@
         width: 100%;
       }
 
-      /* Chat Dock (top-right, like a helper assistant) */
+      /* Chat Dock (slide-out from left) */
       .chatDock {
         position: fixed;
         top: 12px;
@@ -71,6 +71,8 @@
         width: 392px;
         height: calc(100vh - 24px);
         max-height: 860px;
+        transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        will-change: transform;
         background:
           radial-gradient(
             600px 260px at 20% 0%,
@@ -133,9 +135,55 @@
         overflow: hidden;
         z-index: 50;
       }
+      .chatDock.collapsed {
+        transform: translateX(-338px);
+      }
       .chatDock.min {
         height: 54px;
         width: 300px;
+      }
+
+      /* Handle (always visible) */
+      .dockHandle {
+        position: absolute;
+        top: 14px;
+        left: 100%;
+        margin-left: 10px;
+        width: 52px;
+        border-radius: 14px;
+        border: 1px solid rgba(227, 27, 35, 0.28);
+        background: rgba(0, 0, 0, 0.45);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+        padding: 10px 8px;
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+      .dockHandle .dino {
+        font-size: 20px;
+        line-height: 1;
+        filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.6));
+        animation: dinoBounce 1.6s ease-in-out infinite;
+      }
+      .dockHandle .handleText {
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        color: #ffd2d5;
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        opacity: 0.9;
+      }
+      @keyframes dinoBounce {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-4px);
+        }
       }
 
       .dockTop {
@@ -390,6 +438,9 @@
       }
       body.dock-min .main {
         margin-left: 350px;
+      }
+      body.dock-collapsed .main {
+        margin-left: 78px;
       }
 
       .topbar {
@@ -721,6 +772,10 @@
     <div class="app">
       <!-- Chat dock: top-right -->
       <section id="chatDock" class="chatDock">
+        <div class="dockHandle" id="dockHandle" title="展开/收起助手">
+          <div class="dino">🦖</div>
+          <div class="handleText">助手</div>
+        </div>
         <div class="dockTop">
           <div class="dockBrand">
             <div class="dockLogo" aria-hidden="true"></div>
@@ -1801,6 +1856,23 @@
         });
 
         // dock buttons
+        function setDockCollapsed(collapsed) {
+          const d = $("chatDock");
+          d.classList.toggle("collapsed", collapsed);
+          document.body.classList.toggle("dock-collapsed", collapsed);
+          // ensure expanded view is visible when not collapsed
+          if (!collapsed) {
+            $("chat").style.display = "block";
+            $("composer").style.display = "block";
+          }
+        }
+
+        $("dockHandle").onclick = () => {
+          const d = $("chatDock");
+          const collapsed = !d.classList.contains("collapsed");
+          setDockCollapsed(collapsed);
+        };
+
         $("dockMinBtn").onclick = () => {
           const d = $("chatDock");
           const min = d.classList.toggle("min");
