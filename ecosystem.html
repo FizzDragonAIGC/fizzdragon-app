@@ -435,12 +435,19 @@
         min-width: 0;
         /* Reserve space for the fixed chat dock on the left (no overlap) */
         margin-left: 440px;
+        transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        will-change: margin-left;
       }
       body.dock-min .main {
         margin-left: 350px;
       }
       body.dock-collapsed .main {
         margin-left: 78px;
+      }
+
+      /* When collapsed, keep the handle reachable and avoid any accidental overlay */
+      body.dock-collapsed .chatDock {
+        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.65);
       }
 
       .topbar {
