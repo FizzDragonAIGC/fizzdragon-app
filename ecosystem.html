@@ -67,7 +67,7 @@
       .chatDock {
         position: fixed;
         top: 12px;
-        right: 12px;
+        left: 12px;
         width: 392px;
         height: calc(100vh - 24px);
         max-height: 860px;
@@ -385,11 +385,11 @@
         display: flex;
         flex-direction: column;
         min-width: 0;
-        /* Reserve space for the fixed chat dock on the right (no overlap) */
-        margin-right: 420px;
+        /* Reserve space for the fixed chat dock on the left (no overlap) */
+        margin-left: 440px;
       }
       body.dock-min .main {
-        margin-right: 330px;
+        margin-left: 350px;
       }
 
       .topbar {
@@ -447,7 +447,7 @@
           width: auto;
         }
         .main {
-          margin-right: 0;
+          margin-left: 0;
         }
       }
 
