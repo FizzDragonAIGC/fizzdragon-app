@@ -385,6 +385,11 @@
         display: flex;
         flex-direction: column;
         min-width: 0;
+        /* Reserve space for the fixed chat dock on the right (no overlap) */
+        margin-right: 420px;
+      }
+      body.dock-min .main {
+        margin-right: 330px;
       }
 
       .topbar {
@@ -440,6 +445,9 @@
           left: 12px;
           right: 12px;
           width: auto;
+        }
+        .main {
+          margin-right: 0;
         }
       }
 
@@ -1796,6 +1804,7 @@
         $("dockMinBtn").onclick = () => {
           const d = $("chatDock");
           const min = d.classList.toggle("min");
+          document.body.classList.toggle("dock-min", min);
           $("composer").style.display = min ? "none" : "block";
           $("chat").style.display = min ? "none" : "block";
           $("dockMinBtn").textContent = min ? "展开" : "收起";
