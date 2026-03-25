@@ -68,7 +68,7 @@
         position: fixed;
         top: 12px;
         right: 12px;
-        width: 372px;
+        width: 392px;
         height: calc(100vh - 24px);
         max-height: 860px;
         background:
@@ -83,12 +83,50 @@
             transparent 60%
           ),
           rgba(10, 10, 16, 0.92);
-        border: 1px solid rgba(227, 27, 35, 0.22);
+        border: 1px solid rgba(227, 27, 35, 0.32);
         border-radius: 18px;
         box-shadow:
-          0 18px 60px rgba(0, 0, 0, 0.7),
-          0 0 0 1px rgba(255, 255, 255, 0.04) inset,
-          0 0 40px rgba(227, 27, 35, 0.1);
+          0 22px 80px rgba(0, 0, 0, 0.78),
+          0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+          0 0 46px rgba(227, 27, 35, 0.14);
+      }
+
+      /* Make the dock visually obvious */
+      .chatDock::before {
+        content: "";
+        position: absolute;
+        inset: -1px;
+        border-radius: 18px;
+        padding: 1px;
+        background: linear-gradient(
+          135deg,
+          rgba(227, 27, 35, 0.55),
+          rgba(255, 255, 255, 0.1),
+          rgba(227, 27, 35, 0.25)
+        );
+        -webkit-mask:
+          linear-gradient(#000 0 0) content-box,
+          linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events: none;
+        opacity: 0.85;
+      }
+      .chatDock::after {
+        content: "助手";
+        position: absolute;
+        top: 10px;
+        right: 92px;
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(227, 27, 35, 0.4);
+        background: rgba(227, 27, 35, 0.12);
+        color: #ffd2d5;
+        text-transform: uppercase;
+        pointer-events: none;
+        opacity: 0.95;
         backdrop-filter: blur(12px);
         display: flex;
         flex-direction: column;
@@ -755,6 +793,37 @@
             ipId: "ip_hk_cyber_skater",
             name: "《香港滑板女孩》剧组",
             phase: "Trailer期",
+            client: { name: "FizzDragon", type: "平台客户" },
+            producer: { name: "Pax Studio", title: "制片人" },
+            roster: [
+              { role: "总制片", name: "Pax Studio" },
+              { role: "编剧", name: "（招募中）" },
+              { role: "生图/视觉", name: "NeonK" },
+              { role: "分镜", name: "（招募中）" },
+              { role: "剪辑", name: "北大·影像社" },
+            ],
+            openings: [
+              {
+                id: "open_writer",
+                role: "编剧",
+                requirements: ["香港街头/青春动作", "强钩子", "90秒短剧节奏"],
+                budgetType: "现金",
+                budget: "¥2000/集",
+                exchange: "-",
+                revshare: "可谈（IP分润）",
+                status: "招募中",
+              },
+              {
+                id: "open_storyboard",
+                role: "分镜",
+                requirements: ["镜头语法稳定", "赛博朋克构图", "能出CSV/Excel"],
+                budgetType: "技能交换",
+                budget: "-",
+                exchange: "用分镜换生图/剪辑资源",
+                revshare: "-",
+                status: "招募中",
+              },
+            ],
             checkpoints: [
               { key: "cp_script", title: "剧本确认", status: "pending" },
               { key: "cp_char", title: "人物设计确认", status: "locked" },
@@ -1180,10 +1249,13 @@
           <div class="name">${escapeHtml(p.name)}</div>
           <div class="tag">${escapeHtml(p.phase)}</div>
         </div>
-        <div class="desc">关联IP：${escapeHtml(ip?.name || "-")}\n当前节点：${escapeHtml((doing || pending || p.checkpoints[0]).title)}</div>
+        <div class="desc">关联IP：${escapeHtml(ip?.name || "-")}
+客户：${escapeHtml(p.client?.name || "-")} · 制片：${escapeHtml(p.producer?.name || "-")}
+当前节点：${escapeHtml((doing || pending || p.checkpoints[0]).title)}</div>
         <div class="kpi">
           <span>任务数：${p.tasks.length}</span>
-          <span>Checkpoint：${p.checkpoints.length}</span>
+          <span>岗位：${(p.roster || []).length}</span>
+          <span>招募：${(p.openings || []).filter((o) => o.status === "招募中").length}</span>
         </div>
       `;
         el.onclick = () => {
@@ -1213,12 +1285,68 @@
 
         <div class="split">
           <div class="panel" id="cp">
-            <h3>Checkpoint 看板（MVP状态机演示）</h3>
+            <h3>驾驶舱（客户/制片）</h3>
+            <div class="desc">客户：${escapeHtml(p.client?.name || "-")}（${escapeHtml(p.client?.type || "-")}）\n制片：${escapeHtml(p.producer?.name || "-")}</div>
+            <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap">
+              <div class="tag hot">${escapeHtml(p.phase)}</div>
+              <div class="tag">项目：${escapeHtml(ip?.name || "-")}</div>
+              <div class="tag">状态：进行中</div>
+            </div>
+            <div class="footerNote">（MVP）这里后续会接：健康度仪表、预算燃尽、风险灯。</div>
+
+            <h3 style="margin-top:14px">Checkpoint 看板（核心）</h3>
             <div class="timeline">${p.checkpoints.map((cp) => cpItem(cp)).join("")}</div>
-            <div class="footerNote">规则：锁定节点不可开始任务；待确认需“确认通过/驳回”才能解锁下一步（MVP先展示，不做权限）。</div>
+            <div class="footerNote">规则：锁定节点不可开始任务；待确认需“确认通过/驳回”才能解锁下一步。</div>
           </div>
           <div class="panel" id="tasks">
-            <h3>任务看板（挂载到 Checkpoint）</h3>
+            <h3>剧组大厅（谁在干嘛 / 是否在找人）</h3>
+            <div class="desc">（MVP）你要求的“客户/制片/岗位/预算/交换/分润”都在这页展示。</div>
+
+            <h3 style="margin-top:12px">剧组成员（Roster）</h3>
+            <div class="timeline">
+              ${
+                (p.roster || [])
+                  .map(
+                    (r) => `
+                <div class="cp done" style="cursor:default">
+                  <div class="lefty">
+                    <div class="dot"></div>
+                    <div style="min-width:0">
+                      <div class="t">${escapeHtml(r.role)}</div>
+                      <div class="s">${escapeHtml(r.name)}</div>
+                    </div>
+                  </div>
+                  <div class="tag">角色</div>
+                </div>
+              `,
+                  )
+                  .join("") || '<div class="empty">暂无成员</div>'
+              }
+            </div>
+
+            <h3 style="margin-top:12px">招募岗位（Openings）</h3>
+            <div class="timeline">
+              ${
+                (p.openings || [])
+                  .map(
+                    (o) => `
+                <div class="cp ${o.status === "招募中" ? "pending" : "done"}" style="cursor:default">
+                  <div class="lefty">
+                    <div class="dot"></div>
+                    <div style="min-width:0">
+                      <div class="t">${escapeHtml(o.role)} · ${escapeHtml(o.status)}</div>
+                      <div class="s">要求：${escapeHtml((o.requirements || []).join(" / "))}\n预算：${escapeHtml(o.budgetType)} ${escapeHtml(o.budget)}\n交换：${escapeHtml(o.exchange)}\n分润：${escapeHtml(o.revshare)}</div>
+                    </div>
+                  </div>
+                  <div class="tag hot">招募</div>
+                </div>
+              `,
+                  )
+                  .join("") || '<div class="empty">暂无招募</div>'
+              }
+            </div>
+
+            <h3 style="margin-top:12px">任务看板（挂载到 Checkpoint）</h3>
             ${taskList(p)}
             <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap">
               <button class="mini-btn" onclick="alert('MVP占位：发布任务会同步到人才集市任务广场')">发布任务</button>
