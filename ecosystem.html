@@ -1865,8 +1865,17 @@
         // dock buttons
         function setDockCollapsed(collapsed) {
           const d = $("chatDock");
+
+          // If we collapse, exit "min" mode (min is for compact open state)
+          if (collapsed) {
+            d.classList.remove("min");
+            document.body.classList.remove("dock-min");
+            $("dockMinBtn").textContent = "收起";
+          }
+
           d.classList.toggle("collapsed", collapsed);
           document.body.classList.toggle("dock-collapsed", collapsed);
+
           // ensure expanded view is visible when not collapsed
           if (!collapsed) {
             $("chat").style.display = "block";
