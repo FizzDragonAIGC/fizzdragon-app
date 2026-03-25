@@ -1,509 +1,921 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FizzDragon · IP共创生态 (MVP)</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FizzDragon · IP共创生态 (MVP)</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
-    :root{
-      --bg:#050508;
-      --panel:#0b0b11;
-      --panel2:#0f0f18;
-      --border:#1e1e2a;
-      --text:#f3f3ff;
-      --muted:#9a9ab0;
-      --accent:#E31B23;
-      --accent2:#a80f15;
-      --good:#22c55e;
-      --warn:#f59e0b;
-      --info:#60a5fa;
+      :root {
+        --bg: #050508;
+        --panel: #0b0b11;
+        --panel2: #0f0f18;
+        --border: #1e1e2a;
+        --text: #f3f3ff;
+        --muted: #9a9ab0;
+        --accent: #e31b23;
+        --accent2: #a80f15;
+        --good: #22c55e;
+        --warn: #f59e0b;
+        --info: #60a5fa;
 
-      --shadow: 0 10px 30px rgba(0,0,0,.55);
-      --radius: 14px;
-    }
-
-    *{box-sizing:border-box;}
-    html,body{height:100%;}
-    body{
-      margin:0;
-      font-family: Inter, -apple-system, system-ui, Segoe UI, Roboto, Arial, sans-serif;
-      background: radial-gradient(900px 500px at 20% 20%, rgba(227,27,35,.18), transparent 60%),
-                  radial-gradient(800px 500px at 90% 40%, rgba(227,27,35,.10), transparent 60%),
-                  var(--bg);
-      color:var(--text);
-      overflow:hidden;
-    }
-
-    .app{display:flex; height:100%; width:100%;}
-
-    /* Left chat */
-    .left{
-      width:340px;
-      background: linear-gradient(180deg, rgba(227,27,35,.10), transparent 35%), var(--panel);
-      border-right:1px solid var(--border);
-      display:flex;
-      flex-direction:column;
-      min-width:280px;
-    }
-    .brand{
-      padding:16px 16px 12px;
-      border-bottom:1px solid var(--border);
-      background: rgba(0,0,0,.35);
-    }
-    .brand .title{font-weight:800; letter-spacing:.5px;}
-    .brand .sub{margin-top:6px; color:var(--muted); font-size:12px; line-height:1.2;}
-
-    .chat{
-      flex:1;
-      padding:12px;
-      overflow:auto;
-    }
-    .msg{display:flex; gap:10px; margin:10px 0;}
-    .msg .b{
-      max-width: 90%;
-      padding:10px 12px;
-      border:1px solid var(--border);
-      border-radius: 14px;
-      background: rgba(255,255,255,.02);
-      box-shadow: 0 2px 12px rgba(0,0,0,.25);
-      white-space: pre-wrap;
-      line-height:1.35;
-      font-size:13px;
-    }
-    .msg.user{justify-content:flex-end;}
-    .msg.user .b{
-      background: rgba(227,27,35,.12);
-      border-color: rgba(227,27,35,.25);
-    }
-    .msg.ai .b{background: rgba(255,255,255,.02);}
-
-    .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
-    .chip{
-      cursor:pointer;
-      font-size:12px;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      color:var(--text);
-      background: rgba(255,255,255,.02);
-      transition: .15s ease;
-      user-select:none;
-    }
-    .chip:hover{border-color: rgba(227,27,35,.55); transform: translateY(-1px);}
-
-    .composer{
-      padding:12px;
-      border-top:1px solid var(--border);
-      background: rgba(0,0,0,.35);
-    }
-    .row{display:flex; gap:10px;}
-    .input{
-      flex:1;
-      padding:10px 12px;
-      border-radius: 12px;
-      border:1px solid var(--border);
-      background: rgba(255,255,255,.03);
-      color:var(--text);
-      outline:none;
-    }
-    .btn{
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid rgba(227,27,35,.55);
-      background: linear-gradient(135deg, rgba(227,27,35,.85), rgba(168,15,21,.85));
-      color:#fff;
-      font-weight:700;
-      cursor:pointer;
-      transition: .15s ease;
-    }
-    .btn:hover{filter:brightness(1.06); transform: translateY(-1px);}
-
-    /* Main */
-    .main{flex:1; display:flex; flex-direction:column; min-width: 0;}
-
-    .topbar{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      padding:12px 14px;
-      border-bottom:1px solid var(--border);
-      background: rgba(0,0,0,.25);
-    }
-    .tabs{display:flex; gap:8px;}
-    .tab{
-      cursor:pointer;
-      padding:8px 12px;
-      border-radius: 999px;
-      border:1px solid var(--border);
-      background: rgba(255,255,255,.02);
-      color: var(--text);
-      font-weight:700;
-      font-size:13px;
-      transition:.15s ease;
-      user-select:none;
-    }
-    .tab.active{border-color: rgba(227,27,35,.7); background: rgba(227,27,35,.10);}
-
-    .meta{
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .content{flex:1; overflow:auto; padding:14px;}
-
-    .grid{display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;}
-    @media (max-width: 1200px){ .grid{grid-template-columns: repeat(2, minmax(0,1fr));} }
-    @media (max-width: 900px){ .left{display:none;} .grid{grid-template-columns: 1fr;} }
-
-    .card{
-      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px;
-      box-shadow: var(--shadow);
-      cursor:pointer;
-      transition:.15s ease;
-      min-height: 120px;
-    }
-    .card:hover{border-color: rgba(227,27,35,.55); transform: translateY(-2px);}
-
-    .card .h{display:flex; align-items:center; justify-content:space-between; gap:10px;}
-    .card .name{font-weight:800;}
-    .tag{
-      font-size: 11px;
-      padding:4px 8px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      color:var(--muted);
-      background: rgba(255,255,255,.02);
-      white-space:nowrap;
-    }
-    .tag.hot{border-color: rgba(227,27,35,.55); color:#ffb0b5; background: rgba(227,27,35,.10);}
-    .tag.good{border-color: rgba(34,197,94,.55); color:#bfffd4; background: rgba(34,197,94,.10);}
-
-    .card .desc{margin-top:10px; color: var(--muted); font-size: 12px; line-height:1.35;}
-    .card .kpi{display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;}
-    .kpi span{font-size:11px; color:#cfcfe3; border:1px solid var(--border); padding:4px 8px; border-radius:999px; background: rgba(0,0,0,.25)}
-
-    .view{
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px;
-      background: rgba(0,0,0,.20);
-      box-shadow: var(--shadow);
-    }
-
-    .view h2{margin:0 0 6px;}
-    .view .sub{color:var(--muted); font-size:12px;}
-
-    .split{display:grid; grid-template-columns: 1.2fr .8fr; gap:12px; margin-top:12px;}
-    @media (max-width: 1100px){ .split{grid-template-columns: 1fr;} }
-
-    .panel{border:1px solid var(--border); border-radius: var(--radius); padding:12px; background: rgba(255,255,255,.02)}
-    .panel h3{margin:0 0 10px; font-size:13px;}
-
-    .timeline{display:flex; flex-direction:column; gap:10px;}
-    .cp{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px; border-radius: 12px; border:1px solid var(--border); background: rgba(0,0,0,.25)}
-    .cp .lefty{display:flex; align-items:center; gap:10px; min-width:0}
-    .dot{width:10px; height:10px; border-radius:50%; background:#444}
-    .cp.locked .dot{background:#444}
-    .cp.doing .dot{background: var(--info)}
-    .cp.pending .dot{background: var(--warn)}
-    .cp.done .dot{background: var(--good)}
-    .cp .t{font-weight:800; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-    .cp .s{font-size:11px; color:var(--muted)}
-
-    .mini-btn{cursor:pointer; font-size:11px; padding:6px 10px; border-radius: 10px; border:1px solid var(--border); background: rgba(255,255,255,.02); color: var(--text)}
-    .mini-btn:hover{border-color: rgba(227,27,35,.55)}
-
-    .empty{color: var(--muted); font-size: 12px; padding: 18px; text-align:center}
-
-    .footerNote{margin-top:12px; font-size:11px; color:var(--muted)}
-  </style>
-</head>
-<body>
-  <div class="app">
-
-    <aside class="left">
-      <div class="brand">
-        <div class="title">FizzDragon · 共创生态</div>
-        <div class="sub">黑红赛博朋克 · MVP Demo（无登录版）\n左侧对话：搜IP / 找人才 / 看项目 / 进入详情</div>
-      </div>
-      <div id="chat" class="chat"></div>
-      <div class="composer">
-        <div class="row">
-          <input id="chatInput" class="input" placeholder="例如：我想看香港赛博朋克；我要找佛教背景的编剧；进入《xxx》" />
-          <button id="sendBtn" class="btn">发送</button>
-        </div>
-        <div class="chips" id="quickChips"></div>
-      </div>
-    </aside>
-
-    <main class="main">
-      <div class="topbar">
-        <div class="tabs">
-          <div class="tab active" data-tab="ip">IP广场</div>
-          <div class="tab" data-tab="studio">剧组大厅</div>
-          <div class="tab" data-tab="talent">人才集市</div>
-          <div class="tab" data-tab="pay">支付(占位)</div>
-        </div>
-        <div class="meta" id="contextMeta">当前：IP广场 · 可对话筛选并点击进入</div>
-      </div>
-
-      <div class="content" id="content"></div>
-    </main>
-
-  </div>
-
-  <script>
-    // -------------------- Mock Data (MVP demo, replace with API later) --------------------
-    const DB = {
-      ips: [
-        {
-          id: 'ip_hk_cyber_skater',
-          name: '香港滑板女孩 · 赛博朋克',
-          stage: 'Trailer期',
-          tags: ['香港','赛博朋克','青春','动作'],
-          logline: '在霓虹香港的监控阴影下，一个滑板女孩用街头速度撕开财阀与算法的围城。',
-          kpi: { valuation: '估值 $200K', raised: '已募 $12K', target: '目标 $50K' },
-          trailer: '（占位）Trailer 视频',
-          qnaHint: '你可以问：主角是谁？看点是什么？当前进度？'
-        },
-        {
-          id: 'ip_buddhism_mystery',
-          name: '莲灯案：寺院悬疑',
-          stage: '3集试点',
-          tags: ['佛教','悬疑','古风','女性向'],
-          logline: '香火鼎盛的古寺里，莲灯夜夜自燃；女主在戒律与欲望之间查出一段被掩埋的真相。',
-          kpi: { valuation: '估值 $350K', raised: '已募 $80K', target: '目标 $120K' },
-          trailer: '（占位）概念短片',
-          qnaHint: '你可以问：故事基调？主要冲突？适合什么受众？'
-        },
-        {
-          id: 'ip_beijing_ai_noir',
-          name: '北京雾霾黑色电影 · AI侦探',
-          stage: '制作中',
-          tags: ['北京','黑色电影','科幻','侦探'],
-          logline: '一个被降级的AI侦探在雾霾城市里追查“被删除的人”。',
-          kpi: { valuation: '估值 $500K', raised: '已募 $260K', target: '目标 $260K' },
-          trailer: '（占位）预告片',
-          qnaHint: '你可以问：世界观设定？风格参考？'
-        }
-      ],
-      talents: [
-        {
-          id: 't_writer_buddhism',
-          name: '若尘',
-          role: '编剧 / 故事架构',
-          location: '北京',
-          tags: ['佛教背景','悬疑','女性向','古风'],
-          price: '¥3k/天',
-          rating: 'S1',
-          bio: '寺院题材顾问+编剧，擅长戒律冲突与人性悬疑。'
-        },
-        {
-          id: 't_artist_cyber',
-          name: 'NeonK',
-          role: '美术 / 概念设计',
-          location: '香港',
-          tags: ['赛博朋克','霓虹街景','道具设计'],
-          price: '¥2k/天',
-          rating: 'G2',
-          bio: '霓虹城市与工业质感专家，能做统一风格Bible。'
-        },
-        {
-          id: 't_uni_bj',
-          name: '北大·影像社',
-          role: '团队 / 摄影后期',
-          location: '北京',
-          tags: ['北大','摄影','纪录片','剪辑'],
-          price: '面议',
-          rating: 'Z3',
-          bio: '青年团队，快速拍摄与后期交付，适合试点集。'
-        }
-      ],
-      projects: [
-        {
-          id: 'p1',
-          ipId: 'ip_hk_cyber_skater',
-          name: '《香港滑板女孩》剧组',
-          phase: 'Trailer期',
-          checkpoints: [
-            { key:'cp_script', title:'剧本确认', status:'pending' },
-            { key:'cp_char', title:'人物设计确认', status:'locked' },
-            { key:'cp_storyboard', title:'分镜确认', status:'locked' },
-            { key:'cp_video', title:'试剪确认', status:'locked' },
-            { key:'cp_final', title:'最终交付', status:'locked' }
-          ],
-          tasks: [
-            { id:'task1', title:'EP01 90秒剧本', checkpoint:'cp_script', status:'review', budget:'¥2000' },
-            { id:'task2', title:'主角概念图 3 张', checkpoint:'cp_char', status:'blocked', budget:'¥1200' }
-          ]
-        },
-        {
-          id: 'p2',
-          ipId: 'ip_buddhism_mystery',
-          name: '《莲灯案》试点剧组',
-          phase: '3集试点',
-          checkpoints: [
-            { key:'cp_concept', title:'概念包确认', status:'done' },
-            { key:'cp_script', title:'E001-E003 剧本确认', status:'doing' },
-            { key:'cp_storyboard', title:'分镜确认', status:'locked' },
-            { key:'cp_pay', title:'结算/付款(占位)', status:'locked' }
-          ],
-          tasks: [
-            { id:'task3', title:'E001-E003 结构大纲', checkpoint:'cp_script', status:'doing', budget:'¥3000' },
-            { id:'task4', title:'寺院礼仪顾问审阅', checkpoint:'cp_script', status:'todo', budget:'¥800' }
-          ]
-        }
-      ]
-    };
-
-    // -------------------- State --------------------
-    const state = {
-      tab: 'ip',
-      view: { type: 'list', id: null },
-      selectedIpId: null,
-      selectedProjectId: null,
-      selectedTalentId: null,
-      chatContext: 'ip' // ip | studio | talent | ip_detail
-    };
-
-    // -------------------- Helpers --------------------
-    const $ = (id) => document.getElementById(id);
-
-    function escapeHtml(str){
-      return String(str)
-        .replaceAll('&','&amp;')
-        .replaceAll('<','&lt;')
-        .replaceAll('>','&gt;')
-        .replaceAll('"','&quot;')
-        .replaceAll("'",'&#39;');
-    }
-
-    function setMeta(text){ $('contextMeta').textContent = text; }
-
-    function pushMsg(role, text, chips){
-      const el = document.createElement('div');
-      el.className = `msg ${role}`;
-      el.innerHTML = `<div class="b">${escapeHtml(text)}</div>`;
-      $('chat').appendChild(el);
-      if(chips && chips.length){
-        const c = document.createElement('div');
-        c.className = 'chips';
-        c.style.marginLeft = role === 'user' ? 'auto' : '0';
-        chips.forEach(ch => {
-          const b = document.createElement('div');
-          b.className = 'chip';
-          b.textContent = ch.label;
-          b.onclick = () => {
-            if (ch.action) ch.action();
-          };
-          c.appendChild(b);
-        });
-        $('chat').appendChild(c);
+        --shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+        --radius: 14px;
       }
-      $('chat').scrollTop = $('chat').scrollHeight;
-    }
 
-    function normalize(s){
-      return String(s || '').toLowerCase().replace(/\s+/g,'');
-    }
-
-    function matchByKeywords(item, text){
-      const t = normalize(text);
-      const bag = [item.name, item.stage, item.role, item.location, item.bio, item.logline, ...(item.tags||[])].join(' ');
-      return normalize(bag).includes(t);
-    }
-
-    function findIPs(query){
-      if(!query) return DB.ips;
-      const q = query.split(/[\s,，;；]+/).filter(Boolean);
-      return DB.ips.filter(ip => q.every(k => matchByKeywords(ip, k)));
-    }
-
-    function findTalents(query){
-      if(!query) return DB.talents;
-      const q = query.split(/[\s,，;；]+/).filter(Boolean);
-      return DB.talents.filter(tl => q.every(k => matchByKeywords(tl, k)));
-    }
-
-    function findProjects(query){
-      if(!query) return DB.projects;
-      const q = query.split(/[\s,，;；]+/).filter(Boolean);
-      return DB.projects.filter(p => q.every(k => matchByKeywords({
-        name:p.name,
-        tags:[p.phase, (DB.ips.find(x=>x.id===p.ipId)||{}).name]
-      }, k)));
-    }
-
-    // -------------------- Renderers --------------------
-    function render(){
-      const root = $('content');
-      root.innerHTML = '';
-      if(state.tab === 'ip') return renderIP(root);
-      if(state.tab === 'talent') return renderTalent(root);
-      if(state.tab === 'studio') return renderStudio(root);
-      if(state.tab === 'pay') return renderPay(root);
-    }
-
-    function renderIP(root){
-      if(state.view.type === 'ip_detail' && state.selectedIpId){
-        const ip = DB.ips.find(x=>x.id===state.selectedIpId);
-        root.appendChild(ipDetailView(ip));
-        setMeta(`当前：IP详情 · ${ip.name}（左侧可继续问问题）`);
-        state.chatContext = 'ip_detail';
-        return;
+      * {
+        box-sizing: border-box;
       }
-      setMeta('当前：IP广场 · 你可以在左侧对话筛选并点击进入');
-      state.chatContext = 'ip';
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family:
+          Inter,
+          -apple-system,
+          system-ui,
+          Segoe UI,
+          Roboto,
+          Arial,
+          sans-serif;
+        background:
+          radial-gradient(
+            900px 500px at 20% 20%,
+            rgba(227, 27, 35, 0.18),
+            transparent 60%
+          ),
+          radial-gradient(
+            800px 500px at 90% 40%,
+            rgba(227, 27, 35, 0.1),
+            transparent 60%
+          ),
+          var(--bg);
+        color: var(--text);
+        overflow: hidden;
+      }
 
-      const list = document.createElement('div');
-      list.className = 'grid';
-      DB.ips.forEach(ip => list.appendChild(ipCard(ip)));
-      root.appendChild(list);
-    }
+      .app {
+        display: flex;
+        height: 100%;
+        width: 100%;
+      }
 
-    function ipCard(ip){
-      const el = document.createElement('div');
-      el.className = 'card';
-      const hot = ip.stage.includes('制作') ? 'good' : (ip.stage.includes('Trailer') ? 'hot' : '');
-      el.innerHTML = `
+      /* Chat Dock (top-right, like a helper assistant) */
+      .chatDock {
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        width: 360px;
+        height: calc(100vh - 24px);
+        max-height: 860px;
+        background:
+          linear-gradient(180deg, rgba(227, 27, 35, 0.1), transparent 35%),
+          rgba(10, 10, 16, 0.92);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(10px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        z-index: 50;
+      }
+      .chatDock.min {
+        height: 54px;
+        width: 300px;
+      }
+
+      .dockTop {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.35);
+      }
+      .dockTop .title {
+        font-weight: 900;
+        letter-spacing: 0.4px;
+        font-size: 13px;
+      }
+      .dockTop .hint {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .dockBtns {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .iconBtn {
+        cursor: pointer;
+        font-size: 12px;
+        padding: 6px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+        color: var(--text);
+        user-select: none;
+      }
+      .iconBtn:hover {
+        border-color: rgba(227, 27, 35, 0.55);
+      }
+
+      /* legacy name for layout blocks */
+      .left {
+        width: 340px;
+        background: transparent;
+        border-right: none;
+        display: flex;
+        flex-direction: column;
+        min-width: 280px;
+      }
+      .brand {
+        padding: 16px 16px 12px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.35);
+      }
+      .brand .title {
+        font-weight: 800;
+        letter-spacing: 0.5px;
+      }
+      .brand .sub {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.2;
+      }
+
+      .chat {
+        flex: 1;
+        padding: 12px;
+        overflow: auto;
+      }
+      .msg {
+        display: flex;
+        gap: 10px;
+        margin: 10px 0;
+      }
+      .msg .b {
+        max-width: 90%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.02);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+        white-space: pre-wrap;
+        line-height: 1.35;
+        font-size: 13px;
+      }
+      .msg.user {
+        justify-content: flex-end;
+      }
+      .msg.user .b {
+        background: rgba(227, 27, 35, 0.12);
+        border-color: rgba(227, 27, 35, 0.25);
+      }
+      .msg.ai .b {
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .chip {
+        cursor: pointer;
+        font-size: 12px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.02);
+        transition: 0.15s ease;
+        user-select: none;
+      }
+      .chip:hover {
+        border-color: rgba(227, 27, 35, 0.55);
+        transform: translateY(-1px);
+      }
+
+      .composer {
+        padding: 12px;
+        border-top: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.35);
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+      }
+      .input {
+        flex: 1;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text);
+        outline: none;
+      }
+      .btn {
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(227, 27, 35, 0.55);
+        background: linear-gradient(
+          135deg,
+          rgba(227, 27, 35, 0.85),
+          rgba(168, 15, 21, 0.85)
+        );
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        transition: 0.15s ease;
+      }
+      .btn:hover {
+        filter: brightness(1.06);
+        transform: translateY(-1px);
+      }
+
+      /* Main */
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.25);
+      }
+      .tabs {
+        display: flex;
+        gap: 8px;
+      }
+      .tab {
+        cursor: pointer;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+        color: var(--text);
+        font-weight: 700;
+        font-size: 13px;
+        transition: 0.15s ease;
+        user-select: none;
+      }
+      .tab.active {
+        border-color: rgba(227, 27, 35, 0.7);
+        background: rgba(227, 27, 35, 0.1);
+      }
+
+      .meta {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .content {
+        flex: 1;
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+      @media (max-width: 1200px) {
+        .grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .chatDock {
+          left: 12px;
+          right: 12px;
+          width: auto;
+        }
+      }
+
+      .card {
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.03),
+          rgba(255, 255, 255, 0.01)
+        );
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px;
+        box-shadow: var(--shadow);
+        cursor: pointer;
+        transition: 0.15s ease;
+        min-height: 120px;
+      }
+      .card:hover {
+        border-color: rgba(227, 27, 35, 0.55);
+        transform: translateY(-2px);
+      }
+
+      .card .h {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .card .name {
+        font-weight: 800;
+      }
+      .tag {
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.02);
+        white-space: nowrap;
+      }
+      .tag.hot {
+        border-color: rgba(227, 27, 35, 0.55);
+        color: #ffb0b5;
+        background: rgba(227, 27, 35, 0.1);
+      }
+      .tag.good {
+        border-color: rgba(34, 197, 94, 0.55);
+        color: #bfffd4;
+        background: rgba(34, 197, 94, 0.1);
+      }
+
+      .card .desc {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+      .card .kpi {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+      }
+      .kpi span {
+        font-size: 11px;
+        color: #cfcfe3;
+        border: 1px solid var(--border);
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.25);
+      }
+
+      .view {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px;
+        background: rgba(0, 0, 0, 0.2);
+        box-shadow: var(--shadow);
+      }
+
+      .view h2 {
+        margin: 0 0 6px;
+      }
+      .view .sub {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 12px;
+        margin-top: 12px;
+      }
+      @media (max-width: 1100px) {
+        .split {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .panel {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .panel h3 {
+        margin: 0 0 10px;
+        font-size: 13px;
+      }
+
+      .timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .cp {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.25);
+      }
+      .cp .lefty {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #444;
+      }
+      .cp.locked .dot {
+        background: #444;
+      }
+      .cp.doing .dot {
+        background: var(--info);
+      }
+      .cp.pending .dot {
+        background: var(--warn);
+      }
+      .cp.done .dot {
+        background: var(--good);
+      }
+      .cp .t {
+        font-weight: 800;
+        font-size: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .cp .s {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .mini-btn {
+        cursor: pointer;
+        font-size: 11px;
+        padding: 6px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+        color: var(--text);
+      }
+      .mini-btn:hover {
+        border-color: rgba(227, 27, 35, 0.55);
+      }
+
+      .empty {
+        color: var(--muted);
+        font-size: 12px;
+        padding: 18px;
+        text-align: center;
+      }
+
+      .footerNote {
+        margin-top: 12px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <!-- Chat dock: top-right -->
+      <section id="chatDock" class="chatDock">
+        <div class="dockTop">
+          <div>
+            <div class="title">FizzDragon · 助手</div>
+            <div class="hint">搜IP / 找人才 / 进项目 / 在IP里提问</div>
+          </div>
+          <div class="dockBtns">
+            <div class="iconBtn" id="dockMinBtn">收起</div>
+            <div class="iconBtn" id="dockClearBtn">清空</div>
+          </div>
+        </div>
+        <div id="chat" class="chat"></div>
+        <div class="composer" id="composer">
+          <div class="row">
+            <input
+              id="chatInput"
+              class="input"
+              placeholder="例如：我想看爱情；我要找佛教背景编剧 北京；进入《莲灯案》"
+            />
+            <button id="sendBtn" class="btn">发送</button>
+          </div>
+          <div class="chips" id="quickChips"></div>
+        </div>
+      </section>
+
+      <main class="main">
+        <div class="topbar">
+          <div class="tabs">
+            <div class="tab active" data-tab="ip">IP广场</div>
+            <div class="tab" data-tab="studio">剧组大厅</div>
+            <div class="tab" data-tab="talent">人才集市</div>
+            <div class="tab" data-tab="pay">支付(占位)</div>
+          </div>
+          <div class="meta" id="contextMeta">
+            当前：IP广场 · 可对话筛选并点击进入
+          </div>
+        </div>
+
+        <div class="content" id="content"></div>
+      </main>
+    </div>
+
+    <script>
+      // -------------------- Mock Data (MVP demo, replace with API later) --------------------
+      const DB = {
+        ips: [
+          {
+            id: "ip_hk_cyber_skater",
+            name: "香港滑板女孩 · 赛博朋克",
+            stage: "Trailer期",
+            tags: ["香港", "赛博朋克", "青春", "动作"],
+            logline:
+              "在霓虹香港的监控阴影下，一个滑板女孩用街头速度撕开财阀与算法的围城。",
+            kpi: {
+              valuation: "估值 $200K",
+              raised: "已募 $12K",
+              target: "目标 $50K",
+            },
+            trailer: "（占位）Trailer 视频",
+            category: "爱情/动作",
+            creator: "Pax Studio",
+            fundraising: "开放募资",
+            news: [
+              "热度上涨：香港赛博朋克标签进入 Top 10",
+              "里程碑：完成Trailer脚本初稿（待确认）",
+            ],
+            qnaHint: "你可以问：主角是谁？看点是什么？当前进度？",
+          },
+          {
+            id: "ip_buddhism_mystery",
+            name: "莲灯案：寺院悬疑",
+            stage: "3集试点",
+            tags: ["佛教", "悬疑", "古风", "女性向"],
+            logline:
+              "香火鼎盛的古寺里，莲灯夜夜自燃；女主在戒律与欲望之间查出一段被掩埋的真相。",
+            kpi: {
+              valuation: "估值 $350K",
+              raised: "已募 $80K",
+              target: "目标 $120K",
+            },
+            trailer: "（占位）概念短片",
+            category: "悬疑/古风",
+            creator: "若尘",
+            fundraising: "募资中",
+            news: [
+              "动态：寺院悬疑题材讨论度飙升",
+              "进度：E001-E003 剧本进行中",
+            ],
+            qnaHint: "你可以问：故事基调？主要冲突？适合什么受众？",
+          },
+          {
+            id: "ip_beijing_ai_noir",
+            name: "北京雾霾黑色电影 · AI侦探",
+            stage: "制作中",
+            tags: ["北京", "黑色电影", "科幻", "侦探"],
+            logline: "一个被降级的AI侦探在雾霾城市里追查“被删除的人”。",
+            kpi: {
+              valuation: "估值 $500K",
+              raised: "已募 $260K",
+              target: "目标 $260K",
+            },
+            trailer: "（占位）预告片",
+            category: "黑色电影/科幻",
+            creator: "FD Labs",
+            fundraising: "已关闭募资",
+            news: [
+              "成功案例：AI侦探系列被平台首页推荐",
+              "里程碑：进入制作中（分镜已完成）",
+            ],
+            qnaHint: "你可以问：世界观设定？风格参考？",
+          },
+        ],
+        talents: [
+          {
+            id: "t_writer_buddhism",
+            name: "若尘",
+            role: "编剧 / 故事架构",
+            location: "北京",
+            tags: ["佛教背景", "悬疑", "女性向", "古风"],
+            price: "¥3k/天",
+            rating: "S1",
+            bio: "寺院题材顾问+编剧，擅长戒律冲突与人性悬疑。",
+          },
+          {
+            id: "t_artist_cyber",
+            name: "NeonK",
+            role: "美术 / 概念设计",
+            location: "香港",
+            tags: ["赛博朋克", "霓虹街景", "道具设计"],
+            price: "¥2k/天",
+            rating: "G2",
+            bio: "霓虹城市与工业质感专家，能做统一风格Bible。",
+          },
+          {
+            id: "t_uni_bj",
+            name: "北大·影像社",
+            role: "团队 / 摄影后期",
+            location: "北京",
+            tags: ["北大", "摄影", "纪录片", "剪辑"],
+            price: "面议",
+            rating: "Z3",
+            bio: "青年团队，快速拍摄与后期交付，适合试点集。",
+          },
+        ],
+        projects: [
+          {
+            id: "p1",
+            ipId: "ip_hk_cyber_skater",
+            name: "《香港滑板女孩》剧组",
+            phase: "Trailer期",
+            checkpoints: [
+              { key: "cp_script", title: "剧本确认", status: "pending" },
+              { key: "cp_char", title: "人物设计确认", status: "locked" },
+              { key: "cp_storyboard", title: "分镜确认", status: "locked" },
+              { key: "cp_video", title: "试剪确认", status: "locked" },
+              { key: "cp_final", title: "最终交付", status: "locked" },
+            ],
+            tasks: [
+              {
+                id: "task1",
+                title: "EP01 90秒剧本",
+                checkpoint: "cp_script",
+                status: "review",
+                budget: "¥2000",
+              },
+              {
+                id: "task2",
+                title: "主角概念图 3 张",
+                checkpoint: "cp_char",
+                status: "blocked",
+                budget: "¥1200",
+              },
+            ],
+          },
+          {
+            id: "p2",
+            ipId: "ip_buddhism_mystery",
+            name: "《莲灯案》试点剧组",
+            phase: "3集试点",
+            checkpoints: [
+              { key: "cp_concept", title: "概念包确认", status: "done" },
+              {
+                key: "cp_script",
+                title: "E001-E003 剧本确认",
+                status: "doing",
+              },
+              { key: "cp_storyboard", title: "分镜确认", status: "locked" },
+              { key: "cp_pay", title: "结算/付款(占位)", status: "locked" },
+            ],
+            tasks: [
+              {
+                id: "task3",
+                title: "E001-E003 结构大纲",
+                checkpoint: "cp_script",
+                status: "doing",
+                budget: "¥3000",
+              },
+              {
+                id: "task4",
+                title: "寺院礼仪顾问审阅",
+                checkpoint: "cp_script",
+                status: "todo",
+                budget: "¥800",
+              },
+            ],
+          },
+        ],
+      };
+
+      // -------------------- State --------------------
+      const state = {
+        tab: "ip",
+        view: { type: "list", id: null },
+        selectedIpId: null,
+        selectedProjectId: null,
+        selectedTalentId: null,
+        chatContext: "ip", // ip | studio | talent | ip_detail
+      };
+
+      // -------------------- Helpers --------------------
+      const $ = (id) => document.getElementById(id);
+
+      function escapeHtml(str) {
+        return String(str)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      function setMeta(text) {
+        $("contextMeta").textContent = text;
+      }
+
+      function pushMsg(role, text, chips) {
+        const el = document.createElement("div");
+        el.className = `msg ${role}`;
+        el.innerHTML = `<div class="b">${escapeHtml(text)}</div>`;
+        $("chat").appendChild(el);
+        if (chips && chips.length) {
+          const c = document.createElement("div");
+          c.className = "chips";
+          c.style.marginLeft = role === "user" ? "auto" : "0";
+          chips.forEach((ch) => {
+            const b = document.createElement("div");
+            b.className = "chip";
+            b.textContent = ch.label;
+            b.onclick = () => {
+              if (ch.action) ch.action();
+            };
+            c.appendChild(b);
+          });
+          $("chat").appendChild(c);
+        }
+        $("chat").scrollTop = $("chat").scrollHeight;
+      }
+
+      function normalize(s) {
+        return String(s || "")
+          .toLowerCase()
+          .replace(/\s+/g, "");
+      }
+
+      function matchByKeywords(item, text) {
+        const t = normalize(text);
+        const bag = [
+          item.name,
+          item.stage,
+          item.role,
+          item.location,
+          item.bio,
+          item.logline,
+          ...(item.tags || []),
+        ].join(" ");
+        return normalize(bag).includes(t);
+      }
+
+      function findIPs(query) {
+        if (!query) return DB.ips;
+        const q = query.split(/[\s,，;；]+/).filter(Boolean);
+        return DB.ips.filter((ip) => q.every((k) => matchByKeywords(ip, k)));
+      }
+
+      function findTalents(query) {
+        if (!query) return DB.talents;
+        const q = query.split(/[\s,，;；]+/).filter(Boolean);
+        return DB.talents.filter((tl) =>
+          q.every((k) => matchByKeywords(tl, k)),
+        );
+      }
+
+      function findProjects(query) {
+        if (!query) return DB.projects;
+        const q = query.split(/[\s,，;；]+/).filter(Boolean);
+        return DB.projects.filter((p) =>
+          q.every((k) =>
+            matchByKeywords(
+              {
+                name: p.name,
+                tags: [
+                  p.phase,
+                  (DB.ips.find((x) => x.id === p.ipId) || {}).name,
+                ],
+              },
+              k,
+            ),
+          ),
+        );
+      }
+
+      // -------------------- Renderers --------------------
+      function render() {
+        const root = $("content");
+        root.innerHTML = "";
+        if (state.tab === "ip") return renderIP(root);
+        if (state.tab === "talent") return renderTalent(root);
+        if (state.tab === "studio") return renderStudio(root);
+        if (state.tab === "pay") return renderPay(root);
+      }
+
+      function renderIP(root) {
+        if (state.view.type === "ip_detail" && state.selectedIpId) {
+          const ip = DB.ips.find((x) => x.id === state.selectedIpId);
+          root.appendChild(ipDetailView(ip));
+          setMeta(`当前：IP详情 · ${ip.name}（左侧可继续问问题）`);
+          state.chatContext = "ip_detail";
+          return;
+        }
+        setMeta("当前：IP广场 · 你可以在右上角对话筛选并点击进入");
+        state.chatContext = "ip";
+
+        // News / Success feed
+        const feed = document.createElement("div");
+        feed.className = "panel";
+        feed.style.marginBottom = "12px";
+        feed.innerHTML = `
+        <h3>动态 / 成功案例 / 新闻（MVP占位）</h3>
+        <div class="timeline">
+          ${DB.ips
+            .flatMap((ip) =>
+              (ip.news || []).slice(0, 2).map((n) => ({ ip, n })),
+            )
+            .slice(0, 6)
+            .map(
+              (x) => `
+              <div class="cp done" style="cursor:pointer" onclick="window.__FD.openIP('${x.ip.id}')">
+                <div class="lefty">
+                  <div class="dot"></div>
+                  <div style="min-width:0">
+                    <div class="t">${escapeHtml(x.n)}</div>
+                    <div class="s">IP：${escapeHtml(x.ip.name)} · ${escapeHtml(x.ip.category || "")}</div>
+                  </div>
+                </div>
+                <div class="tag hot">查看</div>
+              </div>
+            `,
+            )
+            .join("")}
+        </div>
+      `;
+        root.appendChild(feed);
+
+        const list = document.createElement("div");
+        list.className = "grid";
+        DB.ips.forEach((ip) => list.appendChild(ipCard(ip)));
+        root.appendChild(list);
+      }
+
+      function ipCard(ip) {
+        const el = document.createElement("div");
+        el.className = "card";
+        const hot = ip.stage.includes("制作")
+          ? "good"
+          : ip.stage.includes("Trailer")
+            ? "hot"
+            : "";
+        el.innerHTML = `
         <div class="h">
           <div class="name">${escapeHtml(ip.name)}</div>
           <div class="tag ${hot}">${escapeHtml(ip.stage)}</div>
         </div>
-        <div class="desc">${escapeHtml(ip.logline)}</div>
+        <div class="desc">类别：${escapeHtml(ip.category || "-")} · 创作者：${escapeHtml(ip.creator || "-")} · 募资：${escapeHtml(ip.fundraising || "-")}\n${escapeHtml(ip.logline)}</div>
         <div class="kpi">
           <span>${escapeHtml(ip.kpi.valuation)}</span>
           <span>${escapeHtml(ip.kpi.raised)}</span>
           <span>${escapeHtml(ip.kpi.target)}</span>
         </div>
       `;
-      el.onclick = () => {
-        state.selectedIpId = ip.id;
-        state.view = {type:'ip_detail', id: ip.id};
-        pushMsg('ai', `已进入 IP：${ip.name}\n你可以问：看点/受众/阶段/路线图/团队/我想投资(会进入支付占位页)。`, [
-          {label:'观看', action:()=>scrollToSection('media')},
-          {label:'路线图', action:()=>scrollToSection('roadmap')},
-          {label:'进入剧组', action:()=>openProjectForIP(ip.id)},
-          {label:'我想投资', action:()=>openPay('invest', ip.id)}
-        ]);
-        render();
-      };
-      return el;
-    }
+        el.onclick = () => {
+          state.selectedIpId = ip.id;
+          state.view = { type: "ip_detail", id: ip.id };
+          const link = makeLink("ip", ip.id);
+          pushMsg(
+            "ai",
+            `已进入 IP：${ip.name}\n\n你可以问：看点/受众/阶段/路线图/团队/我想投资。\n链接：${link}`,
+            [
+              { label: "观看", action: () => scrollToSection("media") },
+              { label: "路线图", action: () => scrollToSection("roadmap") },
+              { label: "进入剧组", action: () => openProjectForIP(ip.id) },
+              { label: "我想投资", action: () => openPay("invest", ip.id) },
+            ],
+          );
+          render();
+        };
+        return el;
+      }
 
-    function ipDetailView(ip){
-      const wrap = document.createElement('div');
-      wrap.className = 'view';
-      const proj = DB.projects.find(p=>p.ipId===ip.id);
+      function ipDetailView(ip) {
+        const wrap = document.createElement("div");
+        wrap.className = "view";
+        const proj = DB.projects.find((p) => p.ipId === ip.id);
 
-      wrap.innerHTML = `
+        wrap.innerHTML = `
         <h2>${escapeHtml(ip.name)}</h2>
-        <div class="sub">阶段：${escapeHtml(ip.stage)} · 标签：${escapeHtml((ip.tags||[]).join(' / '))}</div>
+        <div class="sub">阶段：${escapeHtml(ip.stage)} · 标签：${escapeHtml((ip.tags || []).join(" / "))}</div>
 
         <div class="split">
           <div class="panel" id="media">
@@ -516,7 +928,7 @@
 
           <div class="panel" id="roadmap">
             <h3>路线图 / Checkpoints（概念）</h3>
-            ${proj ? `<div class="timeline">${proj.checkpoints.map(cp => cpItem(cp)).join('')}</div>` : '<div class="empty">尚未创建剧组项目</div>'}
+            ${proj ? `<div class="timeline">${proj.checkpoints.map((cp) => cpItem(cp)).join("")}</div>` : '<div class="empty">尚未创建剧组项目</div>'}
             <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap">
               <button class="mini-btn" onclick="window.__FD.openProjectForIP('${ip.id}')">进入剧组大厅</button>
               <button class="mini-btn" onclick="window.__FD.openPay('invest','${ip.id}')">投资(占位支付)</button>
@@ -525,14 +937,26 @@
         </div>
       `;
 
-      return wrap;
-    }
+        return wrap;
+      }
 
-    function cpItem(cp){
-      const map = { locked:'locked', doing:'doing', pending:'pending', done:'done' };
-      const cls = map[cp.status] || 'locked';
-      const label = cp.status === 'locked' ? '锁定' : cp.status === 'doing' ? '进行中' : cp.status === 'pending' ? '待确认' : '已完成';
-      return `
+      function cpItem(cp) {
+        const map = {
+          locked: "locked",
+          doing: "doing",
+          pending: "pending",
+          done: "done",
+        };
+        const cls = map[cp.status] || "locked";
+        const label =
+          cp.status === "locked"
+            ? "锁定"
+            : cp.status === "doing"
+              ? "进行中"
+              : cp.status === "pending"
+                ? "待确认"
+                : "已完成";
+        return `
         <div class="cp ${cls}">
           <div class="lefty">
             <div class="dot"></div>
@@ -544,29 +968,29 @@
           <div class="tag">${escapeHtml(cp.key)}</div>
         </div>
       `;
-    }
-
-    function renderTalent(root){
-      if(state.view.type === 'talent_detail' && state.selectedTalentId){
-        const tl = DB.talents.find(x=>x.id===state.selectedTalentId);
-        root.appendChild(talentDetailView(tl));
-        setMeta(`当前：人才详情 · ${tl.name}（左侧可继续对话搜索/筛选）`);
-        state.chatContext = 'talent';
-        return;
       }
-      setMeta('当前：人才集市 · 左侧对话可“找人/找团队/找某地背景”');
-      state.chatContext = 'talent';
 
-      const list = document.createElement('div');
-      list.className = 'grid';
-      DB.talents.forEach(tl => list.appendChild(talentCard(tl)));
-      root.appendChild(list);
-    }
+      function renderTalent(root) {
+        if (state.view.type === "talent_detail" && state.selectedTalentId) {
+          const tl = DB.talents.find((x) => x.id === state.selectedTalentId);
+          root.appendChild(talentDetailView(tl));
+          setMeta(`当前：人才详情 · ${tl.name}（左侧可继续对话搜索/筛选）`);
+          state.chatContext = "talent";
+          return;
+        }
+        setMeta("当前：人才集市 · 左侧对话可“找人/找团队/找某地背景”");
+        state.chatContext = "talent";
 
-    function talentCard(tl){
-      const el = document.createElement('div');
-      el.className = 'card';
-      el.innerHTML = `
+        const list = document.createElement("div");
+        list.className = "grid";
+        DB.talents.forEach((tl) => list.appendChild(talentCard(tl)));
+        root.appendChild(list);
+      }
+
+      function talentCard(tl) {
+        const el = document.createElement("div");
+        el.className = "card";
+        el.innerHTML = `
         <div class="h">
           <div class="name">${escapeHtml(tl.name)}</div>
           <div class="tag hot">${escapeHtml(tl.rating)}</div>
@@ -574,31 +998,38 @@
         <div class="desc">${escapeHtml(tl.role)} · ${escapeHtml(tl.location)}\n${escapeHtml(tl.bio)}</div>
         <div class="kpi">
           <span>报价：${escapeHtml(tl.price)}</span>
-          <span>${escapeHtml((tl.tags||[]).slice(0,3).join(' / '))}</span>
+          <span>${escapeHtml((tl.tags || []).slice(0, 3).join(" / "))}</span>
         </div>
       `;
-      el.onclick = () => {
-        state.selectedTalentId = tl.id;
-        state.view = {type:'talent_detail', id: tl.id};
-        pushMsg('ai', `已打开人才：${tl.name}\n你可以继续问：还有没有“${(tl.tags||[])[0]||'类似标签'}”的人？或者帮我找一个团队。`, [
-          {label:'找相似人才', action:()=>searchInChat((tl.tags||[])[0]||tl.role)},
-          {label:'发布任务(去剧组)', action:()=>switchTab('studio')}
-        ]);
-        render();
-      };
-      return el;
-    }
+        el.onclick = () => {
+          state.selectedTalentId = tl.id;
+          state.view = { type: "talent_detail", id: tl.id };
+          pushMsg(
+            "ai",
+            `已打开人才：${tl.name}\n你可以继续问：还有没有“${(tl.tags || [])[0] || "类似标签"}”的人？或者帮我找一个团队。`,
+            [
+              {
+                label: "找相似人才",
+                action: () => searchInChat((tl.tags || [])[0] || tl.role),
+              },
+              { label: "发布任务(去剧组)", action: () => switchTab("studio") },
+            ],
+          );
+          render();
+        };
+        return el;
+      }
 
-    function talentDetailView(tl){
-      const wrap = document.createElement('div');
-      wrap.className = 'view';
-      wrap.innerHTML = `
+      function talentDetailView(tl) {
+        const wrap = document.createElement("div");
+        wrap.className = "view";
+        wrap.innerHTML = `
         <h2>${escapeHtml(tl.name)}</h2>
         <div class="sub">${escapeHtml(tl.role)} · ${escapeHtml(tl.location)} · 评级 ${escapeHtml(tl.rating)} · ${escapeHtml(tl.price)}</div>
         <div class="split">
           <div class="panel">
             <h3>技能标签</h3>
-            <div class="chips">${(tl.tags||[]).map(t=>`<div class="chip" onclick="window.__FD.searchInChat('${escapeHtml(t)}')">${escapeHtml(t)}</div>`).join('')}</div>
+            <div class="chips">${(tl.tags || []).map((t) => `<div class="chip" onclick="window.__FD.searchInChat('${escapeHtml(t)}')">${escapeHtml(t)}</div>`).join("")}</div>
             <div class="footerNote">（MVP）点击标签会在左侧对话中自动搜索。</div>
           </div>
           <div class="panel">
@@ -611,68 +1042,74 @@
           </div>
         </div>
       `;
-      return wrap;
-    }
-
-    function renderStudio(root){
-      if(state.view.type === 'project_detail' && state.selectedProjectId){
-        const p = DB.projects.find(x=>x.id===state.selectedProjectId);
-        root.appendChild(projectDetailView(p));
-        setMeta(`当前：赛博片场 · ${p.name}（Checkpoint/任务/资产占位）`);
-        state.chatContext = 'studio';
-        return;
+        return wrap;
       }
-      setMeta('当前：剧组大厅（赛博片场） · 左侧对话可“找项目/看进度/进入某剧组”');
-      state.chatContext = 'studio';
 
-      const list = document.createElement('div');
-      list.className = 'grid';
-      DB.projects.forEach(p => list.appendChild(projectCard(p)));
-      root.appendChild(list);
-    }
+      function renderStudio(root) {
+        if (state.view.type === "project_detail" && state.selectedProjectId) {
+          const p = DB.projects.find((x) => x.id === state.selectedProjectId);
+          root.appendChild(projectDetailView(p));
+          setMeta(`当前：赛博片场 · ${p.name}（Checkpoint/任务/资产占位）`);
+          state.chatContext = "studio";
+          return;
+        }
+        setMeta(
+          "当前：剧组大厅（赛博片场） · 左侧对话可“找项目/看进度/进入某剧组”",
+        );
+        state.chatContext = "studio";
 
-    function projectCard(p){
-      const ip = DB.ips.find(x=>x.id===p.ipId);
-      const el = document.createElement('div');
-      el.className = 'card';
-      const pending = p.checkpoints.find(x=>x.status==='pending');
-      const doing = p.checkpoints.find(x=>x.status==='doing');
-      el.innerHTML = `
+        const list = document.createElement("div");
+        list.className = "grid";
+        DB.projects.forEach((p) => list.appendChild(projectCard(p)));
+        root.appendChild(list);
+      }
+
+      function projectCard(p) {
+        const ip = DB.ips.find((x) => x.id === p.ipId);
+        const el = document.createElement("div");
+        el.className = "card";
+        const pending = p.checkpoints.find((x) => x.status === "pending");
+        const doing = p.checkpoints.find((x) => x.status === "doing");
+        el.innerHTML = `
         <div class="h">
           <div class="name">${escapeHtml(p.name)}</div>
           <div class="tag">${escapeHtml(p.phase)}</div>
         </div>
-        <div class="desc">关联IP：${escapeHtml(ip?.name||'-')}\n当前节点：${escapeHtml((doing||pending||p.checkpoints[0]).title)}</div>
+        <div class="desc">关联IP：${escapeHtml(ip?.name || "-")}\n当前节点：${escapeHtml((doing || pending || p.checkpoints[0]).title)}</div>
         <div class="kpi">
           <span>任务数：${p.tasks.length}</span>
           <span>Checkpoint：${p.checkpoints.length}</span>
         </div>
       `;
-      el.onclick = () => {
-        state.selectedProjectId = p.id;
-        state.view = {type:'project_detail', id: p.id};
-        pushMsg('ai', `已进入剧组：${p.name}\n（MVP）你可以在这里看到 Checkpoint 状态机与任务阻塞逻辑。`, [
-          {label:'看Checkpoint', action:()=>scrollToSection('cp')},
-          {label:'看任务', action:()=>scrollToSection('tasks')},
-          {label:'去IP详情', action:()=>openIP(p.ipId)}
-        ]);
-        render();
-      };
-      return el;
-    }
+        el.onclick = () => {
+          state.selectedProjectId = p.id;
+          state.view = { type: "project_detail", id: p.id };
+          pushMsg(
+            "ai",
+            `已进入剧组：${p.name}\n（MVP）你可以在这里看到 Checkpoint 状态机与任务阻塞逻辑。`,
+            [
+              { label: "看Checkpoint", action: () => scrollToSection("cp") },
+              { label: "看任务", action: () => scrollToSection("tasks") },
+              { label: "去IP详情", action: () => openIP(p.ipId) },
+            ],
+          );
+          render();
+        };
+        return el;
+      }
 
-    function projectDetailView(p){
-      const ip = DB.ips.find(x=>x.id===p.ipId);
-      const wrap = document.createElement('div');
-      wrap.className = 'view';
-      wrap.innerHTML = `
+      function projectDetailView(p) {
+        const ip = DB.ips.find((x) => x.id === p.ipId);
+        const wrap = document.createElement("div");
+        wrap.className = "view";
+        wrap.innerHTML = `
         <h2>${escapeHtml(p.name)}</h2>
-        <div class="sub">关联IP：<span style="color:#ffd2d5; cursor:pointer" onclick="window.__FD.openIP('${p.ipId}')">${escapeHtml(ip?.name||'-')}</span> · 阶段：${escapeHtml(p.phase)}</div>
+        <div class="sub">关联IP：<span style="color:#ffd2d5; cursor:pointer" onclick="window.__FD.openIP('${p.ipId}')">${escapeHtml(ip?.name || "-")}</span> · 阶段：${escapeHtml(p.phase)}</div>
 
         <div class="split">
           <div class="panel" id="cp">
             <h3>Checkpoint 看板（MVP状态机演示）</h3>
-            <div class="timeline">${p.checkpoints.map(cp => cpItem(cp)).join('')}</div>
+            <div class="timeline">${p.checkpoints.map((cp) => cpItem(cp)).join("")}</div>
             <div class="footerNote">规则：锁定节点不可开始任务；待确认需“确认通过/驳回”才能解锁下一步（MVP先展示，不做权限）。</div>
           </div>
           <div class="panel" id="tasks">
@@ -685,18 +1122,23 @@
           </div>
         </div>
       `;
-      return wrap;
-    }
+        return wrap;
+      }
 
-    function taskList(p){
-      if(!p.tasks.length) return '<div class="empty">暂无任务</div>';
-      const rows = p.tasks.map(t => {
-        const blocked = t.status === 'blocked';
-        const tag = blocked ? '<span class="tag">blocked</span>' : (t.status==='review' ? '<span class="tag hot">review</span>' : '<span class="tag">'+escapeHtml(t.status)+'</span>');
-        const cp = p.checkpoints.find(x=>x.key===t.checkpoint);
-        const cpStatus = cp?.status || 'locked';
-        return `
-          <div class="cp ${cpStatus==='locked'?'locked':cpStatus==='pending'?'pending':cpStatus==='doing'?'doing':'done'}" style="cursor:default">
+      function taskList(p) {
+        if (!p.tasks.length) return '<div class="empty">暂无任务</div>';
+        const rows = p.tasks
+          .map((t) => {
+            const blocked = t.status === "blocked";
+            const tag = blocked
+              ? '<span class="tag">blocked</span>'
+              : t.status === "review"
+                ? '<span class="tag hot">review</span>'
+                : '<span class="tag">' + escapeHtml(t.status) + "</span>";
+            const cp = p.checkpoints.find((x) => x.key === t.checkpoint);
+            const cpStatus = cp?.status || "locked";
+            return `
+          <div class="cp ${cpStatus === "locked" ? "locked" : cpStatus === "pending" ? "pending" : cpStatus === "doing" ? "doing" : "done"}" style="cursor:default">
             <div class="lefty">
               <div class="dot"></div>
               <div style="min-width:0">
@@ -707,17 +1149,18 @@
             ${tag}
           </div>
         `;
-      }).join('');
-      return `<div class="timeline">${rows}</div>`;
-    }
+          })
+          .join("");
+        return `<div class="timeline">${rows}</div>`;
+      }
 
-    function renderPay(root){
-      setMeta('当前：支付占位 · 不接真实支付，但页面/流程要完整');
-      state.chatContext = 'pay';
+      function renderPay(root) {
+        setMeta("当前：支付占位 · 不接真实支付，但页面/流程要完整");
+        state.chatContext = "pay";
 
-      const wrap = document.createElement('div');
-      wrap.className = 'view';
-      wrap.innerHTML = `
+        const wrap = document.createElement("div");
+        wrap.className = "view";
+        wrap.innerHTML = `
         <h2>支付中心（占位）</h2>
         <div class="sub">MVP：不接真实支付，但需要完整 UI / 状态 / 路由。后续接 Stripe/USDT 等。</div>
 
@@ -738,236 +1181,362 @@
           </div>
         </div>
       `;
-      root.appendChild(wrap);
-    }
+        root.appendChild(wrap);
+      }
 
-    // -------------------- Chat Router (MVP, rule-based) --------------------
-    function handleChat(text){
-      const t = text.trim();
-      if(!t) return;
-      pushMsg('user', t);
+      // -------------------- Chat Router (MVP, rule-based) --------------------
+      function handleChat(text) {
+        const t = text.trim();
+        if (!t) return;
+        pushMsg("user", t);
 
-      // quick command: switch tabs
-      if(/^(ip广场|ip)$/i.test(t)) return switchTab('ip');
-      if(/^(剧组|片场|studio|剧组大厅)$/i.test(t)) return switchTab('studio');
-      if(/^(人才|talent|人才集市)$/i.test(t)) return switchTab('talent');
-      if(/^(支付|pay)$/i.test(t)) return switchTab('pay');
+        // quick command: switch tabs
+        if (/^(ip广场|ip)$/i.test(t)) return switchTab("ip");
+        if (/^(剧组|片场|studio|剧组大厅)$/i.test(t))
+          return switchTab("studio");
+        if (/^(人才|talent|人才集市)$/i.test(t)) return switchTab("talent");
+        if (/^(支付|pay)$/i.test(t)) return switchTab("pay");
 
-      // contextual search
-      if(state.chatContext === 'ip' || state.chatContext === 'ip_detail'){
-        if(/投资|支付|checkout|买/.test(t)){
-          const id = state.selectedIpId || DB.ips[0].id;
-          pushMsg('ai', '好的，进入支付页面（占位）。后续会接真实支付回调。');
-          return openPay('invest', id);
-        }
+        // contextual search
+        if (state.chatContext === "ip" || state.chatContext === "ip_detail") {
+          if (/投资|支付|checkout|买/.test(t)) {
+            const id = state.selectedIpId || DB.ips[0].id;
+            pushMsg("ai", "好的，进入支付页面（占位）。后续会接真实支付回调。");
+            return openPay("invest", id);
+          }
 
-        if(/进入|打开|看|观看/.test(t)){
-          // try match ip by name substring
-          const ip = DB.ips.find(x => normalize(t).includes(normalize(x.name).slice(0,6)));
-          if(ip){
-            openIP(ip.id);
-            pushMsg('ai', `已打开：${ip.name}`);
+          if (/进入|打开|看|观看/.test(t)) {
+            // try match ip by name substring
+            const ip = DB.ips.find((x) =>
+              normalize(t).includes(normalize(x.name).slice(0, 6)),
+            );
+            if (ip) {
+              openIP(ip.id);
+              pushMsg("ai", `已打开：${ip.name}`);
+              return;
+            }
+          }
+
+          // Q&A within ip detail
+          if (state.chatContext === "ip_detail" && state.selectedIpId) {
+            const ip = DB.ips.find((x) => x.id === state.selectedIpId);
+            const answer = answerIpQ(ip, t);
+            const link = makeLink("ip", ip.id);
+            pushMsg("ai", `${answer}\n\n链接：${link}`, [
+              { label: "路线图", action: () => scrollToSection("roadmap") },
+              { label: "进入剧组", action: () => openProjectForIP(ip.id) },
+              { label: "继续找IP", action: () => switchTab("ip") },
+            ]);
             return;
           }
-        }
 
-        // Q&A within ip detail
-        if(state.chatContext === 'ip_detail' && state.selectedIpId){
-          const ip = DB.ips.find(x=>x.id===state.selectedIpId);
-          const answer = answerIpQ(ip, t);
-          pushMsg('ai', answer, [
-            {label:'路线图', action:()=>scrollToSection('roadmap')},
-            {label:'进入剧组', action:()=>openProjectForIP(ip.id)},
-            {label:'继续找IP', action:()=>switchTab('ip')}
-          ]);
+          // search ips
+          const results = findIPs(t);
+          if (results.length) {
+            pushMsg(
+              "ai",
+              `我找到了 ${results.length} 个匹配IP（点击进入，或复制链接）：`,
+              results.slice(0, 6).map((ip) => ({
+                label: `${ip.name} · ${ip.category || ""} · ${ip.fundraising || ""}`,
+                action: () => openIP(ip.id),
+              })),
+            );
+            const links = results
+              .slice(0, 6)
+              .map((ip) => `${ip.name}：${makeLink("ip", ip.id)}`)
+              .join("\n");
+            pushMsg("ai", `链接列表：\n${links}`);
+          } else {
+            pushMsg(
+              "ai",
+              "没找到匹配的IP。你可以换一种问法，比如：\n- 我想看香港/赛博朋克/悬疑\n- 找女性向古风悬疑",
+            );
+          }
           return;
         }
 
-        // search ips
-        const results = findIPs(t);
-        if(results.length){
-          pushMsg('ai', `我找到了 ${results.length} 个匹配IP（点击进入）：`, results.slice(0,6).map(ip => ({
-            label: ip.name,
-            action: ()=>openIP(ip.id)
-          })));
-        } else {
-          pushMsg('ai', '没找到匹配的IP。你可以换一种问法，比如：\n- 我想看香港/赛博朋克/悬疑\n- 找女性向古风悬疑');
+        if (state.chatContext === "talent") {
+          const results = findTalents(t);
+          if (results.length) {
+            pushMsg(
+              "ai",
+              `我找到了 ${results.length} 位/组匹配人才（点击查看，或复制链接）：`,
+              results.slice(0, 6).map((tl) => ({
+                label: `${tl.name} · ${tl.role} · ${tl.location} · ${tl.rating}`,
+                action: () => openTalent(tl.id),
+              })),
+            );
+            const links = results
+              .slice(0, 6)
+              .map((tl) => `${tl.name}：${makeLink("talent", tl.id)}`)
+              .join("\n");
+            pushMsg("ai", `链接列表：\n${links}`);
+          } else {
+            pushMsg(
+              "ai",
+              "没找到匹配人才。你可以更具体一点：\n- 佛教背景 编剧 北京\n- 赛博朋克 美术 香港\n- 北大 摄影 后期",
+            );
+          }
+          return;
         }
-        return;
-      }
 
-      if(state.chatContext === 'talent'){
-        const results = findTalents(t);
-        if(results.length){
-          pushMsg('ai', `我找到了 ${results.length} 位/组匹配人才（点击查看）：`, results.slice(0,6).map(tl => ({
-            label: `${tl.name} · ${tl.role}`,
-            action: ()=>openTalent(tl.id)
-          })));
-        } else {
-          pushMsg('ai', '没找到匹配人才。你可以更具体一点：\n- 佛教背景 编剧 北京\n- 赛博朋克 美术 香港\n- 北大 摄影 后期');
+        if (state.chatContext === "studio") {
+          const results = findProjects(t);
+          if (results.length) {
+            pushMsg(
+              "ai",
+              `我找到了 ${results.length} 个项目（点击进入）：`,
+              results.slice(0, 6).map((p) => ({
+                label: p.name,
+                action: () => openProject(p.id),
+              })),
+            );
+          } else {
+            pushMsg(
+              "ai",
+              "没找到匹配项目。你可以问：\n- 看香港滑板女孩的项目\n- 莲灯案进度",
+            );
+          }
+          return;
         }
-        return;
+
+        // default
+        pushMsg(
+          "ai",
+          "我懂了。你可以先切换模块：IP广场 / 剧组大厅 / 人才集市，然后用关键词筛选。",
+        );
       }
 
-      if(state.chatContext === 'studio'){
-        const results = findProjects(t);
-        if(results.length){
-          pushMsg('ai', `我找到了 ${results.length} 个项目（点击进入）：`, results.slice(0,6).map(p => ({
-            label: p.name,
-            action: ()=>openProject(p.id)
-          })));
-        } else {
-          pushMsg('ai', '没找到匹配项目。你可以问：\n- 看香港滑板女孩的项目\n- 莲灯案进度');
+      function answerIpQ(ip, q) {
+        if (/看点|卖点|hook|亮点/.test(q))
+          return `看点：\n- ${ip.tags.slice(0, 3).join(" / ")}\n- ${ip.logline}\n\n当前阶段：${ip.stage}`;
+        if (/主角|人物/.test(q))
+          return `（MVP占位）人物卡片后续接入：主角/反派/关键关系。\n现在先按一句话卖点：${ip.logline}`;
+        if (/进度|阶段|路线图/.test(q))
+          return `当前阶段：${ip.stage}\n下一步：进入剧组大厅推进 Checkpoint（剧本→人物→分镜→试剪→交付）。`;
+        if (/受众|人群|女生|用户/.test(q)) {
+          if (ip.tags.includes("女性向"))
+            return "受众：女性向/悬疑爱好者/古风题材用户。";
+          return "受众：偏年轻人/喜欢强风格与快节奏的用户。";
         }
-        return;
+        if (/投资|多少钱|募资/.test(q))
+          return `募资信息：${ip.kpi.raised} / ${ip.kpi.target}（${ip.kpi.valuation}）\n（MVP：支付页面已做，占位不接真实支付）`;
+        return `我可以回答：看点/受众/阶段/募资/路线图/进入剧组。\n你刚才问的是：${q}`;
       }
 
-      // default
-      pushMsg('ai', '我懂了。你可以先切换模块：IP广场 / 剧组大厅 / 人才集市，然后用关键词筛选。');
-    }
+      // -------------------- Navigation --------------------
+      function switchTab(tab) {
+        state.tab = tab;
+        state.view = { type: "list", id: null };
+        state.selectedIpId = null;
+        state.selectedTalentId = null;
+        state.selectedProjectId = null;
 
-    function answerIpQ(ip, q){
-      if(/看点|卖点|hook|亮点/.test(q)) return `看点：\n- ${ip.tags.slice(0,3).join(' / ')}\n- ${ip.logline}\n\n当前阶段：${ip.stage}`;
-      if(/主角|人物/.test(q)) return `（MVP占位）人物卡片后续接入：主角/反派/关键关系。\n现在先按一句话卖点：${ip.logline}`;
-      if(/进度|阶段|路线图/.test(q)) return `当前阶段：${ip.stage}\n下一步：进入剧组大厅推进 Checkpoint（剧本→人物→分镜→试剪→交付）。`;
-      if(/受众|人群|女生|用户/.test(q)){
-        if(ip.tags.includes('女性向')) return '受众：女性向/悬疑爱好者/古风题材用户。';
-        return '受众：偏年轻人/喜欢强风格与快节奏的用户。';
+        document
+          .querySelectorAll(".tab")
+          .forEach((x) => x.classList.toggle("active", x.dataset.tab === tab));
+        render();
+
+        if (tab === "ip")
+          pushMsg(
+            "ai",
+            "你在 IP广场：可以问“我想看什么内容”，我会给你项目列表，点一下就进详情。",
+          );
+        if (tab === "talent")
+          pushMsg(
+            "ai",
+            "你在 人才集市：可以问“我要做佛教项目，找北京/北大/某背景的编剧/美术/摄影”。",
+          );
+        if (tab === "studio")
+          pushMsg(
+            "ai",
+            "你在 剧组大厅：可以问“某项目进度/当前checkpoint/有哪些任务”。",
+          );
+        if (tab === "pay")
+          pushMsg(
+            "ai",
+            "你在 支付占位页：目前不接真实支付，但支持完整流程与结果页。",
+          );
       }
-      if(/投资|多少钱|募资/.test(q)) return `募资信息：${ip.kpi.raised} / ${ip.kpi.target}（${ip.kpi.valuation}）\n（MVP：支付页面已做，占位不接真实支付）`;
-      return `我可以回答：看点/受众/阶段/募资/路线图/进入剧组。\n你刚才问的是：${q}`;
-    }
 
-    // -------------------- Navigation --------------------
-    function switchTab(tab){
-      state.tab = tab;
-      state.view = {type:'list', id:null};
-      state.selectedIpId = null;
-      state.selectedTalentId = null;
-      state.selectedProjectId = null;
-
-      document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab===tab));
-      render();
-
-      if(tab==='ip') pushMsg('ai','你在 IP广场：可以问“我想看什么内容”，我会给你项目列表，点一下就进详情。');
-      if(tab==='talent') pushMsg('ai','你在 人才集市：可以问“我要做佛教项目，找北京/北大/某背景的编剧/美术/摄影”。');
-      if(tab==='studio') pushMsg('ai','你在 剧组大厅：可以问“某项目进度/当前checkpoint/有哪些任务”。');
-      if(tab==='pay') pushMsg('ai','你在 支付占位页：目前不接真实支付，但支持完整流程与结果页。');
-    }
-
-    function openIP(ipId){
-      state.tab = 'ip';
-      document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab==='ip'));
-      state.selectedIpId = ipId;
-      state.view = {type:'ip_detail', id:ipId};
-      render();
-    }
-
-    function openTalent(talentId){
-      state.tab = 'talent';
-      document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab==='talent'));
-      state.selectedTalentId = talentId;
-      state.view = {type:'talent_detail', id:talentId};
-      render();
-    }
-
-    function openProject(projectId){
-      state.tab = 'studio';
-      document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab==='studio'));
-      state.selectedProjectId = projectId;
-      state.view = {type:'project_detail', id:projectId};
-      render();
-    }
-
-    function openProjectForIP(ipId){
-      const p = DB.projects.find(x=>x.ipId===ipId);
-      if(!p){
-        pushMsg('ai','这个IP还没有创建剧组项目（MVP占位）。后续 admin 可一键创建。');
-        return;
+      function openIP(ipId) {
+        state.tab = "ip";
+        document
+          .querySelectorAll(".tab")
+          .forEach((x) => x.classList.toggle("active", x.dataset.tab === "ip"));
+        state.selectedIpId = ipId;
+        state.view = { type: "ip_detail", id: ipId };
+        setHash("ip", ipId);
+        render();
       }
-      openProject(p.id);
-    }
 
-    function openPay(kind, refId){
-      state.tab = 'pay';
-      document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab==='pay'));
-      state.view = {type:'list', id:null};
-      render();
-      const tip = kind==='invest' ? '投资' : '结算';
-      const el = $('payResult');
-      if(el) el.textContent = `当前状态：未开始（入口=${tip}，关联=${refId}）`;
-    }
+      function openTalent(talentId) {
+        state.tab = "talent";
+        document
+          .querySelectorAll(".tab")
+          .forEach((x) =>
+            x.classList.toggle("active", x.dataset.tab === "talent"),
+          );
+        state.selectedTalentId = talentId;
+        state.view = { type: "talent_detail", id: talentId };
+        setHash("talent", talentId);
+        render();
+      }
 
-    function mockPay(status){
-      const el = $('payResult');
-      if(!el) return;
-      if(status==='success') el.textContent = '当前状态：SUCCESS（模拟成功，后续接支付回调）';
-      if(status==='failed') el.textContent = '当前状态：FAILED（模拟失败，可重试）';
-      if(status==='pending') el.textContent = '当前状态：PENDING（等待回调/人工确认）';
-    }
+      function openProject(projectId) {
+        state.tab = "studio";
+        document
+          .querySelectorAll(".tab")
+          .forEach((x) =>
+            x.classList.toggle("active", x.dataset.tab === "studio"),
+          );
+        state.selectedProjectId = projectId;
+        state.view = { type: "project_detail", id: projectId };
+        setHash("studio", projectId);
+        render();
+      }
 
-    function searchInChat(q){
-      $('chatInput').value = q;
-      handleChat(q);
-    }
+      function openProjectForIP(ipId) {
+        const p = DB.projects.find((x) => x.ipId === ipId);
+        if (!p) {
+          pushMsg(
+            "ai",
+            "这个IP还没有创建剧组项目（MVP占位）。后续 admin 可一键创建。",
+          );
+          return;
+        }
+        openProject(p.id);
+      }
 
-    function scrollToSection(id){
-      const el = document.getElementById(id);
-      if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
-    }
+      function openPay(kind, refId) {
+        state.tab = "pay";
+        document
+          .querySelectorAll(".tab")
+          .forEach((x) =>
+            x.classList.toggle("active", x.dataset.tab === "pay"),
+          );
+        state.view = { type: "list", id: null };
+        render();
+        const tip = kind === "invest" ? "投资" : "结算";
+        const el = $("payResult");
+        if (el)
+          el.textContent = `当前状态：未开始（入口=${tip}，关联=${refId}）`;
+      }
 
-    // expose for inline handlers
-    window.__FD = {
-      switchTab,
-      openIP,
-      openTalent,
-      openProject,
-      openProjectForIP,
-      openPay,
-      mockPay,
-      searchInChat
-    };
+      function mockPay(status) {
+        const el = $("payResult");
+        if (!el) return;
+        if (status === "success")
+          el.textContent = "当前状态：SUCCESS（模拟成功，后续接支付回调）";
+        if (status === "failed")
+          el.textContent = "当前状态：FAILED（模拟失败，可重试）";
+        if (status === "pending")
+          el.textContent = "当前状态：PENDING（等待回调/人工确认）";
+      }
 
-    // -------------------- Boot --------------------
-    function boot(){
-      // tabs
-      document.querySelectorAll('.tab').forEach(tab => {
-        tab.onclick = () => switchTab(tab.dataset.tab);
-      });
+      function searchInChat(q) {
+        $("chatInput").value = q;
+        handleChat(q);
+      }
 
-      // send
-      $('sendBtn').onclick = () => {
-        const v = $('chatInput').value;
-        $('chatInput').value = '';
-        handleChat(v);
+      function scrollToSection(id) {
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      function setHash(kind, id) {
+        try {
+          window.location.hash = `${kind}:${id}`;
+        } catch (e) {}
+      }
+      function parseHash() {
+        const h = (window.location.hash || "").replace("#", "");
+        const m = h.match(/^(ip|talent|studio):(.+)$/);
+        if (!m) return null;
+        return { kind: m[1], id: m[2] };
+      }
+      function makeLink(kind, id) {
+        return `${window.location.origin}${window.location.pathname}#${kind}:${id}`;
+      }
+
+      // expose for inline handlers
+      window.__FD = {
+        switchTab,
+        openIP,
+        openTalent,
+        openProject,
+        openProjectForIP,
+        openPay,
+        mockPay,
+        searchInChat,
+        makeLink,
+        setHash,
       };
-      $('chatInput').addEventListener('keydown', (e)=>{
-        if(e.key==='Enter') $('sendBtn').click();
-      });
 
-      // quick chips
-      const chips = [
-        {label:'我想看香港赛博朋克', q:'香港 赛博朋克'},
-        {label:'找佛教背景编剧 北京', q:'佛教 编剧 北京'},
-        {label:'莲灯案进度', q:'莲灯案'},
-        {label:'去人才集市', q:'人才集市'},
-        {label:'去剧组大厅', q:'剧组大厅'}
-      ];
-      const qc = $('quickChips');
-      chips.forEach(c=>{
-        const b = document.createElement('div');
-        b.className = 'chip';
-        b.textContent = c.label;
-        b.onclick = ()=> handleChat(c.q);
-        qc.appendChild(b);
-      });
+      // -------------------- Boot --------------------
+      function boot() {
+        // tabs
+        document.querySelectorAll(".tab").forEach((tab) => {
+          tab.onclick = () => switchTab(tab.dataset.tab);
+        });
 
-      // greet
-      pushMsg('ai', '我在。\n你可以：\n1) 在IP广场问“我想看什么内容”→点结果进入IP\n2) 在人才集市问“我要找什么人/什么背景”\n3) 进入IP后问问题（MVP先规则回答，后续接真实AI）。');
-      render();
-    }
+        // dock buttons
+        $("dockMinBtn").onclick = () => {
+          const d = $("chatDock");
+          const min = d.classList.toggle("min");
+          $("composer").style.display = min ? "none" : "block";
+          $("chat").style.display = min ? "none" : "block";
+          $("dockMinBtn").textContent = min ? "展开" : "收起";
+        };
+        $("dockClearBtn").onclick = () => {
+          $("chat").innerHTML = "";
+        };
 
-    boot();
-  </script>
-</body>
+        // send
+        $("sendBtn").onclick = () => {
+          const v = $("chatInput").value;
+          $("chatInput").value = "";
+          handleChat(v);
+        };
+        $("chatInput").addEventListener("keydown", (e) => {
+          if (e.key === "Enter") $("sendBtn").click();
+        });
+
+        // quick chips
+        const chips = [
+          { label: "我想看香港赛博朋克", q: "香港 赛博朋克" },
+          { label: "找佛教背景编剧 北京", q: "佛教 编剧 北京" },
+          { label: "莲灯案进度", q: "莲灯案" },
+          { label: "去人才集市", q: "人才集市" },
+          { label: "去剧组大厅", q: "剧组大厅" },
+        ];
+        const qc = $("quickChips");
+        chips.forEach((c) => {
+          const b = document.createElement("div");
+          b.className = "chip";
+          b.textContent = c.label;
+          b.onclick = () => handleChat(c.q);
+          qc.appendChild(b);
+        });
+
+        // greet
+        pushMsg(
+          "ai",
+          "我在右上角。\n\n你可以：\n1) 在IP广场问“我想看什么内容”→我会给你可点击的IP链接\n2) 在人才集市问“我要找佛教/北大/北京/香港等背景的人”→给你人才链接\n3) 进入IP后继续问问题（看点/进度/募资/路线图），回答会附链接。\n\n参考风格：fizzdragon.com（MVP先做结构与交互）。",
+        );
+
+        // open by hash
+        const h = parseHash();
+        if (h) {
+          if (h.kind === "ip") openIP(h.id);
+          else if (h.kind === "talent") openTalent(h.id);
+          else if (h.kind === "studio") openProject(h.id);
+        } else {
+          render();
+        }
+      }
+
+      boot();
+    </script>
+  </body>
 </html>
